@@ -1,0 +1,8 @@
+/.idea
+/datachecker-check/.mvn
+.mvn
+/logs
+/datachecker-check/Result
+/*/mvnw
+/*/mvnw.cmd
+/*/logs

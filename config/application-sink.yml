@@ -1,0 +1,23 @@
+server:
+  port: 9001
+
+debug: false
+
+spring:
+  check:
+    server-uri: http://{ip}:{port} # 数据校验服务地址
+  extract:
+    # 前置：源端查询表mate数据时，获取单表数据总记录数， query-table-row-count配置是为控制流程是否通过查询表数据方式获取当前表数据总数。
+    query-table-row-count: false
+    schema: jack  # 宿端opengauss 用于校验数据schema
+    databaseType: OG  # 宿端数据库类型 OG opengauss
+  kafka:
+    bootstrap-servers: { ip }:{port};{ip}:{port} # kafka 集群地址
+  datasource:
+    druid:
+      dataSourceOne:
+        driver-class-name: org.postgresql.Driver
+        # 宿端opengauss用于校验数据库链接地址
+        url: jdbc:postgresql://{ip}:{port}/{schema_db}?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
+        username:  # 宿端opengauss用于校验的用户名称
+        password:   # 宿端opengauss用于校验的用户名称密码
