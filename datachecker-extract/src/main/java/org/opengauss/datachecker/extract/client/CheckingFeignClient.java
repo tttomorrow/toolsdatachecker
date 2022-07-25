@@ -1,0 +1,56 @@
+package org.opengauss.datachecker.extract.client;
+
+import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.lang.NonNull;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import javax.validation.constraints.NotEmpty;
+import java.util.List;
+
+/**
+ * <pre>
+ * create an internal class to declare the API interface of the called party. If the API of the called party is
+ * abnormal ,the exception class is called back for exception declaration.
+ *
+ * The value can be declared in name. The datachecker-check is the service name and directly invokes the system.
+ * Generally,the name uses the Eureka registration information. The Eureka is not introduced.
+ * The URL is configured for invoking.
+ * </pre>
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/5/29
+ * @since ：11
+ */
+@FeignClient(name = "datachecker-check", url = "${spring.check.server-uri}")
+public interface CheckingFeignClient {
+
+    /**
+     * Refresh the execution status of the data extraction table of a specified task.
+     *
+     * @param tableName table name
+     * @param endpoint  endpoint enum type {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     */
+    @PostMapping("/table/extract/status")
+    void refushTableExtractStatus(@RequestParam(value = "tableName") @NotEmpty String tableName,
+                                  @RequestParam(value = "endpoint") @NonNull Endpoint endpoint);
+
+    /**
+     * Initializing task status
+     *
+     * @param tableNameList table name list
+     */
+    @PostMapping("/table/extract/status/init")
+    void initTableExtractStatus(@RequestBody @NotEmpty List<String> tableNameList);
+
+    /**
+     * Incremental verification log notification
+     *
+     * @param dataLogList Incremental verification log
+     */
+    @PostMapping("/notify/source/increment/data/logs")
+    void notifySourceIncrementDataLogs(@RequestBody @NotEmpty List<SourceDataLog> dataLogList);
+}

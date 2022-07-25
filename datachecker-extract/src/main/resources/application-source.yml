@@ -1,0 +1,52 @@
+server:
+  port: 7002
+
+debug: false
+logging:
+  config: classpath:log4j2-source.xml
+
+spring:
+  application:
+    name: DATACHECKER-EXTRACT-${spring.extract.endpoint}
+
+  extract:
+    schema: test  # 源端数据实例
+    databaseType: MS  # 源端数据库类型 MS mysql
+    endpoint: SOURCE  # 源端端点类型
+    debezium-enable: true #是否开启增量debezium配置 默认不开启
+    debezium-topic:  # debezium监听表增量数据，使用单一topic进行增量数据管理
+    debezium-groupId: debezium-extract-group # d debezium增量迁移topic ，groupId消费Group设置
+    debezium-topic-partitions: 1 # debezium监听topic 分区数量配置
+    debezium-tables: # debezium-tables配置debezium监听的表名称列表; 该配置只在源端服务配置并生效
+    debezium-time-period: 1 # debezium增量迁移校验 时间周期 24*60 单位分钟
+    debezium-num-period: 1000 #debezium增量迁移校验 统计增量变更记录数量阀值，默认值1000 阀值应大于100
+
+  datasource:
+    druid:
+      dataSourceOne:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://xxxxxx:xxx/xxx?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        username: xxxxx
+        password: xxxxxx
+        type: com.alibaba.druid.pool.DruidDataSource
+        #Spring Boot 默认是不注入这些属性值的，需要自己绑定
+        #druid 数据源专有配置
+        initialSize: 20
+        minIdle: 5
+        maxActive: 50
+        maxWait: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: SELECT 1 FROM DUAL
+        testWhileIdle: true
+        testOnBorrow: false
+        testOnReturn: false
+        poolPreparedStatements: true
+
+        #配置监控统计拦截的filters，stat:监控统计、log4j：日志记录、wall：防御sql注入
+        #如果允许时报错  java.lang.ClassNotFoundException: org.apache.log4j.Priority
+        #则导入 log4j 依赖即可，Maven 地址：https://mvnrepository.com/artifact/log4j/log4j
+      filters: stat,wall,log4j
+      maxPoolPreparedStatementPerConnectionSize: 20
+      useGlobalDataSourceStat: true
+      connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500

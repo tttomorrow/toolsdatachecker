@@ -1,0 +1,25 @@
+server:
+  port: 9000
+
+debug: false
+
+spring:
+  datasource:
+    druid:
+      dataCheck:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://{ip}:{port}/check?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        username: # 数据库用户名称
+        password: # 数据库用户访问密码
+data:
+  check:
+    #data-path: local_path/xxx # 配置数据校验结果输出本地路径
+    data-path: D:\code\tool\datachecker-tool\datachecker-check
+    bucket-expect-capacity: 10 # 桶容量范围最小值为1
+    source-uri: http://{ip}:{port} # 配置源端服务地址和服务端口server.port
+    sink-uri: http://{ip}:{port} # 配置源端服务地址和服务端口server.port
+    black-white-mode: BLACK #大写 配置校验表黑白名单启动模式 【BLACK 启动黑名单校验，WHITE 启动白名单校验】
+
+
+
+

@@ -1,0 +1,32 @@
+server:
+  port: 9002
+
+debug: false
+
+spring:
+  check:
+    server-uri: http://{ip}:{port} # 数据校验服务地址
+  extract:
+    query-table-row-count: false # 前置：源端查询表mate数据时，获取单表数据总记录数， query-table-row-count配置是为控制流程是否通过查询表数据方式获取当前表数据总数。
+    schema: test  # 源端数据实例
+    databaseType: MS  # 源端数据库类型 MS mysql
+    debezium-topic: my_oracle_connector_002 # debezium监听表增量数据，使用单一topic进行增量数据管理
+    debezium-groupId: debezium-extract-group # d debezium增量迁移topic ，groupId消费Group设置
+    debezium-topic-partitions: 1 # debezium监听topic 分区数量配置
+    debezium-tables: # debezium-tables配置debezium监听的表名称列表; 该配置只在源端服务配置并生效
+      TEST1,
+      TEST5,
+      TEST3
+    debezium-enable: true #是否开启增量debezium配置 默认不开启
+    debezium-time-period: 1 # debezium增量迁移校验 时间周期 24*60 单位分钟
+    debezium-num-period: 1000 #debezium增量迁移校验 统计增量变更记录数量阀值，默认值1000 阀值应大于100
+
+  kafka:
+    bootstrap-servers: { ip }:{port};{ip}:{port} # kafka 集群地址
+  datasource:
+    druid:
+      dataSourceOne:
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://{ip}:{port}/{database}?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        username:   # 源端mysql用于校验的用户名称
+        password:   # 源端mysql用于校验的用户名称密码
