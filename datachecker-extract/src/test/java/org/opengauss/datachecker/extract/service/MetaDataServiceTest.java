@@ -1,5 +1,21 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,9 +24,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.sql.SQLException;
 import java.util.Map;
 
+/**
+ * MetaDataServiceTest
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/5/14
+ * @since ：11
+ */
+@Slf4j
 @SpringBootTest
 public class MetaDataServiceTest {
-
     @Autowired
     private MetaDataService metaDataService;
 
@@ -18,7 +41,7 @@ public class MetaDataServiceTest {
     void queryMetadataOfSourceDBSchema() throws SQLException {
         Map<String, TableMetadata> stringTableMetadataMap = metaDataService.queryMetaDataOfSchema();
         for (TableMetadata metadata : stringTableMetadataMap.values()) {
-            System.out.println(metadata.toString());
+            log.info(metadata.toString());
         }
     }
 }

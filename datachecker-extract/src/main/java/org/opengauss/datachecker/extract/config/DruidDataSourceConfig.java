@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.config;
 
 import com.alibaba.druid.pool.DruidDataSource;
@@ -9,29 +24,26 @@ import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * DruidDataSourceConfig
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/5/23
+ * @since ：11
+ */
 @Configuration
 public class DruidDataSourceConfig {
-
     /**
-     * <pre>
-     *  Add custom Druid data sources to the container,no longer let Spring boot automatically create them.
-     *  Bind the druid data source adttributes in the global configuration file to the com.alibaba.druid.pool.DruidDataSource
-     *  to make them take effect.
-     *  {@code @ConfigurationProperties(prefix="spring.datasource.druid.datasourceone")}: Injects the attribute value
-     *  prefixed with spring.datasource in the global configuration file to the com.alibaba.druid.pool.DruidDataSource
-     *  parameter with the same name.
-     *  </pre>
+     * build extract DruidDataSource
      *
-     * @return
+     * @return DruidDataSource
      */
     @Bean("dataSourceOne")
     @ConfigurationProperties(prefix = "spring.datasource.druid.datasourceone")
@@ -39,7 +51,12 @@ public class DruidDataSourceConfig {
         return new DruidDataSource();
     }
 
-
+    /**
+     * build extract JdbcTemplate
+     *
+     * @param dataSourceOne DataSource
+     * @return JdbcTemplate
+     */
     @Bean("jdbcTemplateOne")
     public JdbcTemplate jdbcTemplateOne(@Qualifier("dataSourceOne") DataSource dataSourceOne) {
         return new JdbcTemplate(dataSourceOne);
@@ -50,26 +67,15 @@ public class DruidDataSourceConfig {
      * Configure the servlet of the Druid monitoring management background.
      * There is no web.xml file when the servlet container is built in. Therefore ,the servlet registration mode of
      * Spring Boot is used.
-     * Startup access address : http://localhost:8080/druid/api.html
      *
      * @return return ServletRegistrationBean
      */
     @Bean
     public ServletRegistrationBean<StatViewServlet> initServletRegistrationBean() {
-
         ServletRegistrationBean<StatViewServlet> bean =
-                new ServletRegistrationBean<>(new StatViewServlet(), "/druid/*");
-        // Configuring the account and password
+            new ServletRegistrationBean<>(new StatViewServlet(), "/druid/*");
         HashMap<String, String> initParameters = new HashMap<>();
-        // Add configuration
-        // the login key is a fixed loginUsername loginPassword
-        initParameters.put("loginUsername", "admin");
-        initParameters.put("loginPassword", "123456");
-
-        // if the second parameter is empty,everyone can access it.
         initParameters.put("allow", "");
-
-        // Setting initialization parameters
         bean.setInitParameters(initParameters);
         return bean;
     }
@@ -85,13 +91,13 @@ public class DruidDataSourceConfig {
         FilterRegistrationBean bean = new FilterRegistrationBean();
         bean.setFilter(new WebStatFilter());
 
-        //exclusions: sets the requests to be filtered out so that statistics are not collected.
+        // exclusions: sets the requests to be filtered out so that statistics are not collected.
         Map<String, String> initParams = new HashMap<>();
         // this things don't count.
         initParams.put("exclusions", "*.js,*.css,/druid/*,/jdbc/*");
         bean.setInitParameters(initParams);
 
-        //"/*" indicates that all requests are filtered.
+        // "/*" indicates that all requests are filtered.
         bean.setUrlPatterns(Arrays.asList("/*"));
         return bean;
     }

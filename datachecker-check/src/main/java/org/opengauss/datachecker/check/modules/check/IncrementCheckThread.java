@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.check;
 
 import com.google.common.collect.MapDifference;
@@ -22,15 +37,26 @@ import org.opengauss.datachecker.common.web.Result;
 import org.springframework.lang.NonNull;
 import org.springframework.util.CollectionUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
+ * IncrementCheckThread
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/23
  * @since ：11
  */
 @Slf4j
-public class IncrementDataCheckThread implements Runnable {
+public class IncrementCheckThread extends Thread {
     private static final int THRESHOLD_MIN_BUCKET_SIZE = 2;
     private static final String THREAD_NAME_PRIFEX = "increment-data-check-";
 
@@ -39,28 +65,32 @@ public class IncrementDataCheckThread implements Runnable {
     private final int partitions;
     private final int bucketCapacity;
     private final String path;
-
     private final FeignClientService feignClient;
-
     private final List<Bucket> sourceBucketList = new ArrayList<>();
     private final List<Bucket> sinkBucketList = new ArrayList<>();
-    private final DifferencePair<Map<String, RowDataHash>, Map<String, RowDataHash>, Map<String, Pair<Node, Node>>> difference
-            = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
-
+    private final DifferencePair<Map<String, RowDataHash>, Map<String, RowDataHash>, Map<String, Pair<Node, Node>>>
+        difference = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
     private final Map<Integer, Pair<Integer, Integer>> bucketNumberDiffMap = new HashMap<>();
     private final QueryRowDataWapper queryRowDataWapper;
     private final DataCheckWapper dataCheckWapper;
+    private String sinkSchema;
 
-    public IncrementDataCheckThread(@NonNull DataCheckParam checkParam, @NonNull FeignClientService feignClient) {
-        this.topic = checkParam.getTopic();
-        this.tableName = topic.getTableName();
-        this.partitions = checkParam.getPartitions();
-        this.path = checkParam.getPath();
-        this.bucketCapacity = checkParam.getBucketCapacity();
-        this.feignClient = feignClient;
-        this.queryRowDataWapper = new QueryRowDataWapper(feignClient);
-        this.dataCheckWapper = new DataCheckWapper();
-        resetThreadName();
+    /**
+     * IncrementCheckThread constructor method
+     *
+     * @param checkParam Data Check Param
+     * @param support    Data Check Runnable Support
+     */
+    public IncrementCheckThread(@NonNull DataCheckParam checkParam, @NonNull DataCheckRunnableSupport support) {
+        super.setName(buildThreadName());
+        topic = checkParam.getTopic();
+        tableName = topic.getTableName();
+        partitions = checkParam.getPartitions();
+        path = checkParam.getPath();
+        bucketCapacity = checkParam.getBucketCapacity();
+        feignClient = support.getFeignClientService();
+        queryRowDataWapper = new QueryRowDataWapper(feignClient);
+        dataCheckWapper = new DataCheckWapper();
     }
 
     /**
@@ -76,98 +106,96 @@ public class IncrementDataCheckThread implements Runnable {
      */
     @Override
     public void run() {
-
-        // 元数据校验
+        sinkSchema = feignClient.getDatabaseSchema(Endpoint.SINK);
+        // Metadata verification
         if (!checkTableMetadata()) {
             return;
         }
-        // 初次校验
+        // Initial verification
         firstCheckCompare();
-        // 解析初次校验结果
+        // Analyze the initial verification results
         List<String> diffIdList = parseDiffResult();
-        // 根据初次校验结果进行二次校验
+        // Conduct secondary verification according to the initial verification results
         secondaryCheckCompare(diffIdList);
-        // 校验结果 校验修复报告
+        // Verification result verification repair report
         checkResult();
     }
 
     /**
-     * 初次校验
+     * Initial verification
      */
     private void firstCheckCompare() {
-        // 初始化桶列表
+        // Initialize bucket list
         initFirstCheckBucketList();
         compareCommonMerkleTree();
     }
 
     /**
-     * 二次校验
+     * the second check
      *
-     * @param diffIdList 初次校验差异ID列表
+     * @param diffIdList Initial verification difference ID list
      */
     private void secondaryCheckCompare(List<String> diffIdList) {
         if (CollectionUtils.isEmpty(diffIdList)) {
             return;
         }
-        // 清理当前线程捏校验缓存信息
+        // Clean up the current thread pinch check cache information
         lastDataClean();
-        // 初始化桶列表
+        // Initialize bucket list
         initSecondaryCheckBucketList(diffIdList);
-        // 进行二次校验
+        // Conduct secondary verification
         compareCommonMerkleTree();
     }
 
     /**
-     * 初始化桶列表
+     * Initialize bucket list
      */
     private void initFirstCheckBucketList() {
-        // 获取当前任务对应kafka分区号
-        // 初始化源端桶列列表数据
+        // Get the Kafka partition number corresponding to the current task
+        // Initialize source bucket column list data
         initFirstCheckBucketList(Endpoint.SOURCE, sourceBucketList);
-        // 初始化宿端桶列列表数据
+        // Initialize destination bucket column list data
         initFirstCheckBucketList(Endpoint.SINK, sinkBucketList);
-        // 对齐源端宿端桶列表
+        // Align the source and destination bucket list
         alignAllBuckets();
-        // 排序
         sortBuckets(sourceBucketList);
         sortBuckets(sinkBucketList);
     }
 
     private void initSecondaryCheckBucketList(List<String> diffIdList) {
-        SourceDataLog dataLog = new SourceDataLog().setTableName(tableName)
-                .setCompositePrimaryValues(diffIdList);
+        SourceDataLog dataLog = new SourceDataLog().setTableName(tableName).setCompositePrimaryValues(diffIdList);
         buildBucket(Endpoint.SOURCE, dataLog);
-        buildBucket(Endpoint.SINK, dataLog);
-        // 对齐源端宿端桶列表
+        // Align the source and destination bucket list
         alignAllBuckets();
-        // 排序
         sortBuckets(sourceBucketList);
         sortBuckets(sinkBucketList);
     }
 
     private void compareCommonMerkleTree() {
-        //不进行默克尔树校验算法场景
+        // No Merkel tree verification algorithm scenario
         final int sourceBucketCount = sourceBucketList.size();
         final int sinkBucketCount = sinkBucketList.size();
         if (checkNotMerkleCompare(sourceBucketCount, sinkBucketCount)) {
-            // 不满足默克尔树约束条件下 比较  sourceSize等于0，即都是空桶
-            if (sourceBucketCount == 0) {
-                //表是空表, 校验成功!
+            // If the constraint of Merkel tree is not satisfied,
+            // the sourceSize is equal to 0, that is, all buckets are empty
+            if (sourceBucketCount == sinkBucketCount && sinkBucketCount == 0) {
+                // Table is empty, verification succeeded!
                 log.info("table[{}] is an empty table,this check successful!", tableName);
             } else {
-                // sourceSize小于thresholdMinBucketSize 即都只有一个桶，比较
-                DifferencePair<Map, Map, Map> subDifference = compareBucket(sourceBucketList.get(0), sinkBucketList.get(0));
+                // sourceSize is less than thresholdMinBucketSize, that is, there is only one bucket. Compare
+                DifferencePair<Map, Map, Map> subDifference =
+                    compareBucket(sourceBucketList.get(0), sinkBucketList.get(0));
                 difference.getDiffering().putAll(subDifference.getDiffering());
                 difference.getOnlyOnLeft().putAll(subDifference.getOnlyOnLeft());
                 difference.getOnlyOnRight().putAll(subDifference.getOnlyOnRight());
             }
         }
 
-        // 构造默克尔树 约束: bucketList 不能为空，且size>=2
+        // Construct Merkel tree constraint: bucketList cannot be empty, and size > =2
         MerkleTree sourceTree = new MerkleTree(sourceBucketList);
         MerkleTree sinkTree = new MerkleTree(sinkBucketList);
 
-        //递归比较两颗默克尔树，并将差异记录返回。
+        // Recursively compare two Merkel trees and return the difference record.
         compareMerkleTree(sourceTree, sinkTree);
     }
 
@@ -179,11 +207,10 @@ public class IncrementDataCheckThread implements Runnable {
         difference.getDiffering().clear();
     }
 
-
     /**
-     * 根据桶编号对最终桶列表进行排序
+     * Sort the final bucket list by bucket number
      *
-     * @param bucketList 桶列表
+     * @param bucketList bucketList
      */
     private void sortBuckets(@NonNull List<Bucket> bucketList) {
         bucketList.sort(Comparator.comparingInt(Bucket::getNumber));
@@ -198,9 +225,12 @@ public class IncrementDataCheckThread implements Runnable {
     }
 
     /**
-     * 增量校验前置条件，当前表结构一致，若表结构不一致则直接退出。不进行数据校验
+     * <pre>
+     * The precondition of incremental verification is that the current table structure is consistent.
+     * If the table structure is inconsistent, exit directly. No data verification
+     * </pre>
      *
-     * @return 返回元数据校验结果
+     * @return Return metadata verification results
      */
     private boolean checkTableMetadata() {
         TableMetadataHash sourceTableHash = queryTableMetadataHash(Endpoint.SOURCE, tableName);
@@ -213,37 +243,37 @@ public class IncrementDataCheckThread implements Runnable {
         if (result.isSuccess()) {
             return result.getData();
         } else {
-            throw new DispatchClientException(endpoint, "query table metadata hash " + tableName +
-                    " error, " + result.getMessage());
+            throw new DispatchClientException(endpoint,
+                "query table metadata hash " + tableName + " error, " + result.getMessage());
         }
     }
 
     /**
-     * 不满足默克尔树约束条件下 比较
+     * Comparison without Merkel tree constraint
      *
-     * @param sourceBucketCount 源端数量
-     * @param sinkBucketCount   宿端数量
-     * @return 是否满足默克尔校验场景
+     * @param sourceBucketCount source bucket count
+     * @param sinkBucketCount   sink bucket count
+     * @return Whether it meets the Merkel verification scenario
      */
     private boolean checkNotMerkleCompare(int sourceBucketCount, int sinkBucketCount) {
-        // 满足构造默克尔树约束条件
+        // Meet the constraints of constructing Merkel tree
         return sourceBucketCount < THRESHOLD_MIN_BUCKET_SIZE || sinkBucketCount < THRESHOLD_MIN_BUCKET_SIZE;
     }
 
     /**
-     * 比较两颗默克尔树，并将差异记录返回。
+     * Compare the two Merkel trees and return the difference record.
      *
-     * @param sourceTree 源端默克尔树
-     * @param sinkTree   宿端默克尔树
+     * @param sourceTree source tree
+     * @param sinkTree   sink tree
      */
     private void compareMerkleTree(@NonNull MerkleTree sourceTree, @NonNull MerkleTree sinkTree) {
-        // 默克尔树比较
+        // Merkel tree comparison
         if (sourceTree.getDepth() != sinkTree.getDepth()) {
-            throw new MerkleTreeDepthException(String.format("source & sink data have large different, Please synchronize data again! " +
-                            "merkel tree depth different,source depth=[%d],sink depth=[%d]",
-                    sourceTree.getDepth(), sinkTree.getDepth()));
+            throw new MerkleTreeDepthException(String.format(Locale.ROOT,
+                "source & sink data have large different, Please synchronize data again! "
+                    + "merkel tree depth different,source depth=[%d],sink depth=[%d]", sourceTree.getDepth(),
+                sinkTree.getDepth()));
         }
-
         Node source = sourceTree.getRoot();
         Node sink = sinkTree.getRoot();
         List<Pair<Node, Node>> diffNodeList = new LinkedList<>();
@@ -262,22 +292,24 @@ public class IncrementDataCheckThread implements Runnable {
     }
 
     /**
-     * 根据统计的源端宿端桶差异信息{@code bucketNumberDiffMap}结果，对齐桶列表数据。
+     * Align the bucket list data according to the statistical results of source and destination bucket
+     * difference information {@code bucketNumberDiffMap}.
      */
     private void alignAllBuckets() {
         dataCheckWapper.alignAllBuckets(bucketNumberDiffMap, sourceBucketList, sinkBucketList);
     }
 
     /**
-     * 拉取指定端点{@code endpoint}服务当前表{@code tableName}的kafka分区{@code partitions}数据。
-     * 并将kafka数据分组组装到指定的桶列表{@code bucketList}中
+     * <pre>
+     * Pull the Kafka partition {@code partitions} data of the current table {@code tableName} of
+     * the specified endpoint {@code endpoint} service.
+     * And assemble Kafka data into the specified bucket list {@code bucketList}
+     * </pre>
      *
-     * @param endpoint   端点类型
-     * @param bucketList 桶列表
+     * @param endpoint   endpoint
+     * @param bucketList bucket list
      */
     private void initFirstCheckBucketList(Endpoint endpoint, List<Bucket> bucketList) {
-
-        // 使用feignclient 拉取kafka数据
         List<RowDataHash> dataList = getTopicPartitionsData(endpoint);
         buildBucket(dataList, endpoint, bucketList);
     }
@@ -289,9 +321,9 @@ public class IncrementDataCheckThread implements Runnable {
         Map<Integer, Bucket> bucketMap = new HashMap<>();
         BuilderBucketHandler bucketBuilder = new BuilderBucketHandler(bucketCapacity);
 
-        // 拉取的数据进行构建桶列表
+        // Pull the data to build the bucket list
         bucketBuilder.builder(dataList, dataList.size(), bucketMap);
-        // 统计桶列表信息
+        // Statistics bucket list information
         bucketNumberStatisticsIncrement(endpoint, bucketMap.keySet());
         bucketList.addAll(bucketMap.values());
     }
@@ -302,14 +334,16 @@ public class IncrementDataCheckThread implements Runnable {
     }
 
     /**
-     * 对各端点构建的桶编号进行统计。统计结果汇总到{@code bucketNumberDiffMap}中。
-     * <p>
-     * 默克尔比较算法，需要确保双方桶编号的一致。
-     * <p>
-     * 如果一方的桶编号存在缺失，即{@code Pair<S,T>}中，S或T的值为-1，则需要生成相应编号的空桶。
+     * <pre>
+     * Count the bucket numbers built at each endpoint.
+     * The statistical results are summarized in {@code bucketNumberDiffMap}.
+     * Merkel  comparison algorithm needs to ensure that the bucket numbers of both sides are consistent.
+     * If the bucket number of one party is missing, that is, in {@code Pair<s, t >}, the value of S or T is -1,
+     * you need to generate an empty bucket with the corresponding number.
+     * </pre>
      *
-     * @param endpoint        端点
-     * @param bucketNumberSet 桶编号
+     * @param endpoint        endpoint
+     * @param bucketNumberSet bucket numbers
      */
     private void bucketNumberStatisticsIncrement(@NonNull Endpoint endpoint, @NonNull Set<Integer> bucketNumberSet) {
         bucketNumberSet.forEach(bucketNumber -> {
@@ -331,10 +365,11 @@ public class IncrementDataCheckThread implements Runnable {
     }
 
     /**
-     * 拉取指定端点{@code endpoint}的表{@code tableName}的 kafka分区{@code partitions}数据
+     * Pull the Kafka partition {@code partitions} data
+     * of the table {@code tableName} of the specified endpoint {@code endpoint}
      *
-     * @param endpoint 端点类型
-     * @return 指定表 kafka分区数据
+     * @param endpoint endpoint
+     * @return Specify table Kafka partition data
      */
     private List<RowDataHash> getTopicPartitionsData(Endpoint endpoint) {
         return queryRowDataWapper.queryIncrementRowData(endpoint, tableName);
@@ -345,24 +380,19 @@ public class IncrementDataCheckThread implements Runnable {
     }
 
     /**
-     * 比较两个桶内部记录的差异数据
-     * <p>
-     * 差异类型 {@linkplain org.opengauss.datachecker.common.entry.enums.DiffCategory}
+     * Compare the difference data recorded inside the two barrels
      *
-     * @param sourceBucket 源端桶
-     * @param sinkBucket   宿端桶
-     * @return 差异记录
+     * @param sourceBucket Source end barrel
+     * @param sinkBucket   Sink end barrel
+     * @return Difference Pair record
      */
     private DifferencePair<Map, Map, Map> compareBucket(Bucket sourceBucket, Bucket sinkBucket) {
-
         Map<String, RowDataHash> sourceMap = sourceBucket.getBucket();
         Map<String, RowDataHash> sinkMap = sinkBucket.getBucket();
-
-        MapDifference<String, RowDataHash> difference = Maps.difference(sourceMap, sinkMap);
-
-        Map<String, RowDataHash> entriesOnlyOnLeft = difference.entriesOnlyOnLeft();
-        Map<String, RowDataHash> entriesOnlyOnRight = difference.entriesOnlyOnRight();
-        Map<String, MapDifference.ValueDifference<RowDataHash>> entriesDiffering = difference.entriesDiffering();
+        MapDifference<String, RowDataHash> bucketDifference = Maps.difference(sourceMap, sinkMap);
+        Map<String, RowDataHash> entriesOnlyOnLeft = bucketDifference.entriesOnlyOnLeft();
+        Map<String, RowDataHash> entriesOnlyOnRight = bucketDifference.entriesOnlyOnRight();
+        Map<String, MapDifference.ValueDifference<RowDataHash>> entriesDiffering = bucketDifference.entriesDiffering();
         Map<String, Pair<RowDataHash, RowDataHash>> differing = new HashMap<>();
         entriesDiffering.forEach((key, diff) -> {
             differing.put(key, Pair.of(diff.leftValue(), diff.rightValue()));
@@ -371,47 +401,44 @@ public class IncrementDataCheckThread implements Runnable {
     }
 
     /**
-     * 递归比较两颗默克尔树节点，并记录差异节点。
-     * <p>
-     * 采用递归-前序遍历方式，遍历比较默克尔树，从而查找差异节点。
-     * <p>
-     * 若当前遍历的节点{@link Node}签名相同则终止当前遍历分支。
+     * <pre>
+     * Recursively compare two Merkel tree nodes and record the difference nodes.
+     * The recursive preorder traversal method is adopted to traverse and compare the Merkel tree,
+     * so as to find the difference node.
+     * If the current traversal node {@link Node} has the same signature,
+     * the current traversal branch will be terminated.
+     * </pre>
      *
-     * @param source       源端默克尔树节点
-     * @param sink         宿端默克尔树节点
-     * @param diffNodeList 差异节点记录
+     * @param source       Source Merkel tree node
+     * @param sink         Sink Merkel tree node
+     * @param diffNodeList Difference node record
      */
     private void compareMerkleTree(@NonNull Node source, @NonNull Node sink, List<Pair<Node, Node>> diffNodeList) {
-        // 如果节点相同，则退出
+        // If the nodes are the same, exit
         if (Arrays.equals(source.getSignature(), sink.getSignature())) {
             return;
         }
-        // 如果节点不相同，则继续比较下层节点，若当前差异节点为叶子节点，则记录该差异节点，并退出
+        // If the nodes are different, continue to compare the lower level nodes.
+        // If the current difference node is a leaf node, record the difference node and exit
         if (source.getType() == MerkleTree.LEAF_SIG_TYPE) {
             diffNodeList.add(Pair.of(source, sink));
             return;
         }
         compareMerkleTree(source.getLeft(), sink.getLeft(), diffNodeList);
-
         compareMerkleTree(source.getRight(), sink.getRight(), diffNodeList);
     }
 
     private void checkResult() {
-        CheckDiffResult result = AbstractCheckDiffResultBuilder.builder(feignClient)
-                .table(tableName)
-                .topic(topic.getTopicName())
-                .partitions(partitions)
-                .keyUpdateSet(difference.getDiffering().keySet())
-                .keyInsertSet(difference.getOnlyOnRight().keySet())
-                .keyDeleteSet(difference.getOnlyOnLeft().keySet())
-                .build();
+        CheckDiffResult result =
+            AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
+                                          .schema(sinkSchema).partitions(partitions)
+                                          .keyUpdateSet(difference.getDiffering().keySet())
+                                          .keyInsertSet(difference.getOnlyOnRight().keySet())
+                                          .keyDeleteSet(difference.getOnlyOnLeft().keySet()).build();
         ExportCheckResult.export(path, result);
     }
 
-    /**
-     * 重置当前线程 线程名称
-     */
-    private void resetThreadName() {
-        Thread.currentThread().setName(THREAD_NAME_PRIFEX + topic.getTopicName());
+    private String buildThreadName() {
+        return THREAD_NAME_PRIFEX + topic.getTopicName();
     }
 }

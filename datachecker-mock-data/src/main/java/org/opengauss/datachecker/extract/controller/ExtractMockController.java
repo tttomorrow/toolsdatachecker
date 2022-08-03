@@ -1,10 +1,24 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.controller;
 
-import io.swagger.v3.oas.annotations.Parameter;
-import org.hibernate.validator.constraints.Range;
-import org.opengauss.datachecker.extract.TableRowCount;
+import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.extract.service.ExtractMockDataService;
 import org.opengauss.datachecker.extract.service.ExtractMockTableService;
+import org.opengauss.datachecker.extract.vo.TableStatisticsInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,7 +27,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-
+/**
+ * ExtractMockController
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/5/14
+ * @since ：11
+ */
+@Slf4j
 @RestController
 public class ExtractMockController {
     @Autowired
@@ -22,44 +43,47 @@ public class ExtractMockController {
     private ExtractMockTableService extractMockTableService;
 
     /**
-     * 根据名称创建数据库表 表字段目前为固定字段
+     * createTable
      *
-     * @param tableName 创建表名
-     * @return
-     * @throws Exception
+     * @param tableName tableName
+     * @return result
+     * @throws Exception exception
      */
     @PostMapping("/mock/createTable")
     public String createTable(@RequestParam("tableName") String tableName) throws Exception {
         return extractMockTableService.createTable(tableName);
     }
 
-    @GetMapping("/mock/query/all/table/count")
-    public List<TableRowCount> getAllTableCount() {
-        return extractMockTableService.getAllTableCount();
+    /**
+     * queryTableStatisticsInfo
+     *
+     * @return TableStatisticsInfo
+     */
+    @GetMapping("/mock/statistics/table/info")
+    public List<TableStatisticsInfo> queryTableStatisticsInfo() {
+        return extractMockTableService.getAllTableInfo();
     }
 
     /**
-     * 向指定表名称，采用多线程方式批量插入指定数据量的Mock数据
+     * batchMockData
      *
-     * @param tableName   表名
-     * @param totalCount  插入数据总量
-     * @param threadCount 线程数 最大线程总数不能超过2000 ，超过2000可能会导致数据丢失
-     * @return
+     * @param tableName         tableName
+     * @param totalCount        totalCount
+     * @param threadCount       threadCount
+     * @param shouldCreateTable shouldCreateTable
+     * @return result
      */
     @PostMapping("/batch/mock/data")
-    public String batchMockData(@Parameter(name = "tableName", description = "待插入数据表名") @RequestParam("tableName") String tableName,
-                                @Parameter(name = "totalCount", description = "待插入数据总量") @RequestParam("totalCount") long totalCount,
-                                @Parameter(name = "threadCount", description = "多线程插入，设置线程总数")
-                                @Range(min = 1, max = 30, message = "设置的线程总数必须在[1-30]之间")
-                                @RequestParam("threadCount") int threadCount,
-                                @Parameter(name = "createTable", description = "是否创建表") @RequestParam("createTable") boolean createTable) {
+    public String batchMockData(@RequestParam("tableName") String tableName,
+        @RequestParam("totalCount") long totalCount, @RequestParam("threadCount") int threadCount,
+        @RequestParam("shouldCreateTable") boolean shouldCreateTable) {
         try {
-            if (createTable) {
+            if (shouldCreateTable) {
                 extractMockTableService.createTable(tableName);
             }
             extractMockDataService.batchMockData(tableName, totalCount, threadCount);
         } catch (Exception throwables) {
-            System.err.println(throwables.getMessage());
+            log.error(throwables.getMessage());
         }
         return "OK";
     }

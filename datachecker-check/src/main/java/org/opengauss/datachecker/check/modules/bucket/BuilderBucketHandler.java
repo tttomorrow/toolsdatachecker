@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.bucket;
 
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
@@ -8,31 +23,35 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
+ * BuilderBucketHandler
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/24
  * @since ：11
  */
 public class BuilderBucketHandler {
     /**
-     * 默克尔树最大树高度
+     * Maximum height of Merkel tree
      */
     private static final int MERKLE_TREE_MAX_HEIGHT = 15;
     /**
-     * 最高默克尔树的最大叶子节点数量
+     * Maximum number of leaf nodes of the highest Merkel tree
      */
     private static final int BUCKET_MAX_COUNT_LIMITS = 1 << MERKLE_TREE_MAX_HEIGHT;
 
-
     /**
-     * 当限定了默克尔树最大树高度为{@value MERKLE_TREE_MAX_HEIGHT}，
-     * 那么构造的最高默克尔树的最大叶子节点数量为{@code BUCKET_MAX_COUNT_LIMITS} 即 {@value BUCKET_MAX_COUNT_LIMITS}。
+     * <pre>
+     * When the maximum height of Merkel tree is limited to {@value MERKLE_TREE_MAX_HEIGHT}，
+     * Then the maximum number of leaf nodes of the highest Merkel tree constructed is {@code BUCKET_MAX_COUNT_LIMITS},
+     * that is {@value BUCKET_MAX_COUNT_LIMITS}。
      * <p>
-     * 由此，获得最大桶数量值为{@value BUCKET_MAX_COUNT_LIMITS }，
-     * 桶数量范围我们限定每棵树桶的数量为 2^n 个
+     * Thus, the maximum number of barrels obtained is {@value BUCKET_MAX_COUNT_LIMITS }，
+     * Range of barrels we limit the number of barrels per tree to 2^n
+     * </pre>
      */
     private static final int[] BUCKET_COUNT_LIMITS = new int[MERKLE_TREE_MAX_HEIGHT];
 
-    // 初始化{@code BUCKET_COUNT_LIMITS}
+    // initialize {@code BUCKET_COUNT_LIMITS}
     static {
         for (int i = 1; i <= MERKLE_TREE_MAX_HEIGHT; i++) {
             BUCKET_COUNT_LIMITS[i - 1] = 1 << i;
@@ -40,12 +59,12 @@ public class BuilderBucketHandler {
     }
 
     /**
-     * 空桶容量大小，用于构造特殊的空桶
+     * The capacity of empty barrels is used to construct special empty barrels
      */
     private static final int EMPTY_INITIAL_CAPACITY = 0;
 
     /**
-     * 当前桶初始化容量
+     * Current bucket initialization capacity
      */
     private final int bucketCapacity;
 
@@ -54,69 +73,72 @@ public class BuilderBucketHandler {
     }
 
     /**
-     * 将{@code rowDataHashList}数据动态分配到桶{@link org.opengauss.datachecker.check.modules.bucket.Bucket}中。
-     * <p>
+     * <pre>
+     * Dynamically allocate {@code rowDataHashList} data to
+     * bucket {@link org.opengauss.datachecker.check.modules.bucket.Bucket}.
+     * </pre>
      *
-     * @param rowDataHashList 当前待分配到桶中的记录集合
-     * @param totalCount      为{@link org.opengauss.datachecker.common.entry.extract.RowDataHash} 记录总数。
-     *                        注意：不一定为当前{@code rowDataHashList.size}总数
+     * @param rowDataHashList Collection of records currently to be allocated to the bucket
+     * @param totalCount      Record the total number for {@link RowDataHash}.
+     *                        Note: not necessarily the current {@code rowDataHashList.size} total
      * @param bucketMap       {@code bucketMap<K,V>} K为当前桶V的编号。
      */
-    public void builder(@NonNull List<RowDataHash> rowDataHashList, int totalCount, @NonNull Map<Integer, Bucket> bucketMap) {
-        // 根据当前记录总数计算当前最大桶数量
-        int maxBucketCount = calacMaxBucketCount(totalCount);
-        // 桶平均容量-用于初始化桶容量大小
+    public void builder(@NonNull List<RowDataHash> rowDataHashList, int totalCount,
+        @NonNull Map<Integer, Bucket> bucketMap) {
+        // Calculate the current maximum number of barrels according to the total number of current records
+        int maxBucketCount = calculateMaxBucketCount(totalCount);
+        // Average bucket capacity - used to initialize the bucket capacity size
         int averageCapacity = totalCount / maxBucketCount;
         rowDataHashList.forEach(row -> {
             long primaryKeyHash = row.getPrimaryKeyHash();
-            // 计算桶编号信息
-            int bucketNumber = calacBucketNumber(primaryKeyHash, maxBucketCount);
+            // Calculate bucket number information
+            int bucketNumber = calculateBucketNumber(primaryKeyHash, maxBucketCount);
             Bucket bucket;
-            // 根据row 信息获取指定编号的桶，如果不存在则创建桶
+            // Obtain the bucket with the specified number according to the row information,
+            // and create the bucket if it does not exist
             if (bucketMap.containsKey(bucketNumber)) {
                 bucket = bucketMap.get(bucketNumber);
             } else {
                 bucket = new Bucket(averageCapacity).setNumber(bucketNumber);
                 bucketMap.put(bucketNumber, bucket);
             }
-            // 将row 添加到指定桶编号的桶中
+            // Add row to the bucket with the specified bucket number
             bucket.put(row);
         });
 
     }
 
     /**
-     * 根据{@code totalCount}记录总数计算当前最大桶数量。桶的数量为2^n个
+     * <pre>
+     * Calculate the current maximum number of barrels according to the total number of {@code totalCount} records.
+     * The number of barrels is 2^n
+     * </pre>
      *
-     * @param totalCount 记录总数
-     * @return 最大桶数量
+     * @param totalCount Total records
+     * @return Maximum barrels
      */
-    private int calacMaxBucketCount(int totalCount) {
+    private int calculateMaxBucketCount(int totalCount) {
         int bucketCount = totalCount / bucketCapacity;
-        int asInt = IntStream.range(0, 15)
-                .filter(idx -> BUCKET_COUNT_LIMITS[idx] > bucketCount)
-                .findFirst()
-                .orElse(15);
+        int asInt = IntStream.range(0, 15).filter(idx -> BUCKET_COUNT_LIMITS[idx] > bucketCount).findFirst().orElse(15);
         return BUCKET_COUNT_LIMITS[asInt];
     }
 
     /**
-     * 根据{@code rowHash}值对当前记录进行标记，此标记用于桶的编号
+     * Mark the current record according to the {@code rowHash} value, which is used for the number of barrels
      *
-     * @param primaryKeyHash 行记录主键哈希值
-     * @param bucketCount    桶数量 桶的数量为2^n个
-     * @return 行记录桶编号
+     * @param primaryKeyHash Row record primary key hash value
+     * @param bucketCount    Number of barrels the number of barrels is 2^n
+     * @return Line record bucket number
      */
-    private int calacBucketNumber(long primaryKeyHash, int bucketCount) {
+    private int calculateBucketNumber(long primaryKeyHash, int bucketCount) {
         return (int) (Math.abs(primaryKeyHash) & (bucketCount - 1));
     }
 
-
     /**
-     * 根据编号构造空桶
+     * Construct empty barrels according to the number
      *
-     * @param bucketNumber 桶编号
-     * @return 桶
+     * @param bucketNumber bucket number
+     * @return bucket
      */
     public static Bucket builderEmpty(Integer bucketNumber) {
         return new Bucket(EMPTY_INITIAL_CAPACITY).setNumber(bucketNumber);

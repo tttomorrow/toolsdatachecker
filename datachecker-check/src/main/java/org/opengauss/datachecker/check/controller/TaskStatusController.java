@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,7 +36,7 @@ import java.util.List;
  * @date ：Created in 2022/5/25
  * @since ：11
  */
-@Tag(name = "TaskStatusController", description = "校验服务-数据抽取任务状态")
+@Tag(name = "TaskStatusController", description = "Verification service - data extraction task status")
 @Validated
 @RestController
 public class TaskStatusController {
@@ -30,28 +45,30 @@ public class TaskStatusController {
     private TaskManagerService taskManagerService;
 
     /**
-     * 刷新指定任务的数据抽取表执行状态
+     * Refresh the execution status of the data extraction table of the specified task
      *
-     * @param tableName 表名称
-     * @param endpoint 端点类型 {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param tableName tableName
+     * @param endpoint  endpoint {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
      */
-    @Operation(summary = "刷新指定任务的数据抽取任务执行状态")
+    @Operation(summary = "Refresh the execution status of the data extraction table of the specified task")
     @PostMapping("/table/extract/status")
-    public void refushTableExtractStatus(@Parameter(description = "表名称") @RequestParam(value = "tableName") @NotEmpty String tableName,
-                                        @Parameter(description = "数据校验端点类型") @RequestParam(value = "endpoint") @NonNull Endpoint endpoint) {
-        taskManagerService.refushTableExtractStatus(tableName, endpoint);
+    public void refushTableExtractStatus(
+        @Parameter(description = "tableName") @RequestParam(value = "tableName") @NotEmpty String tableName,
+        @Parameter(description = Endpoint.API_DESCRIPTION) @RequestParam(value = "endpoint") @NonNull
+            Endpoint endpoint) {
+        taskManagerService.refreshTableExtractStatus(tableName, endpoint);
     }
 
     /**
-     * 初始化任务状态
+     * Initialize task status
      *
-     * @param tableNameList 表名称列表
+     * @param tableNameList tableNameList
      */
-    @Operation(summary = "初始化任务状态")
+    @Operation(summary = "Initialize task status")
     @PostMapping("/table/extract/status/init")
-    public void initTableExtractStatus(@Parameter(description = "表名称列表") @RequestBody @NotEmpty List<String> tableNameList) {
+    public void initTableExtractStatus(
+        @Parameter(description = "tableNameList") @RequestBody @NotEmpty List<String> tableNameList) {
         taskManagerService.initTableExtractStatus(tableNameList);
     }
-
 
 }

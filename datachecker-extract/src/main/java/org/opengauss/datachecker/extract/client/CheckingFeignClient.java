@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.client;
 
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -35,7 +50,7 @@ public interface CheckingFeignClient {
      * @param endpoint  endpoint enum type {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
      */
     @PostMapping("/table/extract/status")
-    void refushTableExtractStatus(@RequestParam(value = "tableName") @NotEmpty String tableName,
+    void refreshTableExtractStatus(@RequestParam(value = "tableName") @NotEmpty String tableName,
                                   @RequestParam(value = "endpoint") @NonNull Endpoint endpoint);
 
     /**

@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +34,7 @@ import java.util.List;
  * @date ：Created in 2022/5/25
  * @since ：11
  */
-@Tag(name = "IncrementManagerController", description = "校验服务-增量校验管理")
+@Tag(name = "IncrementManagerController", description = "Verification service - incremental verification management")
 @Validated
 @RestController
 public class IncrementManagerController {
@@ -28,16 +43,15 @@ public class IncrementManagerController {
     private IncrementManagerService incrementManagerService;
 
     /**
-     * 增量校验日志通知
+     * Incremental verification log notification
      *
-     * @param dataLogList 增量校验日志
+     * @param dataLogList Incremental verification log
      */
-    @Operation(summary = "增量校验日志通知")
+    @Operation(summary = "Incremental verification log notification")
     @PostMapping("/notify/source/increment/data/logs")
-    public void notifySourceIncrementDataLogs(@Parameter(description = "增量校验日志")
-                                              @RequestBody @NotEmpty List<SourceDataLog> dataLogList) {
+    public void notifySourceIncrementDataLogs(@Parameter(description = "Incremental verification log") @RequestBody
+    @NotEmpty List<SourceDataLog> dataLogList) {
         incrementManagerService.notifySourceIncrementDataLogs(dataLogList);
     }
-
 
 }

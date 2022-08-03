@@ -1,16 +1,30 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.exception;
 
-
 /**
- * 数据抽取服务，表元数据信息不存在
+ * Data extraction service, table metadata information does not exist
  *
  * @author ：wangchao
  * @date ：Created in 2022/5/23
  * @since ：11
  */
 public class TableNotExistException extends ExtractException {
-    private static final String ERROR_MESSAGE = "table of Meatedata [%s] is not exist!";
-
+    private static final long serialVersionUID = -8904713692472534432L;
+    private static final String ERROR_MESSAGE = "table of Metadata [%s] is not exist!";
 
     public TableNotExistException(String tableName) {
         super(String.format(ERROR_MESSAGE, tableName));

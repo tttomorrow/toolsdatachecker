@@ -1,7 +1,21 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.service;
 
-
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConifg;
+import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 
 /**
@@ -12,29 +26,29 @@ import org.opengauss.datachecker.common.entry.enums.CheckMode;
 public interface CheckService {
 
     /**
-     * 开启校验服务
+     * Enable verification service
      *
-     * @param checkMode 校验方式
-     * @return 进程号
+     * @param checkMode checkMode
+     * @return Process number
      */
     String start(CheckMode checkMode);
 
     /**
-     * 查询当前执行的进程号
+     * Query the currently executed process number
      *
-     * @return 进程号
+     * @return Process number
      */
     String getCurrentCheckProcess();
 
     /**
-     * 清理校验环境
+     * Clean up the verification environment
      */
     void cleanCheck();
 
     /**
-     * 增量校验配置初始化
+     * Incremental verification configuration initialization
      *
-     * @param incrementCheckConifg 初始化配置
+     * @param config Initialize configuration
      */
-    void incrementCheckConifg(IncrementCheckConifg incrementCheckConifg);
+    void incrementCheckConfig(IncrementCheckConfig config);
 }

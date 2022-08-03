@@ -1,5 +1,6 @@
 server:
   port: 7001
+  shutdown: graceful
 
 debug: false
 
@@ -9,26 +10,28 @@ logging:
 spring:
   application:
     name: DATACHECKER-EXTRACT-${spring.extract.endpoint}
-
+  lifecycle:
+    timeout-per-shutdown-phase: 5
   extract:
     schema: jack  # 宿端数据实例
     databaseType: OG  # 宿端数据库类型 OG opengauss
     endpoint: SINK   # 宿端端点类型
     debezium-enable: false #是否开启增量debezium配置 默认不开启
+    sync-extract: true
 
   datasource:
     druid:
       dataSourceOne:
-        driver-class-name: org.postgresql.Driver
-        url: jdbc:postgresql://xxxxx:xxx/xxxx?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
+        driver-class-name: org.opengauss.Driver
+        url: jdbc:opengauss://xxxxx:xxx/xxxx?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
         username: xxxxx
         password: xxxxxxxx
         type: com.alibaba.druid.pool.DruidDataSource
         #Spring Boot 默认是不注入这些属性值的，需要自己绑定
         #druid 数据源专有配置
-        initialSize: 20
+        initialSize: 50
         minIdle: 5
-        maxActive: 50
+        maxActive: 200
         maxWait: 60000
         timeBetweenEvictionRunsMillis: 60000
         minEvictableIdleTimeMillis: 300000

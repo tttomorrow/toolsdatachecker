@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.dml;
 
 import org.apache.commons.lang3.StringUtils;
@@ -18,10 +33,10 @@ import java.util.stream.IntStream;
 public class DeleteDmlBuilder extends DmlBuilder {
 
     /**
-     * 构建 Schema
+     * build Schema
      *
      * @param schema Schema
-     * @return DeleteDMLBuilder 构建器
+     * @return DeleteDMLBuilder
      */
     public DeleteDmlBuilder schema(@NotNull String schema) {
         super.buildSchema(schema);
@@ -29,10 +44,10 @@ public class DeleteDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 构建 tableName
+     * build tableName
      *
      * @param tableName tableName
-     * @return DeleteDMLBuilder 构建器
+     * @return DeleteDMLBuilder
      */
     public DeleteDmlBuilder tableName(@NotNull String tableName) {
         super.buildTableName(tableName);
@@ -40,44 +55,45 @@ public class DeleteDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 生成单一主键字段 delete from schema.table where pk = 参数 条件语句
+     * Generate a single primary key field delete from schema.table where pk = Parameter+conditional statement
      *
-     * @param primaryMeta 主键元数据
-     * @return DeleteDMLBuilder 构建器
+     * @param primaryMeta Primary key metadata
+     * @return DeleteDMLBuilder
      */
     public DeleteDmlBuilder condition(@NonNull ColumnsMetaData primaryMeta, String value) {
-        Assert.isTrue(StringUtils.isNotEmpty(primaryMeta.getColumnName()), "表元数据主键字段名称为空");
+        Assert.isTrue(StringUtils.isNotEmpty(primaryMeta.getColumnName()),
+            "Table metadata primary key field name is empty");
         if (DIGITAL.contains(primaryMeta.getDataType())) {
-            this.condition = primaryMeta.getColumnName().concat(EQUAL).concat(value);
+            condition = primaryMeta.getColumnName().concat(EQUAL).concat(value);
         } else {
-            this.condition = primaryMeta.getColumnName().concat(EQUAL)
-                    .concat(SINGLE_QUOTES).concat(value).concat(SINGLE_QUOTES);
+            condition =
+                primaryMeta.getColumnName().concat(EQUAL).concat(SINGLE_QUOTES).concat(value).concat(SINGLE_QUOTES);
         }
         return this;
     }
 
     /**
-     * 构建复合主键参数的条件 delete语句<p>
+     * Construct conditional delete statements for composite primary key parameters<p>
      * delete from schema.table where pk1 = pk1_val and pk2 = pk2_val<p>
      *
-     * @param compositeKey 复合主键
-     * @param primaryMetas 主键元数据
-     * @return SelectDMLBuilder 构建器
+     * @param compositeKey composite primary key
+     * @param primaryMetas Primary key metadata
+     * @return SelectDMLBuilder
      */
     public DeleteDmlBuilder conditionCompositePrimary(String compositeKey, List<ColumnsMetaData> primaryMetas) {
-        this.condition = buildCondition(compositeKey, primaryMetas);
+        condition = buildCondition(compositeKey, primaryMetas);
         return this;
     }
 
     /**
-     * 构建主键过滤（where）条件 <p>
+     * Build primary key filter (where) conditions <p>
      * pk = pk_value <p>
      * or <p>
      * pk = 'pk_value' <p>
      *
-     * @param compositeKey 复合主键
-     * @param primaryMetas 主键元数据
-     * @return 返回主键where条件
+     * @param compositeKey composite primary key
+     * @param primaryMetas Primary key metadata
+     * @return Return the primary key where condition
      */
     public String buildCondition(String compositeKey, List<ColumnsMetaData> primaryMetas) {
         final String[] split = compositeKey.split(ExtConstants.PRIMARY_DELIMITER);
@@ -90,15 +106,11 @@ public class DeleteDmlBuilder extends DmlBuilder {
                     condition = condition.concat(AND);
                 }
                 if (DIGITAL.contains(mate.getDataType())) {
-                    condition = condition.concat(mate.getColumnName())
-                            .concat(EQUAL)
-                            .concat(split[idx]);
+                    condition = condition.concat(mate.getColumnName()).concat(EQUAL).concat(split[idx]);
                 } else {
-                    condition = condition.concat(mate.getColumnName())
-                            .concat(EQUAL)
-                            .concat(SINGLE_QUOTES)
-                            .concat(split[idx])
-                            .concat(SINGLE_QUOTES);
+                    condition =
+                        condition.concat(mate.getColumnName()).concat(EQUAL).concat(SINGLE_QUOTES).concat(split[idx])
+                                 .concat(SINGLE_QUOTES);
                 }
                 conditionBuffer.append(condition);
             });
@@ -108,11 +120,8 @@ public class DeleteDmlBuilder extends DmlBuilder {
 
     public String build() {
         StringBuffer sb = new StringBuffer();
-        sb.append(Fragment.DELETE).append(Fragment.FROM)
-                .append(schema).append(Fragment.LINKER).append(tableName)
-                .append(Fragment.WHERE).append(condition)
-                .append(Fragment.END)
-        ;
+        sb.append(Fragment.DELETE).append(Fragment.FROM).append(schema).append(Fragment.LINKER).append(tableName)
+          .append(Fragment.WHERE).append(condition).append(Fragment.END);
         return sb.toString();
     }
 }

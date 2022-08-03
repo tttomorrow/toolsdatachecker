@@ -1,5 +1,21 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.task;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opengauss.datachecker.check.cache.TableStatusRegister;
@@ -8,8 +24,15 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * TableStatusRegisterTest
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/7/20
+ * @since ：11
+ */
+@Slf4j
 class TableStatusRegisterTest {
-
     private TableStatusRegister tableStatusRegisterUnderTest;
 
     @BeforeEach
@@ -38,15 +61,14 @@ class TableStatusRegisterTest {
 
     @Test
     void testUpdate() {
-        System.out.println("0|1 = " + (0 | 1));
-        System.out.println("0|2 = " + (0 | 2));
-        System.out.println("1|1 = " + (1 | 1));
-        System.out.println("1|2 = " + (1 | 2));
-        System.out.println("1|2|4 = " + (1 | 2 | 4));
-        System.out.println("4 = " + Integer.toBinaryString(4));
-        System.out.println(tableStatusRegisterUnderTest.get("tabel1"));
+        log.info("0|1 = " + (0 | 1));
+        log.info("0|2 = " + (0 | 2));
+        log.info("1|1 = " + (1 | 1));
+        log.info("1|2 = " + (1 | 2));
+        log.info("1|2|4 = " + (1 | 2 | 4));
+        log.info("4 = " + Integer.toBinaryString(4));
+        log.info("" + tableStatusRegisterUnderTest.get("tabel1"));
         assertThat(tableStatusRegisterUnderTest.update("tabel1", 1)).isEqualTo(1);
-
     }
 
     @Test
@@ -54,7 +76,6 @@ class TableStatusRegisterTest {
         // Setup
         // Run the test
         tableStatusRegisterUnderTest.remove("key");
-
         // Verify the results
     }
 
@@ -63,52 +84,6 @@ class TableStatusRegisterTest {
         // Setup
         // Run the test
         tableStatusRegisterUnderTest.removeAll();
-
         // Verify the results
-    }
-
-    /**
-     * 线程状态观测
-     * Thread.State
-     * 线程状态。线程可处于以下状态之一：
-     * NEW 尚未启动的线程处于此状态
-     * RUNNABLE 在Java虚拟机中执行的线程处于此状态
-     * BLOCKED 被阻塞等待监视器锁定的线程处于此状态
-     * WAITING 正在等待另一个线程执行特定的动作的线程处于此状态
-     * TIMED_WAITING 正在等待另一个线程执行动作达到指定等待时间的线程处于此状态
-     * TERMINATED 已退出的线程处于此状态
-     *
-     * @throws InterruptedException
-     */
-    @Test
-    void testPersistent() throws InterruptedException {
-        Thread thread = new Thread(() -> {
-            for (int i = 0; i < 5; i++) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            System.out.println("------------");
-        });
-
-        Thread.State state = thread.getState();
-        System.out.println(state);
-
-        thread.start();
-        state = thread.getState();
-        System.out.println(state);
-
-        boolean a = true;
-        while (a) {
-            Thread.sleep(2000);
-            System.out.println(thread.getState());
-
-            thread.start();
-
-            System.out.println(thread.getState());
-            a = false;
-        }
     }
 }

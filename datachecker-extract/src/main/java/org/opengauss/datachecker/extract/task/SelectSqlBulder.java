@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.task;
 
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
@@ -8,34 +23,56 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.*;
-
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.AND_CONDITION;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.COLUMN;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.DELIMITER;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.EQUAL_CONDITION;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.JOIN_ON;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.OFFSET;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.PRIMARY_KEY;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.QUERY_MULTIPLE_PRIMARY_KEY_OFF_SET;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.QUERY_OFF_SET;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.QUERY_OFF_SET_ZERO;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.SCHEMA;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.START;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.SUB_TABLE_ALIAS;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.TABLE_ALIAS;
+import static org.opengauss.datachecker.extract.task.SelectSqlBulder.QuerySqlMapper.TABLE_NAME;
 
 /**
+ * Data extraction SQL builder
+ *
  * @author wang chao
- * @description 数据抽取SQL构建器
  * @date 2022/5/12 19:17
  * @since 11
  **/
 public class SelectSqlBulder {
     private static final long OFF_SET_ZERO = 0L;
     /**
-     * 任务执行起始位置
+     * Start position of task execution
      */
     private final long start;
     /**
-     * 任务执行偏移量
+     * Task execution offset
      */
     private final long offset;
     /**
-     * 查询数据schema
+     * Query data schema
      */
     private final String schema;
     /**
-     * 表元数据信息
+     * Table metadata information
      */
     private final TableMetadata tableMetadata;
 
+    /**
+     * Table fragment query SQL Statement Builder
+     *
+     * @param tableMetadata tableMetadata
+     * @param schema        schema
+     * @param start         start
+     * @param offset        offset
+     */
     public SelectSqlBulder(TableMetadata tableMetadata, String schema, long start, long offset) {
         this.tableMetadata = tableMetadata;
         this.start = start;
@@ -43,8 +80,13 @@ public class SelectSqlBulder {
         this.schema = schema;
     }
 
+    /**
+     * Table fragment query SQL Statement Builder
+     *
+     * @return build sql
+     */
     public String builder() {
-        Assert.isTrue(Objects.nonNull(tableMetadata), "表元数据信息异常，构建SQL失败");
+        Assert.isTrue(Objects.nonNull(tableMetadata), "Abnormal table metadata information, failed to build SQL");
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
         if (offset == OFF_SET_ZERO) {
             return buildSelectSqlOffsetZero(columnsMetas, tableMetadata.getTableName());
@@ -54,125 +96,126 @@ public class SelectSqlBulder {
     }
 
     /**
-     * 根据元数据信息构建查询语句 SELECT * FROM test.test1
+     * Construct query statements based on metadata information SELECT * FROM test.test1
      *
-     * @param columnsMetas 列元数据信息
-     * @param tableName    表名
+     * @param columnsMetas Column metadata information
+     * @param tableName    tableName
      * @return
      */
     private String buildSelectSqlOffsetZero(List<ColumnsMetaData> columnsMetas, String tableName) {
-        String columnNames = columnsMetas
-                .stream()
-                .map(ColumnsMetaData::getColumnName)
-                .collect(Collectors.joining(DELIMITER));
+        String columnNames =
+            columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
         return QUERY_OFF_SET_ZERO.replace(COLUMN, columnNames).replace(SCHEMA, schema).replace(TABLE_NAME, tableName);
     }
 
     /**
-     * 根据元数据和分片信息构建查询语句
-     * SELECT * FROM test.test1 WHERE b_number IN (SELECT t.b_number FROM (SELECT b_number FROM test.test1 LIMIT 0,20) t);
+     * <pre>
+     * Construct query statements based on metadata and fragment information
+     * SELECT * FROM test.test1 WHERE b_number IN
+     * (SELECT t.b_number FROM (SELECT b_number FROM test.test1 LIMIT 0,20) t);
+     * </pre>
      *
-     * @param tableMetadata 表元数据信息
-     * @param start         分片查询起始位置
-     * @param offset        分片查询位移
-     * @return 返回构建的Select语句
+     * @param tableMetadata Table metadata information
+     * @param start         Start position of fragment query
+     * @param offset        Fragment query start position fragment query displacement
+     * @return Return the constructed select statement
      */
     //
     private String buildSelectSqlOffset(TableMetadata tableMetadata, long start, long offset) {
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
         List<ColumnsMetaData> primaryMetas = tableMetadata.getPrimaryMetas();
-
         String columnNames;
         String primaryKey;
         String tableName = tableMetadata.getTableName();
         if (primaryMetas.size() == 1) {
-            columnNames = columnsMetas
-                    .stream()
-                    .map(ColumnsMetaData::getColumnName)
-                    .collect(Collectors.joining(DELIMITER));
-            primaryKey = primaryMetas.stream().map(ColumnsMetaData::getColumnName)
-                    .collect(Collectors.joining());
-            return QUERY_OFF_SET.replace(COLUMN, columnNames)
-                    .replace(SCHEMA, schema)
-                    .replace(TABLE_NAME, tableName)
-                    .replace(PRIMARY_KEY, primaryKey)
-                    .replace(START, String.valueOf(start))
-                    .replace(OFFSET, String.valueOf(offset));
+            columnNames =
+                columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
+            primaryKey = primaryMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining());
+            return QUERY_OFF_SET.replace(COLUMN, columnNames).replace(SCHEMA, schema).replace(TABLE_NAME, tableName)
+                                .replace(PRIMARY_KEY, primaryKey).replace(START, String.valueOf(start))
+                                .replace(OFFSET, String.valueOf(offset));
         } else {
-            columnNames = columnsMetas
-                    .stream()
-                    .map(ColumnsMetaData::getColumnName)
-                    .map(counm -> TABLE_ALAIS.concat(counm))
-                    .collect(Collectors.joining(DELIMITER));
-            primaryKey = primaryMetas.stream().map(ColumnsMetaData::getColumnName)
-                    .collect(Collectors.joining(DELIMITER));
-            String joinOn = primaryMetas.stream()
-                    .map(ColumnsMetaData::getColumnName)
-                    .map(coumn -> TABLE_ALAIS.concat(coumn).concat(EQUAL_CONDITION).concat(SUB_TABLE_ALAIS).concat(coumn))
-                    .collect(Collectors.joining(AND_CONDITION));
-            return QUERY_MULTIPLE_PRIMARY_KEY_OFF_SET.replace(COLUMN, columnNames)
-                    .replace(SCHEMA, schema)
-                    .replace(TABLE_NAME, tableName)
-                    .replace(PRIMARY_KEY, primaryKey)
-                    .replace(JOIN_ON, joinOn)
-                    .replace(START, String.valueOf(start))
-                    .replace(OFFSET, String.valueOf(offset));
+            columnNames =
+                columnsMetas.stream().map(ColumnsMetaData::getColumnName).map(counm -> TABLE_ALIAS.concat(counm))
+                            .collect(Collectors.joining(DELIMITER));
+            primaryKey =
+                primaryMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
+            String joinOn = primaryMetas.stream().map(ColumnsMetaData::getColumnName).map(
+                coumn -> TABLE_ALIAS.concat(coumn).concat(EQUAL_CONDITION).concat(SUB_TABLE_ALIAS).concat(coumn))
+                                        .collect(Collectors.joining(AND_CONDITION));
+            return QUERY_MULTIPLE_PRIMARY_KEY_OFF_SET.replace(COLUMN, columnNames).replace(SCHEMA, schema)
+                                                     .replace(TABLE_NAME, tableName).replace(PRIMARY_KEY, primaryKey)
+                                                     .replace(JOIN_ON, joinOn).replace(START, String.valueOf(start))
+                                                     .replace(OFFSET, String.valueOf(offset));
         }
     }
 
     /**
-     * 查询SQL构建模版
+     * Query SQL build template
      */
     interface QuerySqlMapper {
         /**
-         * 表字段
+         * Query SQL statement columnsList fragment
          */
         String COLUMN = ":columnsList";
-
         /**
-         * 表名称
+         * Query SQL statement tableName fragment
          */
         String TABLE_NAME = ":tableName";
-
         /**
-         * 表主键
+         * Query SQL statement primaryKey fragment
          */
         String PRIMARY_KEY = ":primaryKey";
+        /**
+         * Query SQL statement schema fragment
+         */
         String SCHEMA = ":schema";
         /**
-         * 分片查询起始位置
+         * Query SQL statement start fragment: Start position of fragment query
          */
         String START = ":start";
         /**
-         * 分片查询偏移量
+         * Query SQL statement offset fragment: Fragment query offset
          */
         String OFFSET = ":offset";
+        /**
+         * Query SQL statement joinOn fragment: Query SQL statement joinOn fragment
+         */
         String JOIN_ON = ":joinOn";
         /**
-         * 无偏移量场景下，查询SQL语句
+         * Query SQL statement fragment: Query SQL statements in the scenario without offset
          */
         String QUERY_OFF_SET_ZERO = "SELECT :columnsList FROM :schema.:tableName";
         /**
-         * 单一主键场景下，使用偏移量进行分片查询的SQL语句
+         * Query SQL statement fragment: SQL statement for fragment query using offset in single primary key scenario
          */
-        String QUERY_OFF_SET = "SELECT :columnsList FROM :schema.:tableName WHERE :primaryKey IN (SELECT t.:primaryKey FROM (SELECT :primaryKey FROM :schema.:tableName LIMIT :start,:offset) t)";
-        String QUERY_MULTIPLE_PRIMARY_KEY_OFF_SET = "SELECT :columnsList FROM :schema.:tableName a  RIGHT JOIN  (SELECT :primaryKey FROM :schema.:tableName LIMIT :start,:offset) b ON :joinOn";
+        String QUERY_OFF_SET = "SELECT :columnsList FROM :schema.:tableName WHERE :primaryKey IN "
+            + "(SELECT t.:primaryKey FROM (SELECT :primaryKey FROM :schema.:tableName order by :primaryKey "
+            + " LIMIT :start,:offset) t)";
         /**
-         * SQL语句字段间隔符号
+         * Query SQL statement fragment: SQL statement for fragment query using offset in multiple primary key scenario
+         */
+        String QUERY_MULTIPLE_PRIMARY_KEY_OFF_SET = "SELECT :columnsList FROM :schema.:tableName a  RIGHT JOIN "
+            + " (SELECT :primaryKey FROM :schema.:tableName order by :primaryKey LIMIT :start,:offset) b ON :joinOn";
+        /**
+         * Query SQL statement fragment: SQL statement field spacing symbol
          */
         String DELIMITER = ",";
         /**
-         * SQL语句 相等条件符号
+         * Query SQL statement fragment: SQL statement equality condition symbol
          */
         String EQUAL_CONDITION = "=";
+        /**
+         * Query SQL statement and fragment
+         */
         String AND_CONDITION = " and ";
         /**
-         * 表别名
+         * Query SQL statement table alias fragment: table alias
          */
-        String TABLE_ALAIS = "a.";
+        String TABLE_ALIAS = "a.";
         /**
-         * 子查询结果别名
+         * Query SQL statement sub table alias fragment:  Sub query result alias
          */
-        String SUB_TABLE_ALAIS = "b.";
+        String SUB_TABLE_ALIAS = "b.";
     }
 }

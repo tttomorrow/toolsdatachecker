@@ -1,6 +1,21 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.util;
 
-import org.opengauss.datachecker.common.util.HashUtil;
+import org.opengauss.datachecker.common.util.LongHashFunctionWrapper;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -11,40 +26,51 @@ import java.util.stream.Collectors;
 import static org.opengauss.datachecker.extract.constants.ExtConstants.PRIMARY_DELIMITER;
 
 /**
- * 哈希处理器，对查询结果进行哈希计算。
+ * The hash processor performs hash calculation on the query results.
+ *
  * @author ：wangchao
  * @date ：Created in 2022/6/15
  * @since ：11
  */
-public  class HashHandler {
+public class HashHandler {
+    private final LongHashFunctionWrapper hashFunctionWrapper = new LongHashFunctionWrapper();
+
     /**
-     * 根据columns 集合中字段列表集合，在map中查找字段对应值，并对查找到的值进行拼接。
+     * According to the field list set in the columns set,
+     * find the corresponding value of the field in the map, and splice the found value.
      *
-     * @param columnsValueMap 字段对应查询数据
-     * @param columns         字段名称列表
-     * @return 当前Row对应的哈希计算结果
+     * @param columnsValueMap Field corresponding query data
+     * @param columns         List of field names
+     * @return Hash calculation result corresponding to the current row
      */
     public long xx3Hash(Map<String, String> columnsValueMap, List<String> columns) {
         if (CollectionUtils.isEmpty(columns)) {
             return 0L;
         }
         StringBuffer sb = new StringBuffer();
-        columns.forEach(colunm -> {
-            if (columnsValueMap.containsKey(colunm)) {
-                sb.append(columnsValueMap.get(colunm));
+        columns.forEach(column -> {
+            if (columnsValueMap.containsKey(column)) {
+                sb.append(columnsValueMap.get(column));
             }
         });
-        return HashUtil.hashChars(sb.toString());
+        return hashFunctionWrapper.hashChars(sb.toString());
     }
 
+    /**
+     * column hash result
+     *
+     * @param columnsValueMap columns value
+     * @param columns         column names
+     * @return column hash result
+     */
     public String value(Map<String, String> columnsValueMap, List<String> columns) {
         if (CollectionUtils.isEmpty(columns)) {
             return "";
         }
         List<String> values = new ArrayList<>();
-        columns.forEach(colunm -> {
-            if (columnsValueMap.containsKey(colunm)) {
-                values.add(columnsValueMap.get(colunm));
+        columns.forEach(column -> {
+            if (columnsValueMap.containsKey(column)) {
+                values.add(columnsValueMap.get(column));
             }
         });
         return values.stream().map(String::valueOf).collect(Collectors.joining(PRIMARY_DELIMITER));

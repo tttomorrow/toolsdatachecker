@@ -1,10 +1,32 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
-import org.opengauss.datachecker.common.entry.extract.*;
+import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.ExtractIncrementTask;
+import org.opengauss.datachecker.common.entry.extract.ExtractTask;
+import org.opengauss.datachecker.common.entry.extract.RowDataHash;
+import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
+import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
+import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.common.exception.ProcessMultipleException;
 import org.opengauss.datachecker.common.exception.TableNotExistException;
 import org.opengauss.datachecker.common.exception.TaskNotFoundException;
@@ -15,9 +37,16 @@ import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.opengauss.datachecker.extract.kafka.KafkaAdminService;
 import org.opengauss.datachecker.extract.kafka.KafkaCommonService;
-import org.opengauss.datachecker.extract.task.*;
+import org.opengauss.datachecker.extract.task.DataManipulationService;
+import org.opengauss.datachecker.extract.task.ExtractTaskBuilder;
+import org.opengauss.datachecker.extract.task.ExtractTaskRunnable;
+import org.opengauss.datachecker.extract.task.ExtractThreadSupport;
+import org.opengauss.datachecker.extract.task.IncrementExtractTaskRunnable;
+import org.opengauss.datachecker.extract.task.IncrementExtractThreadSupport;
+import org.opengauss.datachecker.extract.task.RowDataHashHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Async;
@@ -26,7 +55,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import javax.validation.constraints.NotEmpty;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -35,21 +72,20 @@ import java.util.stream.Collectors;
 @DependsOn("extractThreadExecutor")
 public class DataExtractServiceImpl implements DataExtractService {
 
-
     /**
-     * 执行数据抽取任务的线程 最大休眠次数
+     * Maximum number of sleeps of threads executing data extraction tasks
      */
     private static final int MAX_SLEEP_COUNT = 30;
     /**
-     * 执行数据抽取任务的线程 每次休眠时间，单位毫秒
+     * The sleep time of the thread executing the data extraction task each time, in milliseconds
      */
     private static final int MAX_SLEEP_MILLIS_TIME = 2000;
     private static final String PROCESS_NO_RESET = "0";
 
     /**
-     * 服务启动后，会对{code atomicProcessNo}属性进行初始化，
+     * After the service is started, the {code atomicProcessNo} attribute will be initialized,
      * <p>
-     * 用户启动校验流程，会对{code atomicProcessNo}属性进行校验和设置
+     * When the user starts the verification process, the {code atomicProcessNo} attribute will be verified and set
      */
     private final AtomicReference<String> atomicProcessNo = new AtomicReference<>(PROCESS_NO_RESET);
 
@@ -84,20 +120,29 @@ public class DataExtractServiceImpl implements DataExtractService {
     @Autowired
     private DataManipulationService dataManipulationService;
 
+    @Value("${spring.extract.sync-extract}")
+    private boolean isSyncExtract = true;
+
     /**
-     * 数据抽取服务
+     * Data extraction service
      * <p>
-     * 校验服务通过下发数据抽取流程请求，抽取服务对进程号进行校验，防止同一时间重复发起启动命令
+     * The verification service verifies the process number by issuing a request for data extraction process,
+     * so as to prevent repeated starting commands at the same time
      * <p>
-     * 根据元数据缓存信息，构建数据抽取任务，保存当前任务信息到{@code taskReference}中，等待校验服务发起任务执行指令。
-     * 上报任务列表到校验服务。
+     * According to the metadata cache information, build a data extraction task,
+     * save the current task information to {@code taskReference},
+     * and wait for the verification service to initiate the task execution instruction.
+     * <p>
+     * Submit the task list to the verification service.
      *
-     * @param processNo 执行进程编号
-     * @throws ProcessMultipleException 当前实例正在执行数据抽取服务，不能重新开启新的校验。
+     * @param processNo Execution process number
+     * @throws ProcessMultipleException The previous instance is executing the data extraction service.
+     *                                  It cannot restart the new verification
+     *                                  and throws a ProcessMultipleException exception.
      */
     @Override
     public List<ExtractTask> buildExtractTaskAllTables(String processNo) throws ProcessMultipleException {
-        // 调用端点不是源端，则直接返回空
+        // If the calling end point is not the source end, it directly returns null
         if (!Objects.equals(extractProperties.getEndpoint(), Endpoint.SOURCE)) {
             log.info("The current endpoint is not the source endpoint, and the task cannot be built");
             return Collections.EMPTY_LIST;
@@ -112,10 +157,8 @@ public class DataExtractServiceImpl implements DataExtractService {
             log.info("build extract task process={} count={}", processNo, taskList.size());
             atomicProcessNo.set(processNo);
 
-            List<String> taskNameList = taskList.stream()
-                    .map(ExtractTask::getTaskName)
-                    .map(String::toUpperCase)
-                    .collect(Collectors.toList());
+            List<String> taskNameList =
+                taskList.stream().map(ExtractTask::getTaskName).map(String::toUpperCase).collect(Collectors.toList());
             initTableExtractStatus(new ArrayList<>(tableNames));
             return taskList;
         } else {
@@ -125,48 +168,49 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 宿端任务配置
+     * Destination task configuration
      *
-     * @param processNo 执行进程编号
-     * @param taskList  任务列表
-     * @throws ProcessMultipleException 前实例正在执行数据抽取服务，不能重新开启新的校验。
+     * @param processNo Execution process number
+     * @param taskList  taskList
+     * @throws ProcessMultipleException The previous instance is executing the data extraction service.
+     *                                  It cannot restart the new verification
+     *                                  and throws a ProcessMultipleException exception.
      */
     @Override
-    public void buildExtractTaskAllTables(String processNo, @NonNull List<ExtractTask> taskList) throws ProcessMultipleException {
+    public void buildExtractTaskAllTables(String processNo, @NonNull List<ExtractTask> taskList)
+        throws ProcessMultipleException {
         if (!Objects.equals(extractProperties.getEndpoint(), Endpoint.SINK)) {
             return;
         }
-        // 校验源端构建的任务列表 在宿端是否存在 ，将不存在任务列表过滤
+        // Verify whether the task list built on the source side exists on the destination side,
+        // and filter the nonexistent task list
         final Set<String> tableNames = MetaDataCache.getAllKeys();
         if (atomicProcessNo.compareAndSet(PROCESS_NO_RESET, processNo)) {
             if (CollectionUtils.isEmpty(taskList) || CollectionUtils.isEmpty(tableNames)) {
                 return;
             }
-            final List<ExtractTask> extractTasks = taskList.stream()
-                    .filter(task -> tableNames.contains(task.getTableName()))
-                    .collect(Collectors.toList());
+            final List<ExtractTask> extractTasks =
+                taskList.stream().filter(task -> tableNames.contains(task.getTableName())).collect(Collectors.toList());
             taskReference.set(extractTasks);
             log.info("build extract task process={} count={}", processNo, extractTasks.size());
             atomicProcessNo.set(processNo);
 
-            // taskCountMap用于统计表分片查询的任务数量
+            // taskCountMap is used to count the number of tasks in table fragment query
             Map<String, Integer> taskCountMap = new HashMap<>(Constants.InitialCapacity.MAP);
             taskList.forEach(task -> {
                 if (!taskCountMap.containsKey(task.getTableName())) {
                     taskCountMap.put(task.getTableName(), task.getDivisionsTotalNumber());
                 }
             });
-            // 初始化数据抽取任务执行状态
+            // Initialization data extraction task execution status
             TableExtractStatusCache.init(taskCountMap);
 
-            final List<String> filterTaskTables = taskList.stream()
-                    .filter(task -> !tableNames.contains(task.getTableName()))
-                    .map(ExtractTask::getTableName)
-                    .distinct()
-                    .collect(Collectors.toList());
+            final List<String> filterTaskTables =
+                taskList.stream().filter(task -> !tableNames.contains(task.getTableName()))
+                        .map(ExtractTask::getTableName).distinct().collect(Collectors.toList());
             if (!CollectionUtils.isEmpty(filterTaskTables)) {
-                log.info("process={} ,source endpoint database have some tables ,not in the sink tables[{}]",
-                        processNo, filterTaskTables);
+                log.info("process={} ,source endpoint database have some tables ,not in the sink tables[{}]", processNo,
+                    filterTaskTables);
             }
         } else {
             log.error("process={} is running extract task , {} please wait ... ", atomicProcessNo.get(), processNo);
@@ -175,10 +219,10 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 清理当前构建任务
+     * Clean up the current build task
      */
     @Override
-    public void cleanBuildedTask() {
+    public void cleanBuildTask() {
         if (Objects.nonNull(taskReference.getAcquire())) {
             taskReference.getAcquire().clear();
         }
@@ -192,10 +236,10 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 查询当前执行流程下，指定表的数据抽取相关信息
+     * Query the data extraction related information of the specified table under the current execution process
      *
-     * @param tableName 表名称
-     * @return 表的数据抽取相关信息
+     * @param tableName tableName
+     * @return Table data extraction related information
      */
     @Override
     public ExtractTask queryTableInfo(String tableName) {
@@ -216,15 +260,21 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 执行指定进程编号的数据抽取任务。
-     * <p>
-     * 执行抽取任务，对当前进程编号进行校验，并对抽取任务进行校验。
-     * 对于抽取任务的校验，采用轮询方式，进行多次校验。
-     * 因为源端和宿端的抽取执行逻辑是异步且属于不同的Java进程。为确保不同进程之间流程数据状态一致，采用轮询方式多次进行确认。
-     * 若多次确认还不能获取任务数据{@code taskReference}中数据为空，则抛出异常{@link org.opengauss.datachecker.common.exception.TaskNotFoundException}
+     * <pre>
+     * Execute the data extraction task of the specified process number.
      *
-     * @param processNo 执行进程编号
-     * @throws TaskNotFoundException 任务数据为空，则抛出异常 TaskNotFoundException
+     * Execute the extraction task, verify the current process number, and verify the extraction task.
+     * For the verification of the extraction task, the polling method is used for multiple verifications.
+     * Because the extraction execution logic of the source side and the destination side is asynchronous
+     * and belongs to different Java processes.
+     * In order to ensure the consistency of process data status between different processes,
+     * polling method is adopted for multiple confirmation.
+     * If the data in {@code taskReference} cannot be obtained after multiple confirmations,
+     * an exception {@link org.opengauss.datachecker.common.exception.TaskNotFoundException} will be thrown
+     * </pre>
+     *
+     * @param processNo Execution process number
+     * @throws TaskNotFoundException If the task data is empty, an exception TaskNotFoundException will be thrown
      */
     @Async
     @Override
@@ -234,7 +284,8 @@ public class DataExtractServiceImpl implements DataExtractService {
             while (CollectionUtils.isEmpty(taskReference.get())) {
                 ThreadUtil.sleep(MAX_SLEEP_MILLIS_TIME);
                 if (sleepCount++ > MAX_SLEEP_COUNT) {
-                    log.info("endpoint [{}] and process[{}}] task is empty!", extractProperties.getEndpoint().getDescription(), processNo);
+                    log.info("endpoint [{}] and process[{}}] task is empty!",
+                        extractProperties.getEndpoint().getDescription(), processNo);
                     break;
                 }
             }
@@ -242,26 +293,55 @@ public class DataExtractServiceImpl implements DataExtractService {
             if (CollectionUtils.isEmpty(taskList)) {
                 return;
             }
+            List<Future<?>> taskFutureList = new ArrayList<>();
             taskList.forEach(task -> {
-                log.info("执行数据抽取任务：{}", task);
-                ThreadUtil.sleep(100);
-                Topic topic = kafkaCommonService.getTopicInfo(processNo, task.getTableName(), task.getDivisionsTotalNumber());
+                log.debug("Perform data extraction tasks {}", task.getTaskName());
+                Topic topic =
+                    kafkaCommonService.getTopicInfo(processNo, task.getTableName(), task.getDivisionsTotalNumber());
                 kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
-                extractThreadExecutor.submit(new ExtractTaskThread(task, topic, extractThreadSupport));
+                final ExtractTaskRunnable extractRunnable = new ExtractTaskRunnable(task, topic, extractThreadSupport);
+                taskFutureList.add(extractThreadExecutor.submit(extractRunnable));
             });
+            if (isSyncExtract) {
+                taskFutureList.forEach(future -> {
+                    while (true) {
+                        if (future.isDone() && !future.isCancelled()) {
+                            break;
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    static class DataExtractThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+        /**
+         * Method invoked when the given thread terminates due to the
+         * given uncaught exception.
+         * <p>Any exception thrown by this method will be ignored by the
+         * Java Virtual Machine.
+         *
+         * @param thread    the thread
+         * @param throwable the exception
+         */
+        @Override
+        public void uncaughtException(Thread thread, Throwable throwable) {
+            log.error(thread.getName() + " exception: " + throwable);
         }
     }
 
     /**
-     * 生成修复报告的DML语句
+     * DML statement generating repair report
      *
-     * @param tableName 表名
-     * @param dml       dml 类型
-     * @param diffSet   待生成主键集合
-     * @return DML语句
+     * @param tableName tableName
+     * @param dml       dml
+     * @param diffSet   Primary key set to be generated
+     * @return DML statement
      */
     @Override
-    public List<String> buildRepairDml(String schema, @NotEmpty String tableName, @NonNull DML dml, @NotEmpty Set<String> diffSet) {
+    public List<String> buildRepairDml(String schema, @NotEmpty String tableName, @NonNull DML dml,
+        @NotEmpty Set<String> diffSet) {
         if (CollectionUtils.isEmpty(diffSet)) {
             return new ArrayList<>();
         }
@@ -280,11 +360,11 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 查询表数据
+     * Query table data
      *
-     * @param tableName     表名称
-     * @param compositeKeys 复核主键集合
-     * @return 主键对应表数据
+     * @param tableName     tableName
+     * @param compositeKeys Review primary key set
+     * @return Primary key corresponds to table data
      */
     @Override
     public List<Map<String, String>> queryTableColumnValues(String tableName, List<String> compositeKeys) {
@@ -296,23 +376,22 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 根据数据变更日志 构建增量抽取任务
+     * Build an incremental extraction task according to the data change log
      *
-     * @param sourceDataLogs 数据变更日志
+     * @param sourceDataLogs data change log
      */
     @Override
     public void buildExtractIncrementTaskByLogs(List<SourceDataLog> sourceDataLogs) {
         final String schema = extractProperties.getSchema();
         List<ExtractIncrementTask> taskList = extractTaskBuilder.buildIncrementTask(schema, sourceDataLogs);
-        log.info("构建增量抽取任务完成：{}", taskList.size());
+        log.info("Build incremental extraction task completed {}", taskList.size());
         if (CollectionUtils.isEmpty(taskList)) {
             return;
         }
         incrementTaskReference.set(taskList);
 
-        List<String> tableNameList = sourceDataLogs.stream()
-                .map(SourceDataLog::getTableName)
-                .collect(Collectors.toList());
+        List<String> tableNameList =
+            sourceDataLogs.stream().map(SourceDataLog::getTableName).collect(Collectors.toList());
         Map<String, Integer> taskCount = new HashMap<>(Constants.InitialCapacity.MAP);
         createTaskCountMapping(tableNameList, taskCount);
         TableExtractStatusCache.init(taskCount);
@@ -326,7 +405,7 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 执行增量校验数据抽取
+     * Perform incremental check data extraction
      */
     @Override
     public void execExtractIncrementTaskByLogs() {
@@ -337,19 +416,21 @@ public class DataExtractServiceImpl implements DataExtractService {
             return;
         }
         taskList.forEach(task -> {
-            log.info("执行数据抽取任务：{}", task);
+            log.info("Perform data extraction increment tasks:{}", task.getTaskName());
             ThreadUtil.sleep(100);
             Topic topic = kafkaCommonService.getIncrementTopicInfo(task.getTableName());
             kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
-            extractThreadExecutor.submit(new IncrementExtractTaskThread(task, topic, incrementExtractThreadSupport));
+            final IncrementExtractTaskRunnable extractRunnable =
+                new IncrementExtractTaskRunnable(task, topic, incrementExtractThreadSupport);
+            extractThreadExecutor.submit(extractRunnable);
         });
     }
 
     /**
-     * 查询当前表结构元数据信息，并进行Hash
+     * Query the metadata information of the current table structure and perform hash calculation
      *
-     * @param tableName 表名称
-     * @return 表结构Hash
+     * @param tableName tableName
+     * @return Table structure hash
      */
     @Override
     public TableMetadataHash queryTableMetadataHash(String tableName) {
@@ -357,10 +438,10 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     /**
-     * 查询表指定PK列表数据，并进行Hash 用于二次校验数据查询
+     * PK list data is specified in the query table, and hash is used for secondary verification data query
      *
-     * @param dataLog 数据日志
-     * @return rowdata hash
+     * @param dataLog data log
+     * @return row data hash
      */
     @Override
     public List<RowDataHash> querySecondaryCheckRowData(SourceDataLog dataLog) {
@@ -371,7 +452,8 @@ public class DataExtractServiceImpl implements DataExtractService {
         if (Objects.isNull(metadata)) {
             throw new TableNotExistException(tableName);
         }
-        List<Map<String, String>> dataRowList = dataManipulationService.queryColumnValues(tableName, compositeKeys, metadata);
+        List<Map<String, String>> dataRowList =
+            dataManipulationService.queryColumnValues(tableName, compositeKeys, metadata);
         RowDataHashHandler handler = new RowDataHashHandler();
         return handler.handlerQueryResult(metadata, dataRowList);
     }
@@ -381,11 +463,10 @@ public class DataExtractServiceImpl implements DataExtractService {
         return extractProperties.getSchema();
     }
 
-
     private void initTableExtractStatus(List<String> tableNameList) {
         if (Objects.equals(extractProperties.getEndpoint(), Endpoint.SOURCE)) {
             checkingFeignClient.initTableExtractStatus(new ArrayList<>(tableNameList));
-            log.info("通知校验服务初始化增量抽取任务状态：{}", tableNameList);
+            log.info("Notify the verification service to initialize the extraction task status:{}", tableNameList);
         }
     }
 }

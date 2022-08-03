@@ -1,18 +1,30 @@
 server:
   port: 7000
+  shutdown: graceful
 
 debug: false
 
 spring:
   application:
     name: datachecker-check
+  lifecycle:
+    timeout-per-shutdown-phase: 5
+  kafka:
+    consumer:
+      group-id: checkgroup
+      enable-auto-commit: true
+      auto-commit-interval: 100
+
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      max-poll-records: 10000
+
   datasource:
     druid:
       dataCheck:
         driver-class-name: com.mysql.cj.jdbc.Driver
         type: com.alibaba.druid.pool.DruidDataSource
-        #Spring Boot 默认是不注入这些属性值的，需要自己绑定
-        #druid 数据源专有配置
         initialSize: 5
         minIdle: 5
         maxActive: 20
@@ -24,21 +36,32 @@ spring:
         testOnBorrow: false
         testOnReturn: false
         poolPreparedStatements: true
+      filters: stat,wall,log4j
+      maxPoolPreparedStatementPerConnectionSize: 20
+      useGlobalDataSourceStat: true
+      connectionProperties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=500
 
 
-fegin:
-  hystrix:
-    enabled:true
+feign:
+  okhttp:
+    enabled: true
 
 logging:
   config: classpath:log4j2.xml
 
 data:
   check:
-    data-path: local_path/xxx # 配置数据校验结果输出本地路径
-    bucket-expect-capacity: 10 # 桶容量范围最小值为1
+    data-path: local_path/xxx
+    bucket-expect-capacity: 10
     health-check-api: /extract/health
-    black-white-mode: BLACK #大写
+    black-white-mode: BLACK
+    # statistical-enable : Configure whether to perform verification time statistics.
+    # If true, the execution time of the verification process will be statistically analyzed automatically.
+    statistical-enable: false
+    # auto-clean-environment： Configure whether to automatically clean the execution environment.
+    # If set to true, the environment will be cleaned automatically after the full verification process is completed.
+    auto-clean-environment: true
+    check-with-sync-extracting: true
 
 
 

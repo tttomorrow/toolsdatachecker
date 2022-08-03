@@ -1,43 +1,71 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.entry.extract;
 
 import lombok.Data;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 
+/**
+ * ExtractTask
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/6/1
+ * @since ：11
+ */
 @ToString
 @Data
 @Accessors(chain = true)
 public class ExtractTask {
     /**
-     * 任务名称
+     * taskName
      */
     private String taskName;
     /**
-     * 表名称
+     * tableName
      */
     private String tableName;
 
     /**
-     * 任务分拆总数：1 表示未分拆，大于1则表示分拆为divisionsTotalNumber个任务
+     * Total number of tasks split: 1 means not split,
+     * and greater than 1 means divided into divisionsTotalNumber tasks
      */
-    private int divisionsTotalNumber;
+    private int divisionsTotalNumber = 1;
     /**
-     * 当前表，拆分任务序列
+     * Current table, split task sequence
      */
-    private int divisionsOrdinal;
+    private int divisionsOrdinal = 1;
     /**
-     * 任务执行起始位置
+     * Start position of task execution
      */
-    private long start;
+    private long start = 0L;
     /**
-     * 任务执行偏移量
+     * Task execution offset
      */
     private long offset;
     /**
-     * 表元数据信息
+     * Table metadata information
      */
     private TableMetadata tableMetadata;
 
+    /**
+     * Whether to slice the table corresponding to the current task
+     *
+     * @return If true is returned, it indicates fragmentation, and false indicates no fragmentation
+     */
     public boolean isDivisions() {
         return divisionsTotalNumber > 1;
     }

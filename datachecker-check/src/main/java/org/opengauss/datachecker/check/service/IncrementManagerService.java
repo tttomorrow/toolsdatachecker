@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.service;
 
 import org.opengauss.datachecker.check.client.FeignClientService;
@@ -21,12 +36,12 @@ public class IncrementManagerService {
     private FeignClientService feignClientService;
 
     /**
-     * 增量校验日志通知
+     * Incremental verification log notification
      *
-     * @param dataLogList 增量校验日志
+     * @param dataLogList Incremental verification log
      */
     public void notifySourceIncrementDataLogs(List<SourceDataLog> dataLogList) {
-        // 收集上次校验结果，并构建增量校验日志
+        // Collect the last verification results and build an incremental verification log
         dataLogList.addAll(collectLastResults());
 
         feignClientService.notifyIncrementDataLogs(Endpoint.SOURCE, dataLogList);
@@ -34,9 +49,9 @@ public class IncrementManagerService {
     }
 
     /**
-     *  收集上次校验结果，并构建增量校验日志
+     * Collect the last verification results and build an incremental verification log
      *
-     * @return 上次校验结果解析
+     * @return Analysis of last verification result
      */
     private List<SourceDataLog> collectLastResults() {
         List<SourceDataLog> dataLogList = new ArrayList<>();

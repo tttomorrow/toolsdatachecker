@@ -1,5 +1,21 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.config.DataCheckProperties;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
@@ -17,6 +33,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * @date ：Created in 2022/6/22
  * @since ：11
  */
+@Slf4j
 @Service
 public class CheckBlackWhiteService {
     private static final Set<String> WHITE = new ConcurrentSkipListSet<>();
@@ -28,41 +45,47 @@ public class CheckBlackWhiteService {
     @Autowired
     private DataCheckProperties dataCheckProperties;
 
+    @Autowired
+    private EndpointMetaDataManager endpointMetaDataManager;
+
     /**
-     * 添加白名单列表 该功能清理历史白名单，重置白名单为当前列表
+     * Add white list this function clears the historical white list and resets the white list to the current list
      *
-     * @param whiteList 白名单列表
+     * @param whiteList whiteList
      */
     public void addWhiteList(List<String> whiteList) {
         WHITE.clear();
         WHITE.addAll(whiteList);
-        refushWhiteList();
+        refreshBlackWhiteList();
+        log.info("add whitelist list [{}]", whiteList);
     }
 
     /**
-     * 更新白名单列表 该功能在当前白名单基础上新增当前列表到白名单
+     * Update white list this function adds the current list to the white list on the basis of the current white list
      *
-     * @param whiteList 白名单列表
+     * @param whiteList whiteList
      */
     public void updateWhiteList(List<String> whiteList) {
         WHITE.addAll(whiteList);
-        refushWhiteList();
+        refreshBlackWhiteList();
+        log.info("update whitelist list [{}]", whiteList);
     }
 
     /**
-     * 移除白名单列表 该功能在当前白名单基础上移除当前列表到白名单
+     * Remove white list this function removes the current list from the current white list
      *
-     * @param whiteList 白名单列表
+     * @param whiteList whiteList
      */
     public void deleteWhiteList(List<String> whiteList) {
         WHITE.removeAll(whiteList);
-        refushWhiteList();
+        refreshBlackWhiteList();
+        log.info("delete whitelist list [{}]", whiteList);
     }
 
     /**
-     * 查询白名单列表
+     * Query white list
      *
-     * @return 白名单列表
+     * @return whiteList
      */
     public List<String> queryWhiteList() {
         return new ArrayList<>(WHITE);
@@ -71,35 +94,38 @@ public class CheckBlackWhiteService {
     public void addBlackList(List<String> blackList) {
         BLACK.clear();
         BLACK.addAll(blackList);
-        refushWhiteList();
+        refreshBlackWhiteList();
+        log.info("add blackList list [{}]", blackList);
     }
 
     public void updateBlackList(List<String> blackList) {
         BLACK.addAll(blackList);
-        refushWhiteList();
+        refreshBlackWhiteList();
+        log.info("update blackList list [{}]", blackList);
     }
 
     public void deleteBlackList(List<String> blackList) {
         BLACK.removeAll(blackList);
-        refushWhiteList();
+        refreshBlackWhiteList();
+        log.info("delete blackList list [{}]", blackList);
     }
 
     public List<String> queryBlackList() {
         return new ArrayList<>(BLACK);
     }
 
-    private void refushWhiteList() {
+    private void refreshBlackWhiteList() {
         final CheckBlackWhiteMode blackWhiteMode = dataCheckProperties.getBlackWhiteMode();
         if (blackWhiteMode == CheckBlackWhiteMode.WHITE) {
-            // 白名单模式
-            feignClientService.getClient(Endpoint.SOURCE).refushBlackWhiteList(blackWhiteMode, new ArrayList<>(WHITE));
-            feignClientService.getClient(Endpoint.SINK).refushBlackWhiteList(blackWhiteMode, new ArrayList<>(WHITE));
+            // White list mode
+            feignClientService.getClient(Endpoint.SOURCE).refreshBlackWhiteList(blackWhiteMode, new ArrayList<>(WHITE));
+            feignClientService.getClient(Endpoint.SINK).refreshBlackWhiteList(blackWhiteMode, new ArrayList<>(WHITE));
         } else if (blackWhiteMode == CheckBlackWhiteMode.BLACK) {
-            // 黑名单模式
-            feignClientService.getClient(Endpoint.SOURCE).refushBlackWhiteList(blackWhiteMode, new ArrayList<>(BLACK));
-            feignClientService.getClient(Endpoint.SINK).refushBlackWhiteList(blackWhiteMode, new ArrayList<>(BLACK));
+            // Blacklist mode
+            feignClientService.getClient(Endpoint.SOURCE).refreshBlackWhiteList(blackWhiteMode, new ArrayList<>(BLACK));
+            feignClientService.getClient(Endpoint.SINK).refreshBlackWhiteList(blackWhiteMode, new ArrayList<>(BLACK));
         }
+        endpointMetaDataManager.load();
     }
-
 
 }

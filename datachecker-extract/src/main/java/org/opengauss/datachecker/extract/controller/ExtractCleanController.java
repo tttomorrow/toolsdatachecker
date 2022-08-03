@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -7,9 +22,17 @@ import org.opengauss.datachecker.extract.kafka.KafkaManagerService;
 import org.opengauss.datachecker.extract.service.DataExtractService;
 import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-
+/**
+ * Clearing the environment at the extraction endpoint
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/6/23
+ * @since ：11
+ */
 @Tag(name = "Clearing the environment at the extraction endpoint")
 @RestController
 public class ExtractCleanController {
@@ -32,7 +55,7 @@ public class ExtractCleanController {
     @PostMapping("/extract/clean/environment")
     Result<Void> cleanEnvironment(@RequestParam(name = "processNo") String processNo) {
         metaDataService.init();
-        dataExtractService.cleanBuildedTask();
+        dataExtractService.cleanBuildTask();
         kafkaManagerService.cleanKafka(processNo);
         return Result.success();
     }
@@ -40,7 +63,7 @@ public class ExtractCleanController {
     @Operation(summary = "clears the task cache information of the current ednpoint")
     @PostMapping("/extract/clean/task")
     Result<Void> cleanTask() {
-        dataExtractService.cleanBuildedTask();
+        dataExtractService.cleanBuildTask();
         return Result.success();
     }
 

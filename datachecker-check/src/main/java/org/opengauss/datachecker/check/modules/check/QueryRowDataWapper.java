@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.check;
 
 import lombok.extern.slf4j.Slf4j;
@@ -26,20 +41,21 @@ public class QueryRowDataWapper {
         this.feignClient = feignClient;
     }
 
-
     /**
-     * 拉取指定端点{@code endpoint}的表{@code tableName}的 kafka分区{@code partitions}数据
+     * Pull the Kafka partition {@code partitions} data
+     * of the table {@code tableName} of the specified endpoint {@code endpoint}
      *
-     * @param endpoint   端点类型
-     * @param partitions kafka分区号
-     * @return 指定表 kafka分区数据
+     * @param endpoint   endpoint
+     * @param partitions kafka partitions
+     * @return Specify table Kafka partition data
      */
     public List<RowDataHash> queryRowData(Endpoint endpoint, String tableName, int partitions) {
         List<RowDataHash> data = new ArrayList<>();
         Result<List<RowDataHash>> result = feignClient.getClient(endpoint).queryTopicData(tableName, partitions);
         if (!result.isSuccess()) {
-            throw new DispatchClientException(endpoint, "query topic data of tableName " + tableName +
-                    " partitions=" + partitions + " error, " + result.getMessage());
+            throw new DispatchClientException(endpoint,
+                "query topic data of tableName " + tableName + " partitions=" + partitions + " error, " + result
+                    .getMessage());
         }
         while (result.isSuccess() && !CollectionUtils.isEmpty(result.getData())) {
             data.addAll(result.getData());
@@ -52,8 +68,8 @@ public class QueryRowDataWapper {
         List<RowDataHash> data = new ArrayList<>();
         Result<List<RowDataHash>> result = feignClient.getClient(endpoint).queryIncrementTopicData(tableName);
         if (!result.isSuccess()) {
-            throw new DispatchClientException(endpoint, "query topic data of tableName " + tableName +
-                    " error, " + result.getMessage());
+            throw new DispatchClientException(endpoint,
+                "query topic data of tableName " + tableName + " error, " + result.getMessage());
         }
         while (result.isSuccess() && !CollectionUtils.isEmpty(result.getData())) {
             data.addAll(result.getData());
@@ -65,8 +81,8 @@ public class QueryRowDataWapper {
     public List<RowDataHash> queryRowData(Endpoint endpoint, SourceDataLog dataLog) {
         Result<List<RowDataHash>> result = feignClient.getClient(endpoint).querySecondaryCheckRowData(dataLog);
         if (!result.isSuccess()) {
-            throw new DispatchClientException(endpoint, "query topic data of tableName " + dataLog.getTableName() +
-                    " error, " + result.getMessage());
+            throw new DispatchClientException(endpoint,
+                "query topic data of tableName " + dataLog.getTableName() + " error, " + result.getMessage());
         }
         return result.getData();
     }

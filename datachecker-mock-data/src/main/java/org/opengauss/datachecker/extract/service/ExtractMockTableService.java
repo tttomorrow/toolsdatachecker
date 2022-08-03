@@ -1,8 +1,22 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.common.util.ThreadUtil;
-import org.opengauss.datachecker.extract.TableRowCount;
+import org.opengauss.datachecker.extract.vo.TableStatisticsInfo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -13,6 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * ExtractMockTableService
+ *
  * @author wang chao
  * @date 2022/5/8 19:27
  * @since 11
@@ -20,84 +36,74 @@ import java.util.List;
 @Service
 @Slf4j
 public class ExtractMockTableService {
-    @Autowired
-    protected JdbcTemplate jdbcTemplateOne;
+    private static final String SQL_QUERY_TABLE_STATISTICS = "SELECT TABLE_NAME tableName,SUM(table_rows) count, "
+        + "concat(round(sum(data_length/1024/1024),2),'MB') as dataLength  "
+        + " from information_schema.tables where table_schema='test' GROUP BY  table_name";
 
+    private static final String SQL_QUERY_TABLE_STATISTICS_SUN = "SELECT 'ALL' tableName ,SUM(table_rows) count, "
+        + "concat(round(sum(data_length/1024/1024),2),'MB') as dataLength"
+        + " from information_schema.tables where table_schema='test' GROUP BY table_schema";
+
+    @Autowired
+    private JdbcTemplate jdbcTemplateMysql;
     @Autowired
     private ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
     /**
-     * 自动创建指定表
+     * createTable
      *
-     * @param tableName 创建表
-     * @return
-     * @throws Exception 目前对于表名重复未做处理，表名重复这里直接抛出异常信息
+     * @param tableName tableName
+     * @return create result
      */
-    public String createTable(String tableName) throws Exception {
-        jdbcTemplateOne.execute(MockMapper.CREATE.replace(":TABLENAME", tableName));
+    public String createTable(String tableName) {
+        jdbcTemplateMysql.execute(MockMapper.CREATE.replace(":TABLENAME", tableName));
         return tableName;
     }
 
-    private static final String SQL_QUERY_TABLE = "SELECT table_name from information_schema.TABLES WHERE table_schema='test' ";
-
-    public List<TableRowCount> getAllTableCount() {
-        long start = System.currentTimeMillis();
-        List<TableRowCount> tableRowCountList = new ArrayList<>();
-        final List<String> tableNameList = jdbcTemplateOne.queryForList(SQL_QUERY_TABLE, String.class);
+    /**
+     * getAllTableInfo
+     *
+     * @return TableStatisticsInfo
+     */
+    public List<TableStatisticsInfo> getAllTableInfo() {
+        final List<TableStatisticsInfo> tableNameList = queryTableStatisticsInfos(SQL_QUERY_TABLE_STATISTICS);
         if (CollectionUtils.isEmpty(tableNameList)) {
             return new ArrayList<>();
         }
-        String sqlQueryTableRowCount = "select count(1) rowCount from test.%s";
-        tableNameList.stream().forEach(tableName -> {
-            threadPoolTaskExecutor.submit(() -> {
-                final Long rowCount = jdbcTemplateOne.queryForObject(String.format(sqlQueryTableRowCount, tableName), Long.class);
-                tableRowCountList.add(new TableRowCount(tableName, rowCount));
-            });
-        });
-
-        while (tableRowCountList.size() != tableNameList.size()) {
-            ThreadUtil.sleep(10);
-        }
-
-        final long sum = tableRowCountList.stream().mapToLong(TableRowCount::getCount).sum();
-        tableRowCountList.add(new TableRowCount("all_table_total", sum));
-        tableRowCountList.sort((o1, o2) -> (int) (o1.getCount() - o2.getCount()));
-
-        long end = System.currentTimeMillis();
-
-        System.out.println(" query cost time =" + (end - start) + " sec");
-        return tableRowCountList;
+        tableNameList.addAll(queryTableStatisticsInfos(SQL_QUERY_TABLE_STATISTICS_SUN));
+        tableNameList.sort((o1, o2) -> (int) (o1.getCount() - o2.getCount()));
+        return tableNameList;
     }
 
-    /**
-     * 构建创建表SQL语句
-     */
+    private List<TableStatisticsInfo> queryTableStatisticsInfos(String querySql) {
+        return jdbcTemplateMysql.query(querySql,
+            (rs, rowNum) -> new TableStatisticsInfo(rs.getString("tableName"), rs.getLong("count"),
+                rs.getString("dataLength")));
+    }
+
     interface MockMapper {
-        String CREATE = "CREATE TABLE :TABLENAME (\n" +
-                "\t b_number VARCHAR(30) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_type VARCHAR(20) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_user VARCHAR(20) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_int INT(10) NULL DEFAULT NULL,\n" +
-                "\t b_bigint BIGINT(19) NULL DEFAULT '0',\n" +
-                "\t b_text TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_longtext LONGTEXT NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_date DATE NULL DEFAULT NULL,\n" +
-                "\t b_datetime DATETIME NULL DEFAULT NULL,\n" +
-                "\t b_timestamp TIMESTAMP NULL DEFAULT NULL,\n" +
-                "\t b_attr1 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr2 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr3 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr4 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr5 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr6 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr7 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr8 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr9 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\t b_attr10 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',\n" +
-                "\tPRIMARY KEY (`b_number`) USING BTREE\n" +
-                ")\n" +
-                " COLLATE='utf8mb4_0900_ai_ci'\n" +
-                " ENGINE=InnoDB ;\n";
+        /**
+         * create table sql
+         */
+        String CREATE = "CREATE TABLE :TABLENAME ( b_number VARCHAR(30) NOT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_type VARCHAR(20) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_user VARCHAR(20) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_int INT(10) NULL DEFAULT NULL, b_bigint BIGINT(19) NULL DEFAULT '0',"
+            + " b_text TEXT NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_longtext LONGTEXT NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_date DATE NULL DEFAULT NULL, b_datetime DATETIME NULL DEFAULT NULL,"
+            + " b_timestamp TIMESTAMP NULL DEFAULT NULL,"
+            + " b_attr1 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr2 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr3 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr4 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr5 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr6 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr7 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr8 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr9 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " b_attr10 VARCHAR(255) NULL DEFAULT NULL COLLATE 'utf8mb4_0900_ai_ci',"
+            + " PRIMARY KEY (`b_number`) USING BTREE )  COLLATE='utf8mb4_0900_ai_ci'" + " ENGINE=InnoDB ;";
 
     }
 }

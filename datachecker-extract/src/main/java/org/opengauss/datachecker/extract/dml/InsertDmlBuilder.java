@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.dml;
 
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
@@ -15,12 +30,11 @@ import java.util.stream.Collectors;
  */
 public class InsertDmlBuilder extends DmlBuilder {
 
-
     /**
-     * 构建 Schema
+     * build Schema
      *
      * @param schema Schema
-     * @return InsertDMLBuilder 构建器
+     * @return InsertDMLBuilder
      */
     public InsertDmlBuilder schema(@NotNull String schema) {
         super.buildSchema(schema);
@@ -28,10 +42,10 @@ public class InsertDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 构建 tableName
+     * build tableName
      *
      * @param tableName tableName
-     * @return InsertDMLBuilder 构建器
+     * @return InsertDMLBuilder
      */
     public InsertDmlBuilder tableName(@NotNull String tableName) {
         super.buildTableName(tableName);
@@ -39,36 +53,32 @@ public class InsertDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 构建SQL column 语句片段
+     * build sql column statement fragment
      *
-     * @param columnsMetas 字段元数据
-     * @return InsertDMLBuilder 构建器
+     * @param columnsMetas Field Metadata
+     * @return InsertDMLBuilder
      */
     public InsertDmlBuilder columns(@NotNull List<ColumnsMetaData> columnsMetas) {
-        this.columns = columnsMetas.stream()
-                .map(ColumnsMetaData::getColumnName)
-                .collect(Collectors.joining(DELIMITER));
+        columns = columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
         return this;
     }
 
     /**
-     * 构建SQL column value 语句片段
+     * build sql column value statement fragment
      *
-     * @param columnsMetaList 字段元数据
-     * @return InsertDMLBuilder 构建器
+     * @param columnsMetaList Field Metadata
+     * @return InsertDMLBuilder
      */
-    public InsertDmlBuilder columnsValue(@NotNull Map<String, String> columnsValue, @NotNull List<ColumnsMetaData> columnsMetaList) {
+    public InsertDmlBuilder columnsValue(@NotNull Map<String, String> columnsValue,
+        @NotNull List<ColumnsMetaData> columnsMetaList) {
         List<String> valueList = new ArrayList<>(columnsValueList(columnsValue, columnsMetaList));
         this.columnsValue = String.join(DELIMITER, valueList);
         return this;
     }
 
     public String build() {
-        return Fragment.DML_INSERT.replace(Fragment.SCHEMA, schema)
-                .replace(Fragment.TABLE_NAME, tableName)
-                .replace(Fragment.COLUMNS, columns)
-                .replace(Fragment.VALUE, columnsValue)
-                ;
+        return Fragment.DML_INSERT.replace(Fragment.SCHEMA, schema).replace(Fragment.TABLE_NAME, tableName)
+                                  .replace(Fragment.COLUMNS, columns).replace(Fragment.VALUE, columnsValue);
     }
 
 }

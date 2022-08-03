@@ -1,52 +1,55 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.entry.check;
 
-import lombok.Getter;
+import lombok.Data;
+import lombok.experimental.Accessors;
 import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.springframework.lang.NonNull;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 
 /**
- * 数据校验线程参数
+ * Data verification thread parameters
  *
  * @author ：wangchao
  * @date ：Created in 2022/6/10
  * @since ：11
  */
-@Getter
+@Data
+@Accessors(chain = true)
 public class DataCheckParam {
 
     /**
-     * 构建桶容量参数
+     * Build bucket capacity parameters
      */
-    private final int bucketCapacity;
+    private int bucketCapacity;
 
     /**
-     * 数据校验TOPIC对象
+     * Data verification topic object
      */
-    private final Topic topic;
+    private Topic topic;
     /**
-     * 校验Topic 分区
+     * Verify topic partition
      */
-    private final int partitions;
+    private int partitions;
     /**
-     * 校验结果输出路径
+     * Verification result output path
      */
-    private final String path;
+    private String path;
 
-    private final String schema;
+    private String schema;
 
-    /**
-     * 校验参数构建器
-     *
-     * @param bucketCapacity 构建桶容量参数
-     * @param topic          数据校验TOPIC对象
-     * @param partitions     校验Topic 分区
-     * @param path           校验结果输出路径
-     */
-    public DataCheckParam(int bucketCapacity, @NonNull Topic topic, int partitions, @NonNull String path, String schema) {
-        this.bucketCapacity = bucketCapacity;
-        this.topic = topic;
-        this.partitions = partitions;
-        this.path = path;
-        this.schema = schema;
-    }
+    private KafkaProperties properties;
 }

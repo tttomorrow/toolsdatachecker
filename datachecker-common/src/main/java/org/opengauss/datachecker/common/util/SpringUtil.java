@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.util;
 
 import org.springframework.beans.BeansException;
@@ -8,11 +23,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SpringUtil implements ApplicationContextAware {
-    /**
-     * 上下文对象实例
-     */
     private static ApplicationContext applicationContext;
 
+    /**
+     * set ApplicationContext
+     *
+     * @param applicationContext applicationContext
+     * @throws BeansException BeansException
+     */
     @Autowired
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -20,40 +38,44 @@ public class SpringUtil implements ApplicationContextAware {
     }
 
     /**
-     * 获取applicationContext
-     * @return
+     * get ApplicationContext
+     *
+     * @return applicationContext
      */
     public static ApplicationContext getApplicationContext() {
         return applicationContext;
     }
 
     /**
-     * 通过name获取 Bean.
-     * @param name
-     * @return
+     * Get the corresponding bean instance according to the bean name
+     *
+     * @param name bean name
+     * @return bean
      */
-    public static Object getBean(String name){
+    public static Object getBean(String name) {
         return getApplicationContext().getBean(name);
     }
 
     /**
-     * 通过class获取Bean.
-     * @param clazz
-     * @param <T>
-     * @return
+     * Get the corresponding bean instance according to the clazz type
+     *
+     * @param clazz clazz
+     * @param <T>   clazz type
+     * @return bean
      */
-    public static <T> T getBean(Class<T> clazz){
+    public static <T> T getBean(Class<T> clazz) {
         return getApplicationContext().getBean(clazz);
     }
 
     /**
-     * 通过name,以及Clazz返回指定的Bean
-     * @param name
-     * @param clazz
-     * @param <T>
-     * @return
+     * Get the corresponding bean instance according to the clazz type
+     *
+     * @param name  bean name
+     * @param clazz clazz
+     * @param <T>   clazz type
+     * @return bean
      */
-    public static <T> T getBean(String name,Class<T> clazz){
+    public static <T> T getBean(String name, Class<T> clazz) {
         return getApplicationContext().getBean(name, clazz);
     }
 }

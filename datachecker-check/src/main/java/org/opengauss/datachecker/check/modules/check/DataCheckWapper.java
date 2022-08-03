@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.check;
 
 import org.opengauss.datachecker.check.modules.bucket.Bucket;
@@ -16,16 +31,16 @@ import java.util.Map;
  */
 public class DataCheckWapper {
 
-
     /**
-     * 根据统计的源端宿端桶差异信息{@code bucketNumberDiffMap}结果，对齐桶列表数据。
+     * Align the bucket list data according to the statistical results of source and destination bucket
+     * difference information {@code bucketNumberDiffMap}.
      *
-     * @param bucketNumberDiffMap 源端宿端桶差异信息
-     * @param sourceBucketList    源端桶列表
-     * @param sinkBucketList      宿端通列表
+     * @param bucketNumberDiffMap Source destination bucket difference information
+     * @param sourceBucketList    Source bucket list
+     * @param sinkBucketList      Sink bucket list
      */
     public void alignAllBuckets(Map<Integer, Pair<Integer, Integer>> bucketNumberDiffMap,
-                                @NonNull List<Bucket> sourceBucketList, @NonNull List<Bucket> sinkBucketList) {
+        @NonNull List<Bucket> sourceBucketList, @NonNull List<Bucket> sinkBucketList) {
         if (!CollectionUtils.isEmpty(bucketNumberDiffMap)) {
             bucketNumberDiffMap.forEach((number, pair) -> {
                 if (pair.getSource() == -1) {

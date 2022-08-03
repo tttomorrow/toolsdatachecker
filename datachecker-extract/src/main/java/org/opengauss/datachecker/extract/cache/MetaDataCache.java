@@ -1,12 +1,31 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.cache;
 
-import com.google.common.cache.*;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.RemovalListener;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.lang.NonNull;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 public class MetaDataCache {
@@ -16,25 +35,22 @@ public class MetaDataCache {
      * Initializing the Metadata Cache Method
      */
     public static void initCache() {
-        CACHE =
-                CacheBuilder.newBuilder()
-                        //Set the concurrent read/write level based on the number of CPU cores;
-                        .concurrencyLevel(Runtime.getRuntime().availableProcessors())
-                        // Size of the buffer pool
-                        .maximumSize(Integer.MAX_VALUE)
-                        // Removing a Listener
-                        .removalListener(
-                                (RemovalListener<String, TableMetadata>) remove -> log.info("cache: [{}], removed", remove))
-                        .recordStats()
-                        .build(
-                                // Method of handing a Key that does not exist
-                                new CacheLoader<>() {
-                                    @Override
-                                    public TableMetadata load(String tableName) {
-                                        log.info("cache: [{}], does not exist", tableName);
-                                        return null;
-                                    }
-                                });
+        CACHE = CacheBuilder.newBuilder()
+                            //Set the concurrent read/write level based on the number of CPU cores;
+                            .concurrencyLevel(Runtime.getRuntime().availableProcessors())
+                            // Size of the buffer pool
+                            .maximumSize(Integer.MAX_VALUE)
+                            // Removing a Listener
+                            .removalListener((RemovalListener<String, TableMetadata>) remove -> log
+                                .debug("cache: [{}], removed", remove.getKey())).recordStats().build(
+                // Method of handing a Key that does not exist
+                new CacheLoader<>() {
+                    @Override
+                    public TableMetadata load(String tableName) {
+                        log.info("cache: [{}], does not exist", tableName);
+                        return null;
+                    }
+                });
         log.info("initialize table meta data cache");
     }
 
@@ -46,7 +62,6 @@ public class MetaDataCache {
      */
     public static void put(@NonNull String key, TableMetadata value) {
         try {
-            log.info("put in cache:[{}]-[{}]", key, value);
             CACHE.put(key, value);
         } catch (Exception exception) {
             log.error("put in cache exception ", exception);
@@ -61,7 +76,6 @@ public class MetaDataCache {
     public static void putMap(@NonNull Map<String, TableMetadata> map) {
         try {
             CACHE.putAll(map);
-            map.forEach((key, value) -> log.debug("batch cache deposit:[{},{}]", key, value));
         } catch (Exception exception) {
             log.error("batch storage cache exception", exception);
         }
@@ -78,6 +92,21 @@ public class MetaDataCache {
         } catch (Exception exception) {
             log.error("get cache exception", exception);
             return null;
+        }
+    }
+
+    /**
+     * Check whether the specified key is in the cache
+     *
+     * @param key table name as cached key
+     * @return result
+     */
+    public static boolean containsKey(String key) {
+        try {
+            return Objects.nonNull(CACHE.get(key));
+        } catch (Exception exception) {
+            log.error("get cache exception", exception);
+            return false;
         }
     }
 
