@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.entry.extract;
 
 import lombok.Data;
@@ -6,34 +21,38 @@ import lombok.experimental.Accessors;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 
 /**
- * 表元数据信息
+ * Table metadata information
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/6/24
+ * @since ：11
  */
 @Data
 @Accessors(chain = true)
 @ToString
 public class ColumnsMetaData {
     /**
-     * 表名
+     * Table
      */
     private String tableName;
     /**
-     * 主键列名称
+     * Primary key column name
      */
     private String columnName;
     /**
-     * 主键列数据类型
+     * Primary key column data type
      */
     private String columnType;
     /**
-     * 主键列数据类型
+     * Primary key column data type
      */
     private String dataType;
     /**
-     * 主键表序号
+     * Table field sequence number
      */
     private int ordinalPosition;
     /**
-     * 主键
+     * {@value ColumnKey#API_DESCRIPTION}
      */
     private ColumnKey columnKey;
 }

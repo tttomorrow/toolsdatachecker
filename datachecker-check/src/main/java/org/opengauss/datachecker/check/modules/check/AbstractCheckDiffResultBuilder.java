@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.check;
 
 import lombok.Getter;
@@ -41,59 +56,107 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     }
 
     /**
-     * @return 返回构建器自身对象
+     * @return Return the builder's own object
      */
     protected abstract B self();
 
     /**
-     * @return 执行构建器
+     * @return Execution builder
      */
     public abstract C build();
 
+    /**
+     * Set the table properties of the builder
+     *
+     * @param table table name
+     * @return CheckDiffResultBuilder
+     */
     public B table(String table) {
         this.table = table;
-        return this.self();
+        return self();
     }
 
+    /**
+     * Set the topic properties of the builder
+     *
+     * @param topic topic name
+     * @return CheckDiffResultBuilder
+     */
     public B topic(String topic) {
         this.topic = topic;
-        return this.self();
+        return self();
     }
 
+    /**
+     * Set the schema properties of the builder
+     *
+     * @param schema schema
+     * @return CheckDiffResultBuilder
+     */
     public B schema(String schema) {
         this.schema = schema;
-        return this.self();
+        return self();
     }
 
+    /**
+     * Set the partitions properties of the builder
+     *
+     * @param partitions partitions
+     * @return CheckDiffResultBuilder
+     */
     public B partitions(int partitions) {
         this.partitions = partitions;
-        return this.self();
+        return self();
     }
 
+    /**
+     * Set the keyUpdateSet properties of the builder
+     *
+     * @param keyUpdateSet keyUpdateSet
+     * @return CheckDiffResultBuilder
+     */
     public B keyUpdateSet(Set<String> keyUpdateSet) {
         this.keyUpdateSet = keyUpdateSet;
-        this.repairUpdate = checkRepairSinkDiff(DML.REPLACE, this.schema, this.table, this.keyUpdateSet);
-        return this.self();
+        repairUpdate = checkRepairSinkDiff(DML.REPLACE, schema, table, this.keyUpdateSet);
+        return self();
     }
 
+    /**
+     * Set the keyInsertSet properties of the builder
+     *
+     * @param keyInsertSet keyInsertSet
+     * @return CheckDiffResultBuilder
+     */
     public B keyInsertSet(Set<String> keyInsertSet) {
         this.keyInsertSet = keyInsertSet;
-        this.repairInsert = checkRepairSinkDiff(DML.INSERT, this.schema, this.table, this.keyInsertSet);
-        return this.self();
+        repairInsert = checkRepairSinkDiff(DML.INSERT, schema, table, this.keyInsertSet);
+        return self();
     }
 
+    /**
+     * Set the keyDeleteSet properties of the builder
+     *
+     * @param keyDeleteSet keyDeleteSet
+     * @return CheckDiffResultBuilder
+     */
     public B keyDeleteSet(Set<String> keyDeleteSet) {
         this.keyDeleteSet = keyDeleteSet;
-        this.repairDelete = checkRepairSinkDiff(DML.DELETE, this.schema, this.table, this.keyDeleteSet);
-        return this.self();
+        repairDelete = checkRepairSinkDiff(DML.DELETE, schema, table, this.keyDeleteSet);
+        return self();
     }
 
-
+    /**
+     * build CheckDiffResultBuilder
+     *
+     * @param feignClient feignClient
+     * @return CheckDiffResultBuilder
+     */
     public static AbstractCheckDiffResultBuilder<?, ?> builder(FeignClientService feignClient) {
         return new AbstractCheckDiffResultBuilderImpl(feignClient);
     }
 
-    private static final class AbstractCheckDiffResultBuilderImpl extends AbstractCheckDiffResultBuilder<CheckDiffResult, AbstractCheckDiffResultBuilderImpl> {
+    private static final class AbstractCheckDiffResultBuilderImpl
+        extends AbstractCheckDiffResultBuilder<CheckDiffResult, AbstractCheckDiffResultBuilderImpl> {
         private AbstractCheckDiffResultBuilderImpl(FeignClientService feignClient) {
             super(feignClient);
         }

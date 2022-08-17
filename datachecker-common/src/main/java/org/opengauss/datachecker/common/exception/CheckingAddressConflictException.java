@@ -1,13 +1,30 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.exception;
 
 /**
- * 校验服务 配置源端和宿端地址进行约束性检查：源端和宿端地址不能重复
+ * Verify that the source and destination addresses of the service configuration are checked for constraints:
+ * the source and destination addresses cannot be duplicate
  *
  * @author ：wangchao
  * @date ：Created in 2022/5/23
  * @since ：11
  */
 public class CheckingAddressConflictException extends CheckingException {
+    private static final long serialVersionUID = -4644169559429602053L;
 
     public CheckingAddressConflictException(String message) {
         super(message);

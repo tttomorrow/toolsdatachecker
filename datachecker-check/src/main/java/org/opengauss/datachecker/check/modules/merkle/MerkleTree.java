@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.merkle;
 
 import lombok.Data;
@@ -21,11 +36,11 @@ public class MerkleTree {
     private static final int INT_BYTE = 4;
     public static final int LONG_BYTE = 8;
     /**
-     * 默克尔树 节点类型 叶子节点
+     * Merkel tree node type leaf node
      */
     public static final byte LEAF_SIG_TYPE = 0x0;
     /**
-     * 默克尔树 节点类型 内部节点
+     * Merkel tree node type internal node
      */
     public static final byte INTERNAL_SIG_TYPE = 0x01;
     /**
@@ -39,7 +54,7 @@ public class MerkleTree {
     private static final int NODE_TYPE_BYTE_LENGTH = 1;
 
     /**
-     * Adler32 进行校验
+     * Adler32 for verification
      */
     private volatile static Adler32 crc;
 
@@ -48,69 +63,66 @@ public class MerkleTree {
     }
 
     /**
-     * 叶子节点字节长度 默克尔树在序列化及反序列化时使用。
+     * The leaf node byte length Merkel tree is used in serialization and deserialization.
      */
     private int leafSignatureByteLength;
     /**
-     * 根节点
+     * Root node
      */
     private Node root;
     private int depth;
     private int nnodes;
 
     /**
-     * 默克尔树构造函数
+     * Merkel tree constructor
      *
-     * @param bucketList 桶列表
+     * @param bucketList bucketList
      */
     public MerkleTree(List<Bucket> bucketList) {
         constructTree(bucketList);
     }
 
-
     /**
-     * 根据反序列化结果构造默克尔树
+     * Construct Merkel tree according to the result of deserialization
      *
-     * @param treeRoot   树根节点
-     * @param totalNodes 总节点数
-     * @param depth      树深度
-     * @param leafLength 叶子节点长度
+     * @param treeRoot   treeRoot
+     * @param totalNodes totalNodes
+     * @param depth      depth
+     * @param leafLength leaf Length
      */
     public MerkleTree(Node treeRoot, int totalNodes, int depth, int leafLength) {
-        this.root = treeRoot;
-        this.nnodes = totalNodes;
+        root = treeRoot;
+        nnodes = totalNodes;
         this.depth = depth;
-        this.leafSignatureByteLength = leafLength;
+        leafSignatureByteLength = leafLength;
     }
 
-
     /**
-     * 构造默克尔树
+     * Construct Merkel tree
      *
-     * @param bucketList 桶列表
+     * @param bucketList bucketList
      */
     private void constructTree(List<Bucket> bucketList) {
         if (bucketList == null || bucketList.size() < MerkleConstant.CONSTRUCT_TREE_MIN_SIZE) {
             throw new IllegalArgumentException("ERROR:Fail to construct merkle tree ! leafHashes data invalid !");
         }
-        this.nnodes = bucketList.size();
+        nnodes = bucketList.size();
         List<Node> parents = buttomLevel(bucketList);
-        this.nnodes += parents.size();
-        this.depth = 1;
+        nnodes += parents.size();
+        depth = 1;
         while (parents.size() > 1) {
             parents = constructInternalLevel(parents);
-            this.depth++;
-            this.nnodes += parents.size();
+            depth++;
+            nnodes += parents.size();
         }
-        this.root = parents.get(0);
+        root = parents.get(0);
     }
 
-
     /**
-     * 底部层级叶子节点构建
+     * Bottom level leaf node construction
      *
-     * @param bucketList 桶列表
-     * @return 节点列表
+     * @param bucketList bucketList
+     * @return node list
      */
     private List<Node> buttomLevel(List<Bucket> bucketList) {
         List<Node> parents = new ArrayList<>(bucketList.size() / MerkleConstant.EVEN_NUMBER);
@@ -123,20 +135,20 @@ public class MerkleTree {
         }
         if (bucketList.size() % MerkleConstant.EVEN_NUMBER == 1) {
             Node leaf1 = constructLeafNode(bucketList.get(bucketList.size() - 1));
-            // 奇数个节点的情况，复制最后一个节点
+            // In the case of an odd number of nodes, copy the last node
             Node parent = constructInternalNode(leaf1, null);
             parents.add(parent);
         }
-        // 设置叶子节点签名字节长度
-        this.leafSignatureByteLength = parents.get(0).getLeft().getSignature().length;
+        // Set leaf node signature byte length
+        leafSignatureByteLength = parents.get(0).getLeft().getSignature().length;
         return parents;
     }
 
     /**
-     * 内部节点构建
+     * Internal node construction
      *
-     * @param children 子节点
-     * @return 内部节点集合
+     * @param children child node
+     * @return Internal node set
      */
     private List<Node> constructInternalLevel(List<Node> children) {
         List<Node> parents = new ArrayList<>(children.size() / MerkleConstant.EVEN_NUMBER);
@@ -146,7 +158,7 @@ public class MerkleTree {
         }
 
         if (children.size() % MerkleConstant.EVEN_NUMBER == 1) {
-            // 奇数个节点的情况，只对left节点进行计算
+            // In the case of an odd number of nodes, only the left node is calculated
             Node parent = constructInternalNode(children.get(children.size() - 1), null);
             parents.add(parent);
         }
@@ -154,43 +166,39 @@ public class MerkleTree {
     }
 
     /**
-     * 构建叶子节点
+     * Building leaf nodes
      *
-     * @param bucket 桶节点
-     * @return 默克尔节点
+     * @param bucket Bucket node
+     * @return Merkel node
      */
     private Node constructLeafNode(Bucket bucket) {
-        return new Node().setType(LEAF_SIG_TYPE)
-                .setBucket(bucket)
-                .setSignature(bucket.getSignature());
+        return new Node().setType(LEAF_SIG_TYPE).setBucket(bucket).setSignature(bucket.getSignature());
     }
 
     /**
-     * 构建内部节点
+     * Build internal nodes
      *
-     * @param left  左侧节点
-     * @param right 右侧节点
-     * @return 默克尔节点
+     * @param left  Left node
+     * @param right Right node
+     * @return Merkel node
      */
     private Node constructInternalNode(Node left, Node right) {
-        return new Node().setType(INTERNAL_SIG_TYPE)
-                .setLeft(left)
-                .setRight(right)
-                .setSignature(internalSignature(left, right));
+        return new Node().setType(INTERNAL_SIG_TYPE).setLeft(left).setRight(right)
+                         .setSignature(internalSignature(left, right));
     }
 
     /**
-     * 计算内部节点签名
+     * Calculate internal node signature
      *
-     * @param left  左侧节点
-     * @param right 右侧节点
-     * @return 内部节点签名
+     * @param left  Left node
+     * @param right Right node
+     * @return Internal node signature
      */
     private byte[] internalSignature(Node left, Node right) {
         if (right == null) {
             return left.getSignature();
         }
-        // 这里采用Deler32进行签名
+        // Here, deler32 is used for signature
         crc.reset();
         crc.update(left.signature);
         crc.update(right.signature);
@@ -202,12 +210,13 @@ public class MerkleTree {
      * header (magic header:int)(num nodes:int)(tree depth:int)(leaf length:int)
      * [(node type:byte)(signature length:int)(signature:byte)(bucket length:int)(bucket:byte)]
      * <p>
-     *  bucket 桶序列化实现
+     * bucket Bucket serialization implementation
      *
-     * @return 返回序列化字节流
+     * @return Return serialized byte stream
      */
     public byte[] serialize() {
-        int header = MAGIC_HEADER_BYTE_LENGTH + NUM_NODES_BYTE_LENGTH + TREE_DEPTH_BYTE_LENGTH + LEAF_SIGNATURE_BYTE_LENGTH;
+        int header =
+            MAGIC_HEADER_BYTE_LENGTH + NUM_NODES_BYTE_LENGTH + TREE_DEPTH_BYTE_LENGTH + LEAF_SIGNATURE_BYTE_LENGTH;
         int maxSignatureByteLength = Math.max(leafSignatureByteLength, LONG_BYTE);
 
         int spaceOfNodes = (NODE_TYPE_BYTE_LENGTH + NUM_NODES_BYTE_LENGTH + maxSignatureByteLength) * nnodes;
@@ -240,7 +249,7 @@ public class MerkleTree {
     }
 
     /**
-     * Merkle Tree 节点
+     * Merkle Tree
      */
     @Data
     @Accessors(chain = true)
@@ -253,29 +262,25 @@ public class MerkleTree {
         private Node left;
         private Node right;
         /**
-         * 当前节点签名 signature
+         * Current node signature
          */
         private byte[] signature;
         private Bucket bucket;
 
         @Override
         public String toString() {
-            return " Node{" +
-                    "type=" + type +
-                    ",signature=" + Arrays.toString(signature).replace(",", "") +
-                    ",left=" + left +
-                    ",right=" + right +
-                    '}';
+            return " Node{" + "type=" + type + ",signature=" + Arrays.toString(signature).replace(",", "") + ",left="
+                + left + ",right=" + right + '}';
         }
 
         public boolean signatureEqual(Node other) {
-            int length = this.getSignature().length;
+            int length = getSignature().length;
             int length1 = other.getSignature().length;
             if (length != length1) {
                 return false;
             }
             for (int i = 0; i < length; i++) {
-                if (this.getSignature()[i] != other.getSignature()[i]) {
+                if (getSignature()[i] != other.getSignature()[i]) {
                     return false;
                 }
             }
@@ -285,20 +290,13 @@ public class MerkleTree {
 
     @Override
     public String toString() {
-        return "MerkleTree{" +
-                "nnodes=" + nnodes +
-                ",depth=" + depth +
-                ",leafSignatureByteLength=" + leafSignatureByteLength +
-                ",root=" + root +
-                '}';
+        return "MerkleTree{" + "nnodes=" + nnodes + ",depth=" + depth + ",leafSignatureByteLength="
+            + leafSignatureByteLength + ",root=" + root + '}';
     }
 
     public String toSimpleString() {
-        return "MerkleTree{" +
-                "nnodes=" + nnodes +
-                ",depth=" + depth +
-                ",leafSignatureByteLength=" + leafSignatureByteLength +
-                '}';
+        return "MerkleTree{" + "nnodes=" + nnodes + ",depth=" + depth + ",leafSignatureByteLength="
+            + leafSignatureByteLength + '}';
     }
 
     interface MerkleConstant {

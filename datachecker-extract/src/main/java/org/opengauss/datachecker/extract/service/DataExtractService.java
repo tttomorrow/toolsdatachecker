@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.service;
 
 import org.opengauss.datachecker.common.entry.enums.DML;
@@ -21,96 +36,98 @@ import java.util.Set;
 public interface DataExtractService {
 
     /**
-     * 抽取任务构建
+     * Extraction task construction
      *
-     * @param processNo 执行进程编号
-     * @return 指定processNo下 构建抽取任务集合
-     * @throws ProcessMultipleException 当前实例正在执行数据抽取服务，不能重新开启新的校验。
+     * @param processNo processNo
+     * @return Specify the construction extraction task set under processno
+     * @throws ProcessMultipleException The current instance is executing the data extraction service
+     *                                  and cannot restart the new verification.
      */
     List<ExtractTask> buildExtractTaskAllTables(String processNo) throws ProcessMultipleException;
 
     /**
-     * 宿端任务配置
+     * Destination task configuration
      *
-     * @param processNo 执行进程编号
-     * @param taskList  任务列表
-     * @throws ProcessMultipleException 前实例正在执行数据抽取服务，不能重新开启新的校验。
+     * @param processNo processNo
+     * @param taskList  taskList
+     * @throws ProcessMultipleException The current instance is executing the data extraction service
+     *                                  and cannot restart the new verification.
      */
     void buildExtractTaskAllTables(String processNo, List<ExtractTask> taskList) throws ProcessMultipleException;
 
     /**
-     * 执行表数据抽取任务
+     * Execute table data extraction task
      *
-     * @param processNo 执行进程编号
-     * @throws TaskNotFoundException 任务数据为空，则抛出异常 TaskNotFoundException
+     * @param processNo processNo
+     * @throws TaskNotFoundException If the task data is empty, an exception TaskNotFoundException will be thrown
      */
     void execExtractTaskAllTables(String processNo) throws TaskNotFoundException;
 
     /**
-     * 清理当前构建任务
+     * Clean up the current build task
      */
-    void cleanBuildedTask();
+    void cleanBuildTask();
 
     /**
-     * 查询当前流程下，指定名称的详细任务信息
+     * Query the detailed task information of the specified name under the current process
      *
-     * @param taskName 任务名称
-     * @return 任务详细信息，若不存在返回{@code null}
+     * @param taskName taskName
+     * @return Task details, if not, return {@code null}
      */
     ExtractTask queryTableInfo(String taskName);
 
     /**
-     * 生成修复报告的DML语句
+     * DML statement generating repair report
      *
-     * @param schema    schema信息
-     * @param tableName 表名
-     * @param dml       dml 类型
-     * @param diffSet   待生成主键集合
-     * @return DML语句
+     * @param schema    schema
+     * @param tableName tableName
+     * @param dml       dml
+     * @param diffSet   Primary key set to be generated
+     * @return DML statement
      */
     List<String> buildRepairDml(String schema, String tableName, DML dml, Set<String> diffSet);
 
     /**
-     * 查询表数据
+     * Query table data
      *
-     * @param tableName       表名称
-     * @param compositeKeySet 复核主键集合
-     * @return 主键对应表数据
+     * @param tableName       tableName
+     * @param compositeKeySet compositeKeySet
+     * @return Primary key corresponds to table data
      */
     List<Map<String, String>> queryTableColumnValues(String tableName, List<String> compositeKeySet);
 
     /**
-     * 根据数据变更日志 构建增量抽取任务
+     * Build an incremental extraction task according to the data change log
      *
-     * @param sourceDataLogs 数据变更日志
+     * @param sourceDataLogs source data logs
      */
     void buildExtractIncrementTaskByLogs(List<SourceDataLog> sourceDataLogs);
 
     /**
-     * 执行增量校验数据抽取
+     * Perform incremental check data extraction
      */
     void execExtractIncrementTaskByLogs();
 
     /**
-     * 查询当前表结构元数据信息，并进行Hash
+     * Query the metadata information of the current table structure and hash
      *
-     * @param tableName 表名称
-     * @return 表结构Hash
+     * @param tableName tableName
+     * @return Table structure hash
      */
     TableMetadataHash queryTableMetadataHash(String tableName);
 
     /**
-     * 查询表指定PK列表数据，并进行Hash 用于二次校验数据查询
+     * PK list data is specified in the query table, and hash is used for secondary verification data query
      *
-     * @param dataLog 数据日志
-     * @return rowdata hash
+     * @param dataLog dataLog
+     * @return row data hash
      */
     List<RowDataHash> querySecondaryCheckRowData(SourceDataLog dataLog);
 
     /**
-     * 查询当前链接数据库 的schema
+     * Query the schema of the current linked database
      *
-     * @return 数据库的schema
+     * @return database schema
      */
     String queryDatabaseSchema();
 }

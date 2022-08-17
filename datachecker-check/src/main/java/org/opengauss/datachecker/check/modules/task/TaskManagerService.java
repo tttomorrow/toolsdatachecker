@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.task;
 
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -11,23 +26,22 @@ import java.util.List;
  */
 public interface TaskManagerService {
     /**
-     * 刷新指定任务的数据抽取表执行状态
+     * Refresh the execution status of the data extraction table of the specified task
      *
-     * @param tableName 表名称
-     * @param endpoint 端点类型 {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param tableName tableName
+     * @param endpoint  endpoint {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
      */
-    void refushTableExtractStatus(String tableName, Endpoint endpoint);
-
+    void refreshTableExtractStatus(String tableName, Endpoint endpoint);
 
     /**
-     * 初始化任务状态
+     * Initialize task status
      *
-     * @param tableNameList 表名称列表
+     * @param tableNameList table name list
      */
     void initTableExtractStatus(List<String> tableNameList);
 
     /**
-     * 清理任务状态信息
+     * Clean up task status information
      */
     void cleanTaskStatus();
 }

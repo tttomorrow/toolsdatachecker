@@ -1,15 +1,37 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.cache;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.exception.ExtractException;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import javax.validation.constraints.NotEmpty;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 /**
  * @author ：wangchao
@@ -19,106 +41,154 @@ import java.util.concurrent.*;
 @Slf4j
 @Service
 public class TableStatusRegister implements Cache<String, Integer> {
+    /**
+     * Task status: if both the source and destination tasks complete data extraction, the setting status is 3
+     */
+    public static final int TASK_STATUS_COMPLETED_VALUE = 3;
+    /**
+     * Task status: if table data verification the current table cache status will be updated to value = value | 4
+     */
+    public static final int TASK_STATUS_CHECK_VALUE = 4;
+    /**
+     * Task status: if both the source and destination tasks have completed data verification, the setting status is 7
+     */
+    public static final int TASK_STATUS_CONSUMER_VALUE = 7;
 
     /**
-     * 任务状态缓存默认值
+     * Task status cache. The initial default value of status is 0
      */
     private static final int TASK_STATUS_DEFAULT_VALUE = 0;
     /**
-     * 任务状态 源端 和宿端均完成数据抽取
+     * Status self check thread name
      */
-    public static final int TASK_STATUS_COMPLATED_VALUE = 3;
-    /**
-     * 任务状态 校验服务已进行当前任务校验
-     */
-    public static final int TASK_STATUS_COMSUMER_VALUE = 7;
-    /**
-     * 状态自检线程名称
-     */
-    private static final String SELF_CHECK_THREAD_NAME = "task-register-self-check-thread";
+    private static final String SELF_CHECK_THREAD_NAME = "task-status-manager";
 
     /**
-     * 数据抽取任务对应表 执行状态缓存
-     * {@code tableStatusCache} : key 为数据抽取表名称
-     * {@code tableStatusCache} : value 为数据抽取表完成状态
-     * value 值初始化状态为 0
-     * 源端完成表识为 1 则更新当前表缓存状态为 value = value | 1
-     * 宿端完成表识为 2 则更新当前表缓存状态为 value = value | 2
-     * 数据校验标识为 4 则更新当前表缓存状态为 value = value | 4
+     * <pre>
+     * Data extraction task execution state cache
+     * {@code tableStatusCache} : key Name of data extraction table
+     * {@code tableStatusCache} : value Data extraction table completion status
+     * value  initialization status is 0
+     * If the source endpoint completes the table identification as 1,
+     * the current table cache status will be updated as value = value | 1
+     * If the sink endpoint completes the table identification as 2,
+     * the current table cache status will be updated as value = value | 2
+     * If the data verification ID is 4, the current table cache status will be updated to value = value | 4
+     * </pre>
      */
     private static final Map<String, Integer> TABLE_STATUS_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, Map<Integer, Integer>> TABLE_PARTITIONS_STATUS_CACHE = new ConcurrentHashMap<>();
 
     /**
-     * 单线程定时任务
+     * complete
      */
-    private static final ScheduledExecutorService SCHEDULED_EXECUTOR = Executors.newSingleThreadScheduledExecutor();
-    /**
-     * 完成表集合
-     */
-    private static final Set<String> COMPLATED_TABLE = new HashSet<>();
-    /**
-     * {@code complatedTableQueue} poll消费记录
-     */
-    private static final Set<String> CONSUMER_COMPLATED_TABLE = new HashSet<>();
+    private static final BlockingDeque<String> COMPLETED_TABLE_QUEUE = new LinkedBlockingDeque<>();
 
     /**
-     *
+     * The service starts to recover cached information. Recover historical data based on persistent cached data
+     * Scan the cache file at the specified location, parse the JSON string, and deserialize the current cache data
      */
-    private static final BlockingDeque<String> COMPLATED_TABLE_QUEUE = new LinkedBlockingDeque<>();
-
-    /**
-     * 服务启动恢复缓存信息。根据持久化缓存数据，恢复历史数据
-     * 扫描指定位置的缓存文件，解析JSON字符串反序列化当前缓存数据
-     */
-    @PostConstruct
+    @Override
     public void recover() {
-        selfCheck();
-        //  扫描指定位置的缓存文件，解析JSON字符串反序列化当前缓存数据
+        // Scan the cache file at the specified location, parse the JSON string, and deserialize the current cache data
     }
 
     /**
-     * 开启并执行自检线程
+     * Start and execute self-test thread
      */
     public void selfCheck() {
-        SCHEDULED_EXECUTOR.scheduleWithFixedDelay(() -> {
+        ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+        scheduledExecutor.scheduleWithFixedDelay(() -> {
             Thread.currentThread().setName(SELF_CHECK_THREAD_NAME);
             doCheckingStatus();
-
-        }, 0, 1, TimeUnit.SECONDS);
+            cleanAndShutdown(scheduledExecutor);
+        }, 5, 1, TimeUnit.SECONDS);
     }
 
     /**
-     * 完成数据抽取任务数量 和 已消费的完成任务数量一致，且大于0时，认为本次校验服务已完成
+     * When the number of completed data extraction tasks is consistent with the number of consumed completed tasks,
+     * and is greater than 0, the verification service is considered to have been completed
      *
-     * @return
+     * @return boolean
      */
-    public boolean isCheckComplated() {
-        return CONSUMER_COMPLATED_TABLE.size() > 0 && CONSUMER_COMPLATED_TABLE.size() == COMPLATED_TABLE.size();
+    public boolean isCheckCompleted() {
+        return TABLE_STATUS_CACHE.values().stream().allMatch(status -> status == TASK_STATUS_CONSUMER_VALUE);
     }
 
     /**
-     * 增量任务状态重置
+     * View the overall completion status of all extraction tasks at the source and destination
+     *
+     * @return All complete - returns true
+     */
+    public boolean isExtractCompleted() {
+        return extractCompletedCount() == cacheSize();
+    }
+
+    /**
+     * Task status reset
      */
     public void rest() {
-        CONSUMER_COMPLATED_TABLE.clear();
-        COMPLATED_TABLE.clear();
         init(TABLE_STATUS_CACHE.keySet());
     }
 
-    public int complateSize() {
-        return COMPLATED_TABLE.size();
-    }
-
+    /**
+     * cache is empty
+     *
+     * @return cache is empty
+     */
     public boolean isEmpty() {
-        return CONSUMER_COMPLATED_TABLE.size() == 0 && COMPLATED_TABLE.size() == 0;
-    }
-
-    public boolean hasExtractComplated() {
-        return COMPLATED_TABLE.size() > 0;
+        return TABLE_STATUS_CACHE.isEmpty();
     }
 
     /**
-     * 初始化缓存 并给键值设置默认值
+     * task has extract completed
+     *
+     * @return task has extract completed
+     */
+    public boolean hasExtractCompleted() {
+        return extractCompletedCount() > 0;
+    }
+
+    /**
+     * task has extract completed count
+     *
+     * @return task has extract completed count
+     */
+    public int extractCompletedCount() {
+        return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_COMPLETED_VALUE)
+                                       .count();
+    }
+
+    /**
+     * table has check completed count
+     *
+     * @return table has check completed count
+     */
+    public int checkCompletedCount() {
+        return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_CONSUMER_VALUE)
+                                       .count();
+    }
+
+    /**
+     * extract progress
+     *
+     * @return extract progress
+     */
+    public Pair<Integer, Integer> extractProgress() {
+        return Pair.of(extractCompletedCount(), cacheSize());
+    }
+
+    /**
+     * check progress
+     *
+     * @return check progress
+     */
+    public Pair<Integer, Integer> checkProgress() {
+        return Pair.of(checkCompletedCount(), cacheSize());
+    }
+
+    /**
+     * Initialize cache and set default values for key values
      *
      * @param keys
      * @return
@@ -131,48 +201,44 @@ public class TableStatusRegister implements Cache<String, Integer> {
     }
 
     /**
-     * 添加表状态对到缓存
+     * Add table state pairs to cache
      *
-     * @param key   键
-     * @param value 值
-     * @return 返回任务状态
+     * @param key   key
+     * @param value value
      */
     @Override
     public void put(String key, Integer value) {
         if (TABLE_STATUS_CACHE.containsKey(key)) {
-            // 当前key已存在不能重复添加
+            // The current key already exists and cannot be added repeatedly
             throw new ExtractException("The current key= " + key + " already exists and cannot be added repeatedly");
         }
         TABLE_STATUS_CACHE.put(key, value);
     }
 
     /**
-     * 根据key查询缓存
+     * table of partitions status
      *
-     * @param key 缓存key
-     * @return 缓存value
+     * @param key        table name
+     * @param partitions partitions
      */
-    @Override
-    public Integer get(String key) {
-        return TABLE_STATUS_CACHE.getOrDefault(key, -1);
+    public void initPartitionsStatus(String key, Integer partitions) {
+        if (!TABLE_STATUS_CACHE.containsKey(key)) {
+            // The current key already exists and cannot be added repeatedly
+            throw new ExtractException("The current key= " + key + " already exists and cannot be added repeatedly");
+        }
+        Map<Integer, Integer> partitionMap = new ConcurrentHashMap<>();
+        IntStream.range(0, partitions).forEach(partition -> {
+            partitionMap.put(partition, TASK_STATUS_COMPLETED_VALUE);
+        });
+        TABLE_PARTITIONS_STATUS_CACHE.put(key, partitionMap);
     }
 
     /**
-     * 获取缓存Key集合
+     * Update cached data
      *
-     * @return Key集合
-     */
-    @Override
-    public Set<String> getKeys() {
-        return TABLE_STATUS_CACHE.keySet();
-    }
-
-    /**
-     * 更新缓存数据
-     *
-     * @param key   缓存key
-     * @param value 缓存value
-     * @return 更新后的缓存value
+     * @param key   key
+     * @param value value
+     * @return Updated cache value
      */
     @Override
     public Integer update(String key, Integer value) {
@@ -180,14 +246,79 @@ public class TableStatusRegister implements Cache<String, Integer> {
             log.error("current key={} does not exist", key);
             return 0;
         }
+
         Integer odlValue = TABLE_STATUS_CACHE.get(key);
         TABLE_STATUS_CACHE.put(key, odlValue | value);
-        return TABLE_STATUS_CACHE.get(key);
+        final Integer status = TABLE_STATUS_CACHE.get(key);
+        log.debug("update table[{}] status : {} -> {}", key, odlValue, status);
+        if (status == TASK_STATUS_COMPLETED_VALUE) {
+            putLast(key);
+            log.debug("add table[{}] queue last", key);
+        }
+        return status;
     }
 
+    /**
+     * Update the current table corresponding to the Kafka partition data extraction status
+     *
+     * @param key       table
+     * @param partition partition
+     * @param value     status
+     */
+    public void update(String key, Integer partition, Integer value) {
+        if (!TABLE_PARTITIONS_STATUS_CACHE.containsKey(key)) {
+            log.error("current partition key={}  does not exist", key);
+            return;
+        }
+        TABLE_PARTITIONS_STATUS_CACHE.get(key).put(partition, TASK_STATUS_COMPLETED_VALUE | value);
+        log.debug("update table [{}] partition[{}] status : {}", key, partition, TASK_STATUS_CONSUMER_VALUE);
+        boolean isAllCompleted = TABLE_PARTITIONS_STATUS_CACHE.get(key).values().stream()
+                                                              .allMatch(status -> status == TASK_STATUS_CONSUMER_VALUE);
+        if (isAllCompleted) {
+            update(key, TASK_STATUS_CHECK_VALUE);
+        }
+    }
+
+    private void putLast(String key) {
+        try {
+            COMPLETED_TABLE_QUEUE.putLast(key);
+        } catch (InterruptedException e) {
+            log.error("put key={} queue COMPLETED_TABLE_QUEUE error", key);
+        }
+    }
 
     /**
-     * 删除指定key缓存
+     * Query cache according to key
+     *
+     * @param key key
+     * @return cache value
+     */
+    @Override
+    public Integer get(String key) {
+        return TABLE_STATUS_CACHE.getOrDefault(key, -1);
+    }
+
+    /**
+     * Get cache key set
+     *
+     * @return Key set
+     */
+    @Override
+    public Set<String> getKeys() {
+        return TABLE_STATUS_CACHE.keySet();
+    }
+
+    /**
+     * cache size
+     *
+     * @return cache size
+     */
+    public Integer cacheSize() {
+        return TABLE_STATUS_CACHE.keySet().size();
+    }
+
+    /**
+     * Delete the specified key cache
      *
      * @param key key
      */
@@ -197,59 +328,77 @@ public class TableStatusRegister implements Cache<String, Integer> {
     }
 
     /**
-     * 清除全部缓存
+     * Clear all caches
      */
     @Override
     public void removeAll() {
-        COMPLATED_TABLE.clear();
-        CONSUMER_COMPLATED_TABLE.clear();
         TABLE_STATUS_CACHE.clear();
-        COMPLATED_TABLE_QUEUE.clear();
+        COMPLETED_TABLE_QUEUE.clear();
         log.info("table status register cache information clearing");
     }
 
     /**
-     * 缓存持久化接口 将缓存信息持久化到本地
-     * 将缓存信息持久化到本地的缓存文件，序列化为JSON字符串，保存到本地指定文件中
+     * clean check status and shutdown {@value SELF_CHECK_THREAD_NAME} thread
+     *
+     * @param scheduledExecutor scheduledExecutor
+     */
+    public void cleanAndShutdown(ScheduledExecutorService scheduledExecutor) {
+        if (isCheckCompleted()) {
+            removeAll();
+            scheduledExecutor.shutdownNow();
+            log.info("clean check status and shutdown {} thread", SELF_CHECK_THREAD_NAME);
+        }
+    }
+
+    /**
+     * The cache persistence interface will persist the cache information locally
+     * Persist the cache information to the local cache file, serialize it into JSON string,
+     * and save it to the local specified file
      */
     @Override
     public void persistent() {
     }
 
     /**
-     * 返回并删除 已完成数据抽取任务的统计队列{@code complatedTableQueue} 头节点，
-     * 如果队列为空，则返回{@code null}
+     * Return and delete the statistical queue {@code completed_table_queue} header node
+     * that has completed the data extraction task,
+     * If the queue is empty, null is returned
      *
-     * @return 返回队列头节点，如果队列为空，则返回{@code null}
+     * @return Return the queue header node. If the queue is empty, return null
      */
-    public String complatedTablePoll() {
-        return COMPLATED_TABLE_QUEUE.poll();
+    public String completedTablePoll() {
+        return COMPLETED_TABLE_QUEUE.poll();
     }
 
     /**
-     * 检查是否存在已完成数据抽取任务。若已完成，则返回true
-     *
-     * @return true 有已完成数据抽取的任务
+     * Check whether there is a completed data extraction task. If yes, update completed_ Table table
+     * Check whether there is a completed data verification task. If yes, update consumer_ COMPLETED_ Table table
      */
     private void doCheckingStatus() {
         Set<String> keys = TABLE_STATUS_CACHE.keySet();
+        if (keys.size() <= 0) {
+            return;
+        }
+        final Pair<Integer, Integer> extractProgress = extractProgress();
+        final Pair<Integer, Integer> checkProgress = checkProgress();
+        log.info("There are [{}] tables in total, [{}] tables are extracted and [{}] table is verified",
+            checkProgress.getSink(), extractProgress.getSource(), checkProgress.getSource());
+        List<String> notExtractCompleteList = new ArrayList<>();
+        List<String> notCheckCompleteList = new ArrayList<>();
+        List<String> checkCompleteList = new ArrayList<>();
         keys.forEach(tableName -> {
-            final int taskStatus = TABLE_STATUS_CACHE.get(tableName);
-            log.debug("check table=[{}] status=[{}] ", tableName, taskStatus);
-            if (!COMPLATED_TABLE.contains(tableName)) {
-                if (taskStatus == TableStatusRegister.TASK_STATUS_COMPLATED_VALUE) {
-                    COMPLATED_TABLE.add(tableName);
-                    COMPLATED_TABLE_QUEUE.add(tableName);
-                    log.info("extract [{}] complated", tableName);
-                }
-            }
-
-            if (!CONSUMER_COMPLATED_TABLE.contains(tableName)) {
-                if (taskStatus == TableStatusRegister.TASK_STATUS_COMSUMER_VALUE) {
-                    CONSUMER_COMPLATED_TABLE.add(tableName);
-                    log.info("consumer [{}] complated", tableName);
-                }
+            Integer status = get(tableName);
+            if (status < TASK_STATUS_COMPLETED_VALUE) {
+                notExtractCompleteList.add(tableName);
+            } else if (status == TASK_STATUS_COMPLETED_VALUE) {
+                notCheckCompleteList.add(tableName);
+            } else if (status == TASK_STATUS_CONSUMER_VALUE) {
+                checkCompleteList.add(tableName);
+            } else {
+                log.error("table={} status={} error ", tableName, status);
             }
         });
+        log.debug("progress information: {} is being extracted, {} is being verified, and {} is completed",
+            notExtractCompleteList, notCheckCompleteList, checkCompleteList);
     }
 }

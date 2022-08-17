@@ -1,5 +1,6 @@
 server:
   port: 7002
+  shutdown: graceful
 
 debug: false
 logging:
@@ -8,18 +9,21 @@ logging:
 spring:
   application:
     name: DATACHECKER-EXTRACT-${spring.extract.endpoint}
+  lifecycle:
+    timeout-per-shutdown-phase: 5
 
   extract:
     schema: test  # 源端数据实例
     databaseType: MS  # 源端数据库类型 MS mysql
     endpoint: SOURCE  # 源端端点类型
-    debezium-enable: true #是否开启增量debezium配置 默认不开启
+    debezium-enable: false #是否开启增量debezium配置 默认不开启
     debezium-topic:  # debezium监听表增量数据，使用单一topic进行增量数据管理
     debezium-groupId: debezium-extract-group # d debezium增量迁移topic ，groupId消费Group设置
     debezium-topic-partitions: 1 # debezium监听topic 分区数量配置
     debezium-tables: # debezium-tables配置debezium监听的表名称列表; 该配置只在源端服务配置并生效
     debezium-time-period: 1 # debezium增量迁移校验 时间周期 24*60 单位分钟
     debezium-num-period: 1000 #debezium增量迁移校验 统计增量变更记录数量阀值，默认值1000 阀值应大于100
+    sync-extract: false
 
   datasource:
     druid:
@@ -33,7 +37,7 @@ spring:
         #druid 数据源专有配置
         initialSize: 20
         minIdle: 5
-        maxActive: 50
+        maxActive: 200
         maxWait: 60000
         timeBetweenEvictionRunsMillis: 60000
         minEvictableIdleTimeMillis: 300000

@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.config;
 
 import lombok.extern.slf4j.Slf4j;
@@ -14,44 +29,44 @@ import javax.servlet.http.HttpServletRequest;
 public class GlobalCheckingExceptionHandler extends GlobalCommonExceptionHandler {
 
     /**
-     * 业务异常处理
+     * Business exception handling
      */
     @ExceptionHandler(value = CheckingException.class)
     public Result checkingException(HttpServletRequest request, CheckingException e) {
-        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(),
-                e.getMessage(), e);
+        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(), e.getMessage(),
+            e);
         logError(request, e);
         return Result.fail(ResultEnum.CHECKING, e.getMessage());
     }
 
     @ExceptionHandler(value = CheckingAddressConflictException.class)
     public Result checkingAddressConflictException(HttpServletRequest request, CheckingAddressConflictException e) {
-        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(),
-                e.getMessage(), e);
+        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(), e.getMessage(),
+            e);
         logError(request, e);
         return Result.fail(ResultEnum.CHECKING_ADDRESS_CONFLICT, e.getMessage());
     }
 
     @ExceptionHandler(value = CheckMetaDataException.class)
     public Result checkMetaDataException(HttpServletRequest request, CheckMetaDataException e) {
-        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(),
-                e.getMessage(), e);
+        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(), e.getMessage(),
+            e);
         logError(request, e);
         return Result.fail(ResultEnum.CHECK_META_DATA, e.getMessage());
     }
 
     @ExceptionHandler(value = LargeDataDiffException.class)
     public Result largeDataDiffException(HttpServletRequest request, LargeDataDiffException e) {
-        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(),
-                e.getMessage(), e);
+        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(), e.getMessage(),
+            e);
         logError(request, e);
         return Result.fail(ResultEnum.LARGE_DATA_DIFF, e.getMessage());
     }
 
     @ExceptionHandler(value = MerkleTreeDepthException.class)
     public Result merkleTreeDepthException(HttpServletRequest request, MerkleTreeDepthException e) {
-        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(),
-                e.getMessage(), e);
+        log.error("path:{}, queryParam:{}message:{}", request.getRequestURI(), request.getQueryString(), e.getMessage(),
+            e);
         logError(request, e);
         return Result.fail(ResultEnum.MERKLE_TREE_DEPTH, e.getMessage());
     }

@@ -6,3 +6,7 @@
 /*/mvnw
 /*/mvnw.cmd
 /*/logs
+/result
+/result_bak
+/statistics
+/*.iml

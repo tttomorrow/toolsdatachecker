@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.cache;
 
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +59,6 @@ public class TableExtractStatusCache {
      */
     private static final Map<String, Map<Integer, Byte>> TABLE_EXTRACT_STATUS_MAP = new ConcurrentHashMap<>();
 
-
     /**
      * Table data extraction task status initialization. {code map} is a set of table decomposition tasks.
      *
@@ -54,15 +68,13 @@ public class TableExtractStatusCache {
         Assert.isTrue(Objects.nonNull(map), Message.INIT_STATUS_PARAM_EMPTY);
         map.forEach((table, taskCount) -> {
             Map<Integer, Byte> tableStatus = new ConcurrentHashMap<>();
-            IntStream.rangeClosed(TASK_ORDINAL_START_INDEX, taskCount)
-                    .forEach(ordinal -> {
-                        tableStatus.put(ordinal, STATUS_INIT);
-                    });
+            IntStream.rangeClosed(TASK_ORDINAL_START_INDEX, taskCount).forEach(ordinal -> {
+                tableStatus.put(ordinal, STATUS_INIT);
+            });
             TABLE_EXTRACT_STATUS_MAP.put(table, tableStatus);
         });
         log.info(Message.INIT_STATUS);
     }
-
 
     /**
      * Updates the execution status of a task in a specified table.
@@ -73,16 +85,19 @@ public class TableExtractStatusCache {
     public static synchronized void update(@NonNull String tableName, Integer ordinal) {
         try {
             // the table must exist.
-            Assert.isTrue(TABLE_EXTRACT_STATUS_MAP.containsKey(tableName), String.format(Message.TABLE_STATUS_NOT_EXIST, tableName));
+            Assert.isTrue(TABLE_EXTRACT_STATUS_MAP.containsKey(tableName),
+                String.format(Message.TABLE_STATUS_NOT_EXIST, tableName));
 
             // Obtain the status information corresponding to the current table
             // and verify the validity of the task status parameters to be updated.
             Map<Integer, Byte> tableStatus = TABLE_EXTRACT_STATUS_MAP.get(tableName);
-            Assert.isTrue(tableStatus.containsKey(ordinal), String.format(Message.TABLE_ORDINAL_NOT_EXIST, tableName, ordinal));
+            Assert.isTrue(tableStatus.containsKey(ordinal),
+                String.format(Message.TABLE_ORDINAL_NOT_EXIST, tableName, ordinal));
 
             // update status
             tableStatus.put(ordinal, STATUS_COMPLATE);
-            log.info("update tableName : {}, ordinal : {} check completed-status {}", tableName, ordinal, STATUS_COMPLATE);
+            log.info("update tableName : {}, ordinal : {} check completed-status {}", tableName, ordinal,
+                STATUS_COMPLATE);
         } catch (Exception exception) {
             log.error(Message.UPDATE_STATUS_EXCEPTION, exception);
         }
@@ -92,13 +107,30 @@ public class TableExtractStatusCache {
      * data extraction status cache message management
      */
     interface Message {
-        String TABLE_STATUS_NOT_EXIST = "The status information of the current table {%s} does not exist. Please initialize it and update it again.";
-        String TABLE_ORDINAL_NOT_EXIST = "The current table {%s} sequence {%s} task status information does not exist. Please initialize it and update it again.";
+        /**
+         * data extraction status message ：table not exist
+         */
+        String TABLE_STATUS_NOT_EXIST = "The status information of the current table {%s} does not exist. "
+            + "Please initialize it and update it again.";
+        /**
+         * data extraction status message ：table ordinal not exist
+         */
+        String TABLE_ORDINAL_NOT_EXIST = "The current table {%s} sequence {%s} task status information does not exist."
+            + " Please initialize it and update it again.";
+        /**
+         * data extraction status message ：update table status exception
+         */
         String UPDATE_STATUS_EXCEPTION = "Failed to update the task status of the specified table.";
+        /**
+         * data extraction status message ：Initializing the data extraction task status
+         */
         String INIT_STATUS = "Initializing the data extraction task status.";
-        String INIT_STATUS_PARAM_EMPTY = "The initialization parameter of the data extraction task status cannot be empty.";
+        /**
+         * data extraction status message ：initialization parameter of extraction task status  cannot be empty
+         */
+        String INIT_STATUS_PARAM_EMPTY =
+            "The initialization parameter of the data extraction task status cannot be empty.";
     }
-
 
     /**
      * Check whether the execution status of all tasks corresponding to the current table is complete.
@@ -107,9 +139,10 @@ public class TableExtractStatusCache {
      *
      * @param tableName table name
      */
-    public static boolean checkComplated(@NonNull String tableName) {
+    public static boolean checkCompleted(@NonNull String tableName) {
         // check whether the table name exists.
-        Assert.isTrue(TABLE_EXTRACT_STATUS_MAP.containsKey(tableName), String.format(Message.TABLE_STATUS_NOT_EXIST, tableName));
+        Assert.isTrue(TABLE_EXTRACT_STATUS_MAP.containsKey(tableName),
+            String.format(Message.TABLE_STATUS_NOT_EXIST, tableName));
         return !TABLE_EXTRACT_STATUS_MAP.get(tableName).containsValue(STATUS_INIT);
     }
 
@@ -127,14 +160,15 @@ public class TableExtractStatusCache {
      * @param ordinal   sequence number of a table splitting task.
      * @return
      */
-    public static boolean checkComplated(@NonNull String tableName, int ordinal) {
+    public static boolean checkCompleted(@NonNull String tableName, int ordinal) {
         // check whether the table name exists.
-        Assert.isTrue(TABLE_EXTRACT_STATUS_MAP.containsKey(tableName), String.format(Message.TABLE_STATUS_NOT_EXIST, tableName));
+        Assert.isTrue(TABLE_EXTRACT_STATUS_MAP.containsKey(tableName),
+            String.format(Message.TABLE_STATUS_NOT_EXIST, tableName));
         Map<Integer, Byte> tableStatus = TABLE_EXTRACT_STATUS_MAP.get(tableName);
-        long noComplated = IntStream.range(TASK_ORDINAL_START_INDEX, ordinal)
-                .filter(idx -> Objects.equals(tableStatus.get(idx), STATUS_INIT)).count();
-        log.info("tableName : {}, ordinal : {} check noComplated=[{}]", tableName, ordinal, noComplated);
-        return noComplated == 0;
+        long noCompleted = IntStream.range(TASK_ORDINAL_START_INDEX, ordinal)
+                                    .filter(idx -> Objects.equals(tableStatus.get(idx), STATUS_INIT)).count();
+        log.info("tableName : {}, ordinal : {} check noCompleted=[{}]", tableName, ordinal, noCompleted);
+        return noCompleted == 0;
     }
 
     /**
@@ -161,6 +195,11 @@ public class TableExtractStatusCache {
         }
     }
 
+    /**
+     * extract table
+     *
+     * @return extract table
+     */
     public static Set<String> getAllKeys() {
         try {
             return TABLE_EXTRACT_STATUS_MAP.keySet();

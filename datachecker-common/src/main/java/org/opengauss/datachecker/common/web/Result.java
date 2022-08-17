@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.web;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,21 +27,20 @@ import org.opengauss.datachecker.common.entry.enums.ResultEnum;
  * @date ：Created in 2022/5/26
  * @since ：11
  */
-@Tag(name = "API 接口消息返回结果封装类")
+@Tag(name = "API Interface message return result encapsulation class")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class Result<T> {
 
-    @Schema(name = "code", description = "消息响应码")
+    @Schema(name = "code", description = "Message response code")
     private int code;
 
-    @Schema(name = "message", description = "消息内容")
+    @Schema(name = "message", description = "message")
     private String message;
 
-    @Schema(name = "data", description = "接口返回数据")
+    @Schema(name = "data", description = "data")
     private T data;
-
 
     public static <T> Result<T> success() {
         return new Result<>(ResultEnum.SUCCESS.getCode(), ResultEnum.SUCCESS.getDescription(), null);
@@ -35,7 +49,6 @@ public class Result<T> {
     public static <T> Result<T> of(T data) {
         return new Result<>(ResultEnum.SUCCESS.getCode(), ResultEnum.SUCCESS.getDescription(), data);
     }
-
 
     public static <T> Result<T> of(T data, int code, String message) {
         return new Result<>(code, message, data);

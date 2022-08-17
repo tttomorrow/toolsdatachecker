@@ -1,10 +1,25 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.entry.enums;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
 /**
- * {@value API_DESCRIPTION}
+ * Endpoint {@value API_DESCRIPTION}
  *
  * @author ：wangchao
  * @date ：Created in 2022/5/25
@@ -14,15 +29,15 @@ import lombok.Getter;
 @Getter
 public enum Endpoint {
     /**
-     * 源端
+     * source endpoint
      */
     SOURCE(1, "SourceEndpoint"),
     /**
-     * 宿端
+     * sink endpoint
      */
     SINK(2, "SinkEndpoint"),
     /**
-     * 校验端
+     * check endpoint
      */
     CHECK(3, "CheckEndpoint");
 
@@ -34,6 +49,9 @@ public enum Endpoint {
         this.description = description;
     }
 
-    public static final String API_DESCRIPTION = "data verification endpoint type " +
-            "[SOURCE-1-SourceEndpoint,SINK-2-SinkEndpoint,CHECK-3-CheckEndpoint]";
+    /**
+     * Endpoint api description
+     */
+    public static final String API_DESCRIPTION =
+        "data verification endpoint type " + "[SOURCE-1-SourceEndpoint,SINK-2-SinkEndpoint,CHECK-3-CheckEndpoint]";
 }

@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -9,12 +24,13 @@ import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.util.concurrent.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 数据抽取服务端点管理
@@ -26,82 +42,137 @@ import java.util.concurrent.*;
 @Slf4j
 @Service
 public class EndpointManagerService {
-
     private static final String ENDPOINT_HEALTH_CHECK_THREAD_NAME = "endpoint-health-check-thread";
-    private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService SCHEDULED_EXECUTOR = Executors.newSingleThreadScheduledExecutor();
 
     @Autowired
     private FeignClientService feignClientService;
-
     @Autowired
     private DataCheckProperties dataCheckProperties;
+    @Autowired
+    private EndpointStatusManager endpointStatusManager;
 
-    @PostConstruct
+    /**
+     * Start the health check self check thread
+     */
     public void start() {
-        scheduledExecutor.scheduleWithFixedDelay(() -> {
+        endpointHealthCheck();
+        SCHEDULED_EXECUTOR.scheduleWithFixedDelay(() -> {
             Thread.currentThread().setName(ENDPOINT_HEALTH_CHECK_THREAD_NAME);
             endpointHealthCheck();
-        }, 0, 5, TimeUnit.SECONDS);
+        }, 0, 2, TimeUnit.SECONDS);
     }
 
+    /**
+     * View the health status of all endpoints
+     *
+     * @return health status
+     */
+    public boolean isEndpointHealth() {
+        return endpointStatusManager.isEndpointHealth();
+    }
+
+    /**
+     * Endpoint health check
+     */
     public void endpointHealthCheck() {
-        checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "源端服务检查");
-        checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "目标端服务检查");
+        checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "source endpoint service check");
+        checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "sink endpoint service check");
     }
 
     private void checkEndpoint(String requestUri, Endpoint endpoint, String message) {
-        // 服务网络检查ping
+        // service network check ping
         try {
             if (NetworkCheck.networkCheck(getEndpointIp(requestUri))) {
 
-                // 服务检查  服务数据库检查
+                // service check: service database check
                 Result healthStatus = feignClientService.getClient(endpoint).health();
                 if (healthStatus.isSuccess()) {
+                    endpointStatusManager.resetStatus(endpoint, Boolean.TRUE);
                     log.debug("{}：{} current state health", message, requestUri);
                 } else {
+                    endpointStatusManager.resetStatus(endpoint, Boolean.FALSE);
                     log.error("{}:{} current service status is abnormal", message, requestUri);
                 }
-
             }
         } catch (Exception ce) {
             log.error("{}:{} service unreachable", message, ce.getMessage());
+            endpointStatusManager.resetStatus(endpoint, Boolean.FALSE);
         }
     }
 
     /**
-     * 根据配置属性中的端点URI地址，解析对应的IP地址
-     * URI地址: http://127.0.0.1:8080   https://127.0.0.1:8080
+     * Resolve the corresponding IP address according to the endpoint URI address in the configuration attribute
+     * uri address: http://127.0.0.1:8080     https://127.0.0.1:8080
      *
-     * @param endpointUri 配置属性中的端点URI
-     * @return 若解析成功，则返回对应IP地址，否则返回null
+     * @param endpointUri Configure the endpoint URI in the attribute
+     * @return If the resolution is successful, the corresponding IP address is returned; otherwise, null is returned
      */
     private String getEndpointIp(String endpointUri) {
-        if ((endpointUri.contains(NetAddress.HTTP) || endpointUri.contains(NetAddress.HTTPS))
-                && endpointUri.contains(NetAddress.IP_DELEMTER) && endpointUri.contains(NetAddress.PORT_DELEMTER)) {
-            return endpointUri.replace(NetAddress.IP_DELEMTER, NetAddress.PORT_DELEMTER).split(NetAddress.PORT_DELEMTER)[1];
+        if (checkLegalOfHttpProtocol(endpointUri) && checkLegalOfIp(endpointUri) && checkLegalOfPort(endpointUri)) {
+            return endpointUri.replace(NetAddress.IP_DELIMITER, NetAddress.PORT_DELIMITER)
+                              .split(NetAddress.PORT_DELIMITER)[1];
         }
         return null;
     }
 
-    interface NetAddress {
-        String HTTP = "http";
-        String HTTPS = "https";
-        String IP_DELEMTER = "://";
-        String PORT_DELEMTER = ":";
+    private boolean checkLegalOfPort(String endpointUri) {
+        return checkLegalOfUri(endpointUri, NetAddress.PORT_DELIMITER);
+    }
+
+    private boolean checkLegalOfIp(String endpointUri) {
+        return checkLegalOfUri(endpointUri, NetAddress.IP_DELIMITER);
+    }
+
+    private boolean checkLegalOfUri(String endpointUri, String ipDelemter) {
+        return endpointUri.contains(ipDelemter);
+    }
+
+    private boolean checkLegalOfHttpProtocol(String endpointUri) {
+        return checkLegalOfUri(endpointUri, NetAddress.HTTP) || checkLegalOfUri(endpointUri, NetAddress.HTTPS);
     }
 
     /**
-     * 网络状态检查
+     * Close the self check thread of jiangkang
+     */
+    public void shutdown() {
+        SCHEDULED_EXECUTOR.shutdownNow();
+    }
+
+    interface NetAddress {
+        /**
+         * http
+         */
+        String HTTP = "http";
+
+        /**
+         * https
+         */
+        String HTTPS = "https";
+
+        /**
+         * ip delimiter
+         */
+        String IP_DELIMITER = "://";
+
+        /**
+         * port delimiter
+         */
+        String PORT_DELIMITER = ":";
+    }
+
+    /**
+     * Network status check
      */
     static class NetworkCheck {
         private static final String PING = "ping ";
         private static final String TTL = "TTL";
 
         /**
-         * 根据系统命令 ping {@code ip} 检查网络状态
+         * Check the network status according to the system command Ping {@code ip}
          *
-         * @param ip ip 地址
-         * @return 网络检查结果
+         * @param ip ip address
+         * @return Network check results
          */
         public static boolean networkCheck(String ip) {
             boolean result = false;
@@ -116,7 +187,8 @@ public class EndpointManagerService {
             String cmd = PING + ip;
             try {
                 Process process = Runtime.getRuntime().exec(cmd);
-                try (BufferedReader buffer = new BufferedReader(new InputStreamReader(process.getInputStream(), Charset.forName("GBK")))) {
+                try (BufferedReader buffer = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), Charset.forName("GBK")))) {
                     while ((line = buffer.readLine()) != null) {
                         sb.append(line);
                         endMsg = line;
@@ -136,5 +208,4 @@ public class EndpointManagerService {
             return result;
         }
     }
-
 }

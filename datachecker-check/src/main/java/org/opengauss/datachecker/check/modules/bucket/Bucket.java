@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.bucket;
 
 import lombok.Data;
@@ -7,8 +22,8 @@ import org.opengauss.datachecker.common.util.ByteUtil;
 
 import javax.validation.constraints.NotNull;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author ：wangchao
@@ -21,29 +36,35 @@ public class Bucket implements Serializable {
 
     private static final long serialVersionUID = 1L;
     /**
-     * 桶初始化容量，如果桶内数据的数量超过指定数量{@code initialCapacity*0.75} 则会自动触发桶容量扩容。
+     * <pre>
+     * Bucket initialization capacity.
+     * If the amount of data in the bucket exceeds the specified amount {@code initialCapacity*0.75},
+     * the bucket capacity expansion will be automatically triggered.
+     * </pre>
      */
     private int initialCapacity;
 
     /**
-     * Bucket桶的容器,容器的初始化容量大小为设置为平均容量大小。
+     * <pre>
+     * The initialization capacity of the bucket container is set to the average capacity.
      * <p>
-     * 超出平均容量会进行扩容操作
+     * If the average capacity is exceeded, the capacity will be expanded
+     * </pre>
      */
-    private Map<String, RowDataHash> bucket = new HashMap<>(this.initialCapacity);
+    private Map<String, RowDataHash> bucket = new ConcurrentHashMap<>(initialCapacity);
     /**
-     * 桶编号
+     * bucket number
      */
     private Integer number;
     /**
-     * Bucket桶的哈希签名 ,签名初始化值为0
+     * Hash signature of bucket bucket. The initialization value of the signature is 0
      */
     private long signature = 0L;
 
     /**
-     * 桶构造时，要求进行容量大小初始化
+     * Capacity initialization is required during barrel construction
      *
-     * @param initialCapacity 桶初始化容量大小
+     * @param initialCapacity Bucket initialization capacity size
      */
     public Bucket(int initialCapacity) {
         this.initialCapacity = initialCapacity;

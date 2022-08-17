@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.cache;
 
 import java.util.Set;
@@ -10,58 +25,64 @@ import java.util.Set;
 public interface Cache<K, V> {
 
     /**
-     * 初始化缓存 并给键值设置默认值
+     * Initialize cache and set default values for key values
      *
-     * @param keys 缓存键值
+     * @param keys Cache key value
      */
     void init(Set<K> keys);
 
     /**
-     * 添加键值对到缓存
+     * Add key value pairs to cache
      *
-     * @param key   键
-     * @param value 值
+     * @param key   key
+     * @param value value
      */
     void put(K key, V value);
 
     /**
-     * 根据key查询缓存
+     * Query cache according to key
      *
-     * @param key 缓存key
-     * @return 缓存value
+     * @param key Cache key
+     * @return Cache value
      */
     V get(K key);
 
     /**
-     * 获取缓存Key集合
+     * Get cache key set
      *
-     * @return Key集合
+     * @return Key set
      */
     Set<K> getKeys();
 
     /**
-     * 更新缓存数据
+     * Update cached data
      *
-     * @param key   缓存key
-     * @param value 缓存value
-     * @return 更新后的缓存value
+     * @param key   key
+     * @param value value
+     * @return Updated cache value
      */
     V update(K key, V value);
 
     /**
-     * 删除指定key缓存
+     * Delete the specified key cache
      *
      * @param key key
      */
     void remove(K key);
 
     /**
-     * 清除全部缓存
+     * Clear all caches
      */
     void removeAll();
 
     /**
-     * 缓存持久化接口 将缓存信息持久化到本地
+     * The cache persistence interface will persist the cache information locally
      */
     void persistent();
+
+    /**
+     * The service starts to recover cached information. Recover historical data based on persistent cached data
+     * Scan the cache file at the specified location, parse the JSON string, and deserialize the current cache data
+     */
+    void recover();
 }

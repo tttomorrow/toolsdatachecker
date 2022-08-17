@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.modules.task;
 
 import com.alibaba.fastjson.JSON;
@@ -24,37 +39,40 @@ public class TaskManagerServiceImpl implements TaskManagerService {
     private TableStatusRegister tableStatusRegister;
 
     /**
-     * 刷新指定任务的数据抽取表执行状态
+     * Refresh the execution status of the data extraction table of the specified task
      *
-     * @param tableName 表名称
-     * @param endpoint  端点类型 {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param tableName tableName
+     * @param endpoint  endpoint {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
      */
     @Override
-    public void refushTableExtractStatus(String tableName, Endpoint endpoint) {
-        log.info("check server refush endpoint=[{}]  extract tableName=[{}] status=[{}]  ", endpoint.getDescription(), tableName, endpoint.getCode());
+    public void refreshTableExtractStatus(String tableName, Endpoint endpoint) {
+        log.info("check server refresh endpoint=[{}]  extract tableName=[{}] status=[{}]  ", endpoint.getDescription(),
+            tableName, endpoint.getCode());
         tableStatusRegister.update(tableName, endpoint.getCode());
     }
 
     /**
-     * 初始化任务状态
+     * Initialize task status
      *
-     * @param tableNameList 表名称列表
+     * @param tableNameList table name list
      */
     @Override
     public void initTableExtractStatus(List<String> tableNameList) {
-        if (tableStatusRegister.isEmpty() || tableStatusRegister.isCheckComplated()) {
+        if (tableStatusRegister.isEmpty() || tableStatusRegister.isCheckCompleted()) {
             cleanTaskStatus();
             tableStatusRegister.init(new HashSet<>(tableNameList));
-            log.info("check server init extract tableNameList=[{}] status= ", JSON.toJSONString(tableNameList));
+            log.info("check server init extract tableNameList=[{}] ", JSON.toJSONString(tableNameList));
         } else {
-            //上次校验流程正在执行，不能重新初始化表校验状态数据！
-            throw new CheckingException("The last verification process is being executed, and the table verification status data cannot be reinitialized!");
+            // The last verification process is being executed,
+            // and the table verification status data cannot be reinitialized!
+            throw new CheckingException("The last verification process is being executed,"
+                + " and the table verification status data cannot be reinitialized!");
         }
 
     }
 
     /**
-     * 清理任务状态信息
+     * Clean up task status information
      */
     @Override
     public void cleanTaskStatus() {

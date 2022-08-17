@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.controller;
 
 import org.junit.jupiter.api.Test;
@@ -17,10 +32,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+/**
+ * TaskStatusControllerTest
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/7/20
+ * @since ：11
+ */
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(TaskStatusController.class)
 class TaskStatusControllerTest {
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -31,15 +52,13 @@ class TaskStatusControllerTest {
     void testRefushTaskExtractStatus() throws Exception {
         // Setup
         // Run the test
-        final MockHttpServletResponse response = mockMvc.perform(post("/table/extract/status")
-                .param("tableName", "tableName")
-                .param("endpoint", Endpoint.SOURCE.name())
-                .accept(MediaType.APPLICATION_JSON))
-                .andReturn().getResponse();
+        final MockHttpServletResponse response = mockMvc.perform(
+            post("/table/extract/status").param("tableName", "tableName").param("endpoint", Endpoint.SOURCE.name())
+                                         .accept(MediaType.APPLICATION_JSON)).andReturn().getResponse();
 
         // Verify the results
         assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
         assertThat(response.getContentAsString()).isEqualTo("");
-        verify(taskManagerService).refushTableExtractStatus("tableName", Endpoint.SOURCE);
+        verify(taskManagerService).refreshTableExtractStatus("tableName", Endpoint.SOURCE);
     }
 }

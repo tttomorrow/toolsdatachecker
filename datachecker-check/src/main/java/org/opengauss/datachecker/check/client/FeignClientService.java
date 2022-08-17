@@ -1,6 +1,21 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.client;
 
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConifg;
+import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
@@ -19,7 +34,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 实现FeignClient 接口调用封装
+ * Implement feign client interface call encapsulation
  *
  * @author ：wangchao
  * @date ：Created in 2022/5/29
@@ -34,9 +49,9 @@ public class FeignClientService {
     private ExtractSinkFeignClient extractSinkClient;
 
     /**
-     * 根据端点类型获取指定FeignClient
+     * Get the specified feign client according to the endpoint type
      *
-     * @param endpoint 端点类型
+     * @param endpoint endpoint type
      * @return feignClient
      */
     public ExtractFeignClient getClient(@NonNull Endpoint endpoint) {
@@ -44,20 +59,20 @@ public class FeignClientService {
     }
 
     /**
-     * 根据端点类型 获取对应健康状态
+     * Service health check
      *
-     * @param endpoint 端点类型
-     * @return 健康状态
+     * @param endpoint endpoint type
+     * @return Return the corresponding result of the interface
      */
     public Result<Void> health(@NonNull Endpoint endpoint) {
         return getClient(endpoint).health();
     }
 
     /**
-     * 加载指定端点的数据库元数据信息
+     * Endpoint loading metadata information
      *
-     * @param endpoint 端点类型
-     * @return 元数据结果
+     * @param endpoint endpoint type
+     * @return Return metadata
      */
     public Map<String, TableMetadata> queryMetaDataOfSchema(@NonNull Endpoint endpoint) {
         Result<Map<String, TableMetadata>> result = getClient(endpoint).queryMetaDataOfSchema();
@@ -65,74 +80,94 @@ public class FeignClientService {
             Map<String, TableMetadata> metadata = result.getData();
             return metadata;
         } else {
-            //调度源端服务获取数据库元数据信息异常
-            throw new DispatchClientException(endpoint, "The scheduling source service gets the database metadata information abnormally," + result.getMessage());
+            // Exception in scheduling source side service to obtain database metadata information
+            throw new DispatchClientException(endpoint,
+                "The scheduling source service gets the database metadata information abnormally," + result
+                    .getMessage());
         }
     }
 
-
     /**
-     * 抽取任务构建
+     * Extraction task construction
      *
-     * @param endpoint  端点类型
-     * @param processNo 执行进程编号
+     * @param endpoint  endpoint type
+     * @param processNo Execution process number
+     * @return Return to build task collection
      */
     public List<ExtractTask> buildExtractTaskAllTables(@NonNull Endpoint endpoint, String processNo) {
         Result<List<ExtractTask>> result = getClient(endpoint).buildExtractTaskAllTables(processNo);
         if (result.isSuccess()) {
             return result.getData();
         } else {
-            //调度抽取服务构建任务异常
-            throw new DispatchClientException(endpoint, "The scheduling extraction service construction task is abnormal," + result.getMessage());
-        }
-    }
-
-    public boolean buildExtractTaskAllTables(@NonNull Endpoint endpoint, String processNo, @NonNull List<ExtractTask> taskList) {
-        Result<Void> result = getClient(endpoint).buildExtractTaskAllTables(processNo, taskList);
-        if (result.isSuccess()) {
-            return result.isSuccess();
-        } else {
-            //调度抽取服务构建任务异常
-            throw new DispatchClientException(endpoint, "The scheduling extraction service construction task is abnormal," + result.getMessage());
+            // Scheduling extraction service construction task exception
+            throw new DispatchClientException(endpoint,
+                "The scheduling extraction service construction task is abnormal," + result.getMessage());
         }
     }
 
     /**
-     * 全量抽取业务处理流程
+     * Destination extraction task configuration
      *
-     * @param endpoint  端点类型
-     * @param processNo 执行进程序号
-     * @return 执行结果
+     * @param endpoint  endpoint type
+     * @param processNo Execution process number
+     * @param taskList  Source side task list
+     * @return Request results
+     */
+    public boolean buildExtractTaskAllTables(@NonNull Endpoint endpoint, String processNo,
+        @NonNull List<ExtractTask> taskList) {
+        Result<Void> result = getClient(endpoint).buildExtractTaskAllTables(processNo, taskList);
+        if (result.isSuccess()) {
+            return result.isSuccess();
+        } else {
+            // Scheduling extraction service construction task exception
+            throw new DispatchClientException(endpoint,
+                "The scheduling extraction service construction task is abnormal," + result.getMessage());
+        }
+    }
+
+    /**
+     * Full extraction business processing flow
+     *
+     * @param endpoint  endpoint type
+     * @param processNo Execution process sequence number
+     * @return Request results
      */
     public boolean execExtractTaskAllTables(@NonNull Endpoint endpoint, String processNo) {
         Result<Void> result = getClient(endpoint).execExtractTaskAllTables(processNo);
         if (result.isSuccess()) {
             return result.isSuccess();
         } else {
-            //调度抽取服务执行任务失败
-            throw new DispatchClientException(endpoint, "Scheduling extraction service execution task failed," + result.getMessage());
+            // Scheduling extraction service execution task failed
+            throw new DispatchClientException(endpoint,
+                "Scheduling extraction service execution task failed," + result.getMessage());
         }
     }
 
     /**
-     * 清理对应端点构建的任务缓存信息 ，任务重置
+     * Clean up the opposite environment
      *
-     * @param endpoint 端点类型
+     * @param endpoint  endpoint type
+     * @param processNo Execution process sequence number
      */
     public void cleanEnvironment(@NonNull Endpoint endpoint, String processNo) {
         getClient(endpoint).cleanEnvironment(processNo);
     }
 
+    /**
+     * Clear the extraction end task cache
+     *
+     * @param endpoint endpoint type
+     */
     public void cleanTask(@NonNull Endpoint endpoint) {
         getClient(endpoint).cleanTask();
     }
 
     /**
-     * 查询指定表对应的Topic信息
+     * Query the topic information corresponding to the specified table
      *
-     * @param endpoint  端点类型
-     * @param tableName 表名称
-     * @return Topic信息
+     * @param endpoint  endpoint type
+     * @param tableName tableName
+     * @return Topic information
      */
     public Topic queryTopicInfo(@NonNull Endpoint endpoint, String tableName) {
         Result<Topic> result = getClient(endpoint).queryTopicInfo(tableName);
@@ -143,6 +178,13 @@ public class FeignClientService {
         }
     }
 
+    /**
+     * Get incremental topic information
+     *
+     * @param endpoint  endpoint type
+     * @param tableName table Name
+     * @return Return the topic information corresponding to the table
+     */
     public Topic getIncrementTopicInfo(@NonNull Endpoint endpoint, String tableName) {
         Result<Topic> result = getClient(endpoint).getIncrementTopicInfo(tableName);
         if (result.isSuccess()) {
@@ -152,7 +194,18 @@ public class FeignClientService {
         }
     }
 
-    public List<String> buildRepairDml(Endpoint endpoint, String schema, String tableName, DML dml, Set<String> diffSet) {
+    /**
+     * Build repair statements based on parameters
+     *
+     * @param endpoint  endpoint type
+     * @param schema    The corresponding schema of the end DB to be repaired
+     * @param tableName table Name
+     * @param dml       Repair type {@link DML}
+     * @param diffSet   Differential primary key set
+     * @return Return to repair statement collection
+     */
+    public List<String> buildRepairDml(Endpoint endpoint, String schema, String tableName, DML dml,
+        Set<String> diffSet) {
         Result<List<String>> result = getClient(endpoint).buildRepairDml(schema, tableName, dml, diffSet);
         if (result.isSuccess()) {
             return result.getData();
@@ -162,15 +215,21 @@ public class FeignClientService {
     }
 
     /**
-     * 增量校验日志通知
+     * Issue incremental log data
      *
-     * @param endpoint    端点类型
-     * @param dataLogList 增量校验日志
+     * @param endpoint    endpoint type
+     * @param dataLogList incremental log data
      */
     public void notifyIncrementDataLogs(Endpoint endpoint, List<SourceDataLog> dataLogList) {
         getClient(endpoint).notifyIncrementDataLogs(dataLogList);
     }
 
+    /**
+     * Query the schema information of the extraction end database
+     *
+     * @param endpoint endpoint type
+     * @return schema
+     */
     public String getDatabaseSchema(Endpoint endpoint) {
         Result<String> result = getClient(endpoint).getDatabaseSchema();
         if (result.isSuccess()) {
@@ -180,7 +239,13 @@ public class FeignClientService {
         }
     }
 
-    public void configIncrementCheckEnvironment(Endpoint endpoint, IncrementCheckConifg conifg) {
+    /**
+     * Configure the configuration information related to debezium in the incremental verification scenario
+     *
+     * @param endpoint endpoint type
+     * @param conifg   Debezium related configurations
+     */
+    public void configIncrementCheckEnvironment(Endpoint endpoint, IncrementCheckConfig conifg) {
         Result<Void> result = getClient(endpoint).configIncrementCheckEnvironment(conifg);
         if (!result.isSuccess()) {
             throw new CheckingException(result.getMessage());

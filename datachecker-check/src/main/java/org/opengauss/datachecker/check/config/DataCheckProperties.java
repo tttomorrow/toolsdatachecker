@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.config;
 
 import com.alibaba.fastjson.annotation.JSONType;
@@ -28,42 +43,52 @@ public class DataCheckProperties {
     @PostConstruct
     private void checkUrl() {
         if (Objects.equals(sourceUri, sinkUri)) {
-            // 源端和宿端的访问地址冲突，请重新配置。
-            throw new CheckingAddressConflictException("The access addresses of the source end and the destination end conflict, please reconfigure.");
+            // The access addresses of the source end and the destination end conflict, please reconfigure.
+            throw new CheckingAddressConflictException(
+                "The access addresses of the source end and the destination end conflict, please reconfigure.");
         }
     }
 
-
     /**
-     * 数据校验服务地址：源端 源端地址不能为空
+     * Data verification service address: the source address cannot be empty
      */
     @NotEmpty(message = "Source address cannot be empty")
     private String sourceUri;
 
     /**
-     * 数据校验服务地址：宿端 宿端地址不能为空")
+     * Data verification service address: the destination address cannot be empty ")
      */
     @NotEmpty(message = "The destination address cannot be empty")
     private String sinkUri;
 
     /**
-     * 桶容量 默认容量大小为 1
+     * Bucket capacity default capacity size is 1
      */
     @Range(min = 1, message = "The minimum barrel capacity is 1")
     private int bucketExpectCapacity = 1;
 
     /**
-     * 健康检查地址
+     * Health check address
      */
     private String healthCheckApi;
     /**
-     * 数据结果根目录,数据校验结果根目录不能为空
+     * The root directory of data results and the root directory of data verification results cannot be empty
      */
     @NotEmpty(message = "The root directory of data verification results cannot be empty")
     private String dataPath;
 
     /**
-     * 是否增加黑白名单配置
+     * Add black and white list configuration
      */
     private CheckBlackWhiteMode blackWhiteMode;
+    /**
+     * statistical-enable : Configure whether to perform verification time statistics.
+     * If true, the execution time of the verification process will be statistically analyzed automatically.
+     */
+    private boolean canStatisticalEnable;
+    /**
+     * auto-clean-environment： Configure whether to automatically clean the execution environment.
+     * If set to true, the environment will be cleaned automatically after the full verification process is completed.
+     */
+    private boolean canAutoCleanEnvironment;
 }

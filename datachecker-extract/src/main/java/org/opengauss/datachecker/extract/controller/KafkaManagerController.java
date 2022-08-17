@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -5,7 +20,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.opengauss.datachecker.common.util.IdWorker;
+import org.opengauss.datachecker.common.util.IdGenerator;
 import org.opengauss.datachecker.common.web.Result;
 import org.opengauss.datachecker.extract.kafka.KafkaConsumerService;
 import org.opengauss.datachecker.extract.kafka.KafkaManagerService;
@@ -17,11 +32,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-
+/**
+ * Data extraction service: Kafka management service
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/6/23
+ * @since ：11
+ */
 @Tag(name = "KafkaManagerController", description = "Data extraction service: Kafka management service")
 @RestController
 public class KafkaManagerController {
-
     @Autowired
     private KafkaManagerService kafkaManagerService;
     @Autowired
@@ -36,87 +56,116 @@ public class KafkaManagerController {
      */
     @Operation(summary = "Query for specified topic data")
     @GetMapping("/extract/query/topic/data")
-    public Result<List<RowDataHash>> queryTopicData(@Parameter(name = "tableName", description = "table Name")
-                                                    @RequestParam("tableName") String tableName,
-                                                    @Parameter(name = "partitions", description = "kafka partition number")
-                                                    @RequestParam("partitions") int partitions) {
+    public Result<List<RowDataHash>> queryTopicData(
+        @Parameter(name = "tableName", description = "table Name") @RequestParam("tableName") String tableName,
+        @Parameter(name = "partitions", description = "kafka partition number") @RequestParam("partitions")
+            int partitions) {
         return Result.success(kafkaConsumerService.getTopicRecords(tableName, partitions));
     }
 
     /**
-     * 查询指定增量topic数据
+     * Query the specified incremental topic data
      *
-     * @param tableName 表名称
-     * @return topic数据
+     * @param tableName tableName
+     * @return topic data
      */
-    @Operation(summary = "查询指定增量topic数据")
+    @Operation(summary = "Query the specified incremental topic data")
     @GetMapping("/extract/query/increment/topic/data")
-    public Result<List<RowDataHash>> queryIncrementTopicData(@Parameter(name = "tableName", description = "表名称")
-                                                             @RequestParam("tableName") String tableName) {
+    public Result<List<RowDataHash>> queryIncrementTopicData(
+        @Parameter(name = "tableName", description = "tableName") @RequestParam("tableName") String tableName) {
         return Result.success(kafkaConsumerService.getIncrementTopicRecords(tableName));
     }
 
     /**
-     * 根据表名称，创建topic
+     * Create topic according to the table name
      *
-     * @param tableName  表名称
-     * @param partitions 分区总数
-     * @return 创建成功后的topic名称
+     * @param tableName  tableName
+     * @param partitions partitions
+     * @return Topic name after successful creation
      */
-    @Operation(summary = "根据表名称创建topic", description = "用于测试kafka topic创建")
+    @Operation(summary = "Create topic according to the table name", description = "Used to test Kafka topic creation")
     @PostMapping("/extract/create/topic")
-    public Result<String> createTopic(@Parameter(name = "tableName", description = "表名称")
-                                      @RequestParam("tableName") String tableName,
-                                      @Parameter(name = "partitions", description = "kafka分区总数")
-                                      @RequestParam("partitions") int partitions) {
-        String process = IdWorker.nextId36();
+    public Result<String> createTopic(
+        @Parameter(name = "tableName", description = "tableName") @RequestParam("tableName") String tableName,
+        @Parameter(name = "partitions", description = "Total number of Kafka partitions") @RequestParam("partitions")
+            int partitions) {
+        String process = IdGenerator.nextId36();
         return Result.success(kafkaManagerService.createTopic(process, tableName, partitions));
     }
 
     /**
-     * 查询所有的topic名称列表
+     * Query the list of all topic names
      *
-     * @return topic名称列表
+     * @return Topic name list
      */
-    @Operation(summary = "查询当前端点所有的topic名称列表")
+    @Operation(summary = "Query the list of all topic names")
     @GetMapping("/extract/query/topic")
     public Result<List<String>> queryTopicData() {
         return Result.success(kafkaManagerService.getAllTopic());
     }
 
-    @Operation(summary = "查询指定表名的Topic信息")
+    /**
+     * Query topic information of the specified table name
+     *
+     * @param tableName tableName
+     * @return kafka topic info
+     */
+    @Operation(summary = "Query topic information of the specified table name")
     @GetMapping("/extract/topic/info")
-    public Result<Topic> queryTopicInfo(@Parameter(name = "tableName", description = "表名称")
-                                        @RequestParam(name = "tableName") String tableName) {
+    public Result<Topic> queryTopicInfo(
+        @Parameter(name = "tableName", description = "tableName") @RequestParam(name = "tableName") String tableName) {
         return Result.success(kafkaManagerService.getTopic(tableName));
     }
 
-    @Operation(summary = "查询指定表名的Topic信息")
+    /**
+     * Query topic information of the specified table name
+     *
+     * @param tableName tableName
+     * @return kafka topic info
+     */
+    @Operation(summary = "Query topic information of the specified table name")
     @GetMapping("/extract/increment/topic/info")
-    public Result<Topic> getIncrementTopicInfo(@Parameter(name = "tableName", description = "表名称")
-                                               @RequestParam(name = "tableName") String tableName) {
+    public Result<Topic> getIncrementTopicInfo(
+        @Parameter(name = "tableName", description = "tableName") @RequestParam(name = "tableName") String tableName) {
         return Result.success(kafkaManagerService.getIncrementTopicInfo(tableName));
     }
 
-    @Operation(summary = "清理所有数据抽取相关topic", description = "清理kafka中 前缀TOPIC_EXTRACT_Endpoint_process_ 的所有Topic")
+    /**
+     * Clean up all topics related to data extraction
+     *
+     * @param processNo processNo
+     * @return request result
+     */
+    @Operation(summary = "Clean up all topics related to data extraction")
     @PostMapping("/extract/delete/topic/history")
-    public Result<Void> deleteTopic(@Parameter(name = "processNo", description = "校验流程号")
-                                    @RequestParam(name = "processNo") String processNo) {
+    public Result<Void> deleteTopic(
+        @Parameter(name = "processNo", description = "processNo") @RequestParam(name = "processNo") String processNo) {
         kafkaManagerService.deleteTopic(processNo);
         return Result.success();
     }
 
-    @Operation(summary = "清理所有数据抽取相关topic", description = "清理kafka中 前缀TOPIC_EXTRACT_Endpoint_ 的所有Topic")
+    /**
+     * Clean up all topics related to data extraction
+     *
+     * @return request result
+     */
+    @Operation(summary = "Clean up all topics related to data extraction", description = "Clean up all topics in Kafka")
     @PostMapping("/extract/super/delete/topic/history")
     public Result<Void> deleteTopic() {
         kafkaManagerService.deleteTopic();
         return Result.success();
     }
 
-    @Operation(summary = "删除kafka中指定topic", description = "删除kafka中指定topic")
+    /**
+     * Delete the topic specified in Kafka
+     *
+     * @param topicName topicName
+     * @return request result
+     */
+    @Operation(summary = "Delete the topic specified in Kafka", description = "Delete the topic specified in Kafka")
     @PostMapping("/extract/delete/topic")
-    public Result<Void> deleteTopicHistory(@Parameter(name = "topicName", description = "topic名称")
-                                           @RequestParam(name = "topicName") String topicName) {
+    public Result<Void> deleteTopicHistory(
+        @Parameter(name = "topicName", description = "topic Name") @RequestParam(name = "topicName") String topicName) {
         kafkaManagerService.deleteTopicByName(topicName);
         return Result.success();
     }

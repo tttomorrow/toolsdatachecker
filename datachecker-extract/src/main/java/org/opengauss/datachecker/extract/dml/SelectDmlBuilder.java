@@ -1,5 +1,19 @@
-package org.opengauss.datachecker.extract.dml;
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
 
+package org.opengauss.datachecker.extract.dml;
 
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
@@ -20,10 +34,10 @@ import java.util.stream.IntStream;
 public class SelectDmlBuilder extends DmlBuilder {
 
     /**
-     * 构建SQL column 语句片段
+     * build SQL column statement fragment
      *
-     * @param columnsMetas 字段元数据
-     * @return SelectDMLBuilder构建器
+     * @param columnsMetas Field Metadata
+     * @return SelectDMLBuilder
      */
     public SelectDmlBuilder columns(@NotNull List<ColumnsMetaData> columnsMetas) {
         super.buildColumns(columnsMetas);
@@ -31,10 +45,10 @@ public class SelectDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 构建 Schema
+     * build Schema
      *
      * @param schema Schema
-     * @return SelectDMLBuilder构建器
+     * @return SelectDMLBuilder
      */
     public SelectDmlBuilder schema(@NotNull String schema) {
         super.buildSchema(schema);
@@ -42,40 +56,40 @@ public class SelectDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 生成单一主键字段 select columns... from where pk in (参数...) 条件语句
+     * Generate single primary key field SQL: select columns... from where pk in (Parameter...) conditional statement
      *
-     * @param primaryMeta 主键元数据
-     * @return SelectDMLBuilder构建器
+     * @param primaryMeta Primary key metadata
+     * @return SelectDMLBuilder
      */
     public SelectDmlBuilder conditionPrimary(@NonNull ColumnsMetaData primaryMeta) {
-        Assert.isTrue(StringUtils.isNotEmpty(primaryMeta.getColumnName()), "表元数据主键字段名称为空");
-        this.condition = primaryMeta.getColumnName().concat(IN);
+        Assert.isTrue(StringUtils.isNotEmpty(primaryMeta.getColumnName()),
+            "Table metadata primary key field name is empty");
+        condition = primaryMeta.getColumnName().concat(IN);
         return this;
     }
 
     /**
-     * 构建复合主键参数的条件查询语句<p>
+     * Construct conditional query SQL of composite primary key parameters<p>
      * select columns... from table where (pk1,pk2) in ((pk1_val,pk2_val),(pk1_val,pk2_val))<p>
      *
-     * @param primaryMeta
-     * @return SelectDMLBuilder构建器
+     * @param primaryMeta Primary key metadata
+     * @return SelectDMLBuilder
      */
     public SelectDmlBuilder conditionCompositePrimary(@NonNull List<ColumnsMetaData> primaryMeta) {
-        this.condition = buildConditionCompositePrimary(primaryMeta).concat(IN);
+        condition = buildConditionCompositePrimary(primaryMeta).concat(IN);
         return this;
     }
 
-
-
     /**
-     * 构建复合主键参数的条件查询语句 value 参数<p>
+     * Construct the condition of compound primary key parameters to query the value parameter of SQL<p>
      * select columns... from table where (pk1,pk2) in ((pk1_val,pk2_val),(pk1_val,pk2_val))<p>
      *
-     * @param primaryMetas  主键元数据信息
-     * @param compositeKeys 主键值列表
-     * @return SelectDMLBuilder构建器
+     * @param primaryMetas  Primary key metadata
+     * @param compositeKeys composite Keys value
+     * @return SelectDMLBuilder
      */
-    public List<Object[]> conditionCompositePrimaryValue(@NonNull List<ColumnsMetaData> primaryMetas, List<String> compositeKeys) {
+    public List<Object[]> conditionCompositePrimaryValue(@NonNull List<ColumnsMetaData> primaryMetas,
+        List<String> compositeKeys) {
         List<Object[]> batchParam = new ArrayList<>();
         final int size = primaryMetas.size();
         compositeKeys.forEach(compositeKey -> {
@@ -92,24 +106,20 @@ public class SelectDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * 构建 tableName
+     * build tableName
      *
      * @param tableName tableName
-     * @return SelectDMLBuilder构建器
+     * @return SelectDMLBuilder
      */
     public SelectDmlBuilder tableName(@NotNull String tableName) {
         super.buildTableName(tableName);
         return this;
     }
 
-
     public String build() {
         StringBuffer sb = new StringBuffer();
-        sb.append(Fragment.SELECT).append(columns).append(Fragment.FROM)
-                .append(schema).append(Fragment.LINKER).append(tableName)
-                .append(Fragment.WHERE).append(condition)
-                .append(Fragment.END)
-        ;
+        sb.append(Fragment.SELECT).append(columns).append(Fragment.FROM).append(schema).append(Fragment.LINKER)
+          .append(tableName).append(Fragment.WHERE).append(condition).append(Fragment.END);
         return sb.toString();
     }
 

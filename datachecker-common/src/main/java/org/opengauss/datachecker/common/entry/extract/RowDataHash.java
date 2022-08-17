@@ -1,25 +1,53 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.entry.extract;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
+/**
+ * RowDataHash
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/6/1
+ * @since ：11
+ */
 @Data
 @EqualsAndHashCode
 @Accessors(chain = true)
 public class RowDataHash {
 
     /**
-     * 主键为数字类型则 转字符串，表主键为联合主键，则当前属性为表主键联合字段对应值 拼接字符串 以下划线拼接
+     * <pre>
+     * If the primary key is a numeric type, it will be converted to a string.
+     * If the table primary key is a joint primary key, the current attribute will be a table primary key,
+     * and the corresponding values of the joint fields will be spliced. String splicing will be underlined
+     * </pre>
      */
     private String primaryKey;
 
     /**
-     * 主键对应值的哈希值
+     * Hash value of the corresponding value of the primary key
      */
     private long primaryKeyHash;
     /**
-     * 当前记录的总体哈希值
+     * Total hash value of the current record
      */
     private long rowHash;
+
+    private int partition;
 }

@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.common.util;
 
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +30,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class ThreadUtil {
     /**
-     * 线程休眠
+     * Thread hibernation
      *
-     * @param millisTime 休眠时间毫秒
+     * @param millisTime Sleep time MS
      */
     public static void sleep(int millisTime) {
         try {
@@ -28,10 +43,7 @@ public class ThreadUtil {
     }
 
     public static ThreadPoolExecutor newSingleThreadExecutor() {
-        return new ThreadPoolExecutor(1, 1, 60L, TimeUnit.SECONDS,
-                new LinkedBlockingDeque<>(100),
-                Executors.defaultThreadFactory(),
-                new ThreadPoolExecutor.DiscardOldestPolicy());
-
+        return new ThreadPoolExecutor(1, 1, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100),
+            Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardOldestPolicy());
     }
 }

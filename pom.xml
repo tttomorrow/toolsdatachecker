@@ -30,6 +30,7 @@
         <springdoc.openapi.ui.version>1.6.8</springdoc.openapi.ui.version>
         <zero.allocation.hashing.version>0.15</zero.allocation.hashing.version>
         <mysql.connector.java.version>8.0.29</mysql.connector.java.version>
+        <opengauss.jdbc.version>3.0.0</opengauss.jdbc.version>
     </properties>
     <modules>
         <module>datachecker-common</module>
@@ -60,6 +61,11 @@
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql.connector.java.version}</version>
                 <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.opengauss</groupId>
+                <artifactId>opengauss-jdbc</artifactId>
+                <version>${opengauss.jdbc.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>

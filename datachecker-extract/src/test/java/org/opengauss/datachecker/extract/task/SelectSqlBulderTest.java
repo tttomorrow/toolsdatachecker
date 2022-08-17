@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.task;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -9,15 +24,20 @@ import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+/**
+ * SelectSqlBulderTest
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/5/14
+ * @since ：11
+ */
 @ExtendWith(MockitoExtension.class)
 class SelectSqlBulderTest {
-
     @Mock
     private TableMetadata mockTableMetadata;
 
@@ -25,12 +45,11 @@ class SelectSqlBulderTest {
 
     @BeforeEach
     void setUp() {
-        selectSqlBulderUnderTest = new SelectSqlBulder(mockTableMetadata, "test",0L, 0L);
+        selectSqlBulderUnderTest = new SelectSqlBulder(mockTableMetadata, "test", 0L, 0L);
     }
 
     @Test
     void testBuilder() {
-
         // Configure TableMetadata.getColumnsMetas(...).
         final ColumnsMetaData columnsMeta1 = new ColumnsMetaData();
         columnsMeta1.setTableName("tableName");
@@ -44,13 +63,12 @@ class SelectSqlBulderTest {
         // Run the test
         final String result = selectSqlBulderUnderTest.builder();
         // Verify the results
-        assertThat(result).isEqualTo("SELECT columnName1 FROM tableName");
+        assertThat(result).isEqualTo("SELECT columnName1 FROM test.tableName");
     }
-
 
     @Test
     void testBuilderOffSet() {
-        selectSqlBulderUnderTest = new SelectSqlBulder(mockTableMetadata, "test",0L, 1000L);
+        selectSqlBulderUnderTest = new SelectSqlBulder(mockTableMetadata, "test", 0L, 1000L);
         // Setup
         // Configure TableMetadata.getPrimaryMetas(...).
         final ColumnsMetaData columnsMetaPri = new ColumnsMetaData();
@@ -75,12 +93,14 @@ class SelectSqlBulderTest {
         // Run the test
         final String result = selectSqlBulderUnderTest.builder();
         // Verify the results
-        assertThat(result).isEqualTo("SELECT columnName1,columnName2 FROM tableName WHERE columnName1 IN (SELECT t.columnName1 FROM (SELECT columnName1 FROM tableName LIMIT 0,1000) t)");
+        assertThat(result).isEqualTo("SELECT columnName1,columnName2 FROM test.tableName WHERE columnName1 IN "
+            + "(SELECT t.columnName1 FROM (SELECT columnName1 FROM test.tableName order by columnName1"
+            + "  LIMIT 0,1000) t)");
     }
 
     @Test
     void testBuilderMuliPrimaryLeyOffSet() {
-        selectSqlBulderUnderTest = new SelectSqlBulder(mockTableMetadata, "test",0L, 1000L);
+        selectSqlBulderUnderTest = new SelectSqlBulder(mockTableMetadata, "test", 0L, 1000L);
         // Setup
         // Configure TableMetadata.getPrimaryMetas(...).
         final ColumnsMetaData columnsMetaPri = new ColumnsMetaData();
@@ -107,6 +127,8 @@ class SelectSqlBulderTest {
         // Run the test
         final String result = selectSqlBulderUnderTest.builder();
         // Verify the results
-        assertThat(result).isEqualTo("SELECT a.columnName1,a.columnName2 FROM tableName a  RIGHT JOIN  (SELECT columnName1,columnName2 FROM tableName LIMIT 0,1000) b ON a.columnName1=b.columnName1 and a.columnName2=b.columnName2");
+        assertThat(result).isEqualTo("SELECT a.columnName1,a.columnName2 FROM test.tableName a  RIGHT JOIN "
+            + " (SELECT columnName1,columnName2 FROM test.tableName order by columnName1,columnName2 LIMIT 0,1000) b"
+            + " ON a.columnName1=b.columnName1 and a.columnName2=b.columnName2");
     }
 }

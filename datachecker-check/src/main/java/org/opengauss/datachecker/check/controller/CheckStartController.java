@@ -1,55 +1,97 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.check.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.check.service.CheckService;
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConifg;
+import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * @author ：wangchao
  * @date ：Created in 2022/5/25
  * @since ：11
  */
-@Tag(name = "CheckStartController", description = "校验服务-校验服务启动命令")
+@Tag(name = "CheckStartController", description = "Verification service - verification service start command")
 @Validated
 @RestController
 @RequestMapping
 public class CheckStartController {
-
     @Autowired
     private CheckService checkService;
 
     /**
-     * 开启校验
+     * Turn on verification
+     *
+     * @param checkMode checkMode {@value CheckMode#API_DESCRIPTION}
+     * @return verification process info
      */
-    @Operation(summary = "开启校验")
+    @Operation(summary = "Turn on verification")
     @PostMapping("/start/check")
-    public Result<String> statCheck(@Parameter(name = "checkMode", description = CheckMode.API_DESCRIPTION)
-                                    @RequestParam("checkMode") CheckMode checkMode) {
+    public Result<String> statCheck(
+        @Parameter(name = "checkMode", description = CheckMode.API_DESCRIPTION) @RequestParam("checkMode")
+            CheckMode checkMode) {
         return Result.success(checkService.start(checkMode));
     }
 
-    @Operation(summary = "增量校验配置初始化")
+    /**
+     * Incremental verification configuration initialization
+     *
+     * @param config Debezium incremental migration verification initialization configuration
+     * @return request result
+     */
+    @Operation(summary = "Incremental verification configuration initialization")
     @PostMapping("/increment/check/config")
-    public Result<Void> incrementCheckConifg(@RequestBody IncrementCheckConifg incrementCheckConifg) {
-        checkService.incrementCheckConifg(incrementCheckConifg);
+    public Result<Void> incrementCheckConfig(@RequestBody IncrementCheckConfig config) {
+        checkService.incrementCheckConfig(config);
         return Result.success();
     }
 
-    @Operation(summary = "停止校验服务 并 清理校验服务", description = "对当前进程中的校验状态，以及抽取的数据等相关信息进行全面清理。")
+    /**
+     * <pre>
+     * Stop the verification service and clean up the verification service.
+     * Comprehensively clean up the verification status in the current process
+     * and the extracted data and other relevant information"
+     * </pre>
+     *
+     * @return request result
+     */
     @PostMapping("/stop/clean/check")
     public Result<Void> cleanCheck() {
         checkService.cleanCheck();
         return Result.success();
     }
 
-    @Operation(summary = "查询当前校验服务进程编号")
+    /**
+     * Query the current verification service process number
+     *
+     * @return process number
+     */
+    @Operation(summary = "Query the current verification service process number")
     @GetMapping("/get/check/process")
     public Result<String> getCurrentCheckProcess() {
         return Result.success(checkService.getCurrentCheckProcess());

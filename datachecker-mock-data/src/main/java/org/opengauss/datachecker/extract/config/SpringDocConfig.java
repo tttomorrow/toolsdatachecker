@@ -1,10 +1,25 @@
+/*
+ * Copyright (c) 2022-2022 Huawei Technologies Co.,Ltd.
+ *
+ * openGauss is licensed under Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *
+ *           http://license.coscl.org.cn/MulanPSL2
+ *
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
+ * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
+ * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ */
+
 package org.opengauss.datachecker.extract.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.parameters.HeaderParameter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.springdoc.core.customizers.OpenApiCustomiser;
+import org.opengauss.datachecker.common.exception.CommonException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.ReflectionUtils;
@@ -16,45 +31,45 @@ import java.lang.reflect.Field;
 import java.util.List;
 
 /**
- * swagger2配置
- * http://localhost:8080/swagger-ui/index.html
+ * swagger2 configuration
  *
  * @author ：wangchao
  * @date ：Created in 2022/5/17
  * @since ：11
  */
-
-/**
- * 2021/8/13
- */
-
+@Slf4j
 @Configuration
 public class SpringDocConfig implements WebMvcConfigurer {
+    /**
+     * mallTinyOpenAPI
+     *
+     * @return OpenAPI
+     */
     @Bean
     public OpenAPI mallTinyOpenAPI() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("数据打桩服务")
-                        .description("数据打桩服务 自动化执行测试表创建以及数据插入 API")
-                        .version("v1.0.0"));
+        return new OpenAPI().info(new Info().title("Data Piling Service").description(
+            "Data Picking Service Automation Execution Test Table Creation and Data Insertion API").version("v1.0.0"));
     }
 
     /**
-     * 通用拦截器排除设置，所有拦截器都会自动加springdoc-opapi相关的资源排除信息，不用在应用程序自身拦截器定义的地方去添加，算是良心解耦实现。
+     * registry Interceptors
+     *
+     * @param registry registry Interceptors
      */
     @SuppressWarnings("unchecked")
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         try {
             Field registrationsField = FieldUtils.getField(InterceptorRegistry.class, "registrations", true);
-            List<InterceptorRegistration> registrations = (List<InterceptorRegistration>) ReflectionUtils.getField(registrationsField, registry);
+            List<InterceptorRegistration> registrations =
+                (List<InterceptorRegistration>) ReflectionUtils.getField(registrationsField, registry);
             if (registrations != null) {
                 for (InterceptorRegistration interceptorRegistration : registrations) {
                     interceptorRegistration.excludePathPatterns("/springdoc**/**");
                 }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (CommonException e) {
+            log.error("swagger2 configuration addInterceptors error");
         }
     }
 }
