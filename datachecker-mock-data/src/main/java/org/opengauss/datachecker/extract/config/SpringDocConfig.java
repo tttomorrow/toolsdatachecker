@@ -46,7 +46,7 @@ public class SpringDocConfig implements WebMvcConfigurer {
      * @return OpenAPI
      */
     @Bean
-    public OpenAPI mallTinyOpenAPI() {
+    public OpenAPI mallTinyOpenApi() {
         return new OpenAPI().info(new Info().title("Data Piling Service").description(
             "Data Picking Service Automation Execution Test Table Creation and Data Insertion API").version("v1.0.0"));
     }

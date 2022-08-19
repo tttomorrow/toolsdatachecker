@@ -27,6 +27,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * MetaDataCache
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/7/1
+ * @since ：11
+ */
 @Slf4j
 public class MetaDataCache {
     private static LoadingCache<String, TableMetadata> CACHE = null;

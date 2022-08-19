@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.task;
+package org.opengauss.datachecker.extract.service;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -51,12 +51,12 @@ import java.util.stream.IntStream;
  **/
 @Slf4j
 public class ResultSetHandler {
+    private static final ObjectMapper MAPPER = ObjectMapperWapper.getObjectMapper();
     private static final List<Integer> SQL_TIME_TYPES =
         List.of(Types.DATE, Types.TIME, Types.TIMESTAMP, Types.TIME_WITH_TIMEZONE, Types.TIMESTAMP_WITH_TIMEZONE);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-    private static final ObjectMapper MAPPER = ObjectMapperWapper.getObjectMapper();
 
     /**
      * Convert the current query result set into map according to the metadata information of the result set
@@ -71,9 +71,7 @@ public class ResultSetHandler {
         IntStream.range(0, rsmd.getColumnCount()).forEach(idx -> {
             try {
                 int columnIdx = idx + 1;
-                // Get the column and its corresponding column name
                 String columnLabel = rsmd.getColumnLabel(columnIdx);
-                // Get the corresponding value from the resultset result set according to the column name
                 Object columnValue;
                 final int columnType = rsmd.getColumnType(columnIdx);
                 if (SQL_TIME_TYPES.contains(columnType)) {

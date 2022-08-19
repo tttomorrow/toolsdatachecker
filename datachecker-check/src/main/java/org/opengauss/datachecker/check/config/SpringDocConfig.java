@@ -46,7 +46,7 @@ public class SpringDocConfig implements WebMvcConfigurer {
      * @return OpenAPI
      */
     @Bean
-    public OpenAPI mallTinyOpenAPI() {
+    public OpenAPI mallTinyOpenApi() {
         return new OpenAPI().info(
             new Info().title("data verification").description("Data verification tool data verification API")
                       .version("v1.0.0"));

@@ -56,11 +56,15 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     }
 
     /**
+     * the builder's own abstract method
+     *
      * @return Return the builder's own object
      */
     protected abstract B self();
 
     /**
+     * Execution builder abstract method
+     *
      * @return Execution builder
      */
     public abstract C build();

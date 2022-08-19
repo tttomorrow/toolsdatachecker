@@ -24,6 +24,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import javax.servlet.http.HttpServletRequest;
 
+/**
+ * GlobalCheckingExceptionHandler
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/7/1
+ * @since ：11
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalCheckingExceptionHandler extends GlobalCommonExceptionHandler {

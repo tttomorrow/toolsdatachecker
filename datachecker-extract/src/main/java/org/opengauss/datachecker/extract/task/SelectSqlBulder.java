@@ -120,7 +120,6 @@ public class SelectSqlBulder {
      * @param offset        Fragment query start position fragment query displacement
      * @return Return the constructed select statement
      */
-    //
     private String buildSelectSqlOffset(TableMetadata tableMetadata, long start, long offset) {
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
         List<ColumnsMetaData> primaryMetas = tableMetadata.getPrimaryMetas();

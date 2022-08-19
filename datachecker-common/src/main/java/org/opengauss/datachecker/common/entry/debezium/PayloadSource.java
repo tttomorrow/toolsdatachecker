@@ -13,24 +13,30 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.config;
+package org.opengauss.datachecker.common.entry.debezium;
 
-import lombok.Getter;
-import org.opengauss.datachecker.common.entry.enums.DataBaseType;
-import org.opengauss.datachecker.common.entry.enums.DataSourceType;
-import org.springframework.context.annotation.Configuration;
+import lombok.Data;
 
 /**
- * ExtractConfig
+ * PayloadSource
  *
  * @author ：wangchao
- * @date ：Created in 2022/7/1
+ * @date ：Created in 2022/6/30
  * @since ：11
  */
-@Configuration
-@Getter
-public class ExtractConfig {
-    private final String schema = "test";
-    private final DataSourceType dataSourceType = DataSourceType.Source;
-    private final DataBaseType databaseType = DataBaseType.MS;
+@Data
+public class PayloadSource {
+    private String version;
+    private String connector;
+    private String name;
+    private long ts_ms;
+    private boolean snapshot;
+    private String db;
+    private String sequence;
+    private String schema;
+    private String table;
+    private String txId;
+    private String scn;
+    private String commit_scn;
+    private String lcr_position;
 }

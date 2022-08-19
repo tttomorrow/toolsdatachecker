@@ -16,13 +16,18 @@
 package org.opengauss.datachecker.common.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * ThreadUtil
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/31
  * @since ：11
@@ -42,8 +47,22 @@ public class ThreadUtil {
         }
     }
 
+    /**
+     * Custom thread pool construction
+     *
+     * @return thread pool
+     */
     public static ThreadPoolExecutor newSingleThreadExecutor() {
         return new ThreadPoolExecutor(1, 1, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100),
             Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardOldestPolicy());
+    }
+
+    /**
+     * Custom scheduled task single thread
+     *
+     * @return Scheduled task single thread
+     */
+    public static ScheduledExecutorService newSingleThreadScheduledExecutor() {
+        return new ScheduledThreadPoolExecutor(1, new BasicThreadFactory.Builder().daemon(true).build());
     }
 }

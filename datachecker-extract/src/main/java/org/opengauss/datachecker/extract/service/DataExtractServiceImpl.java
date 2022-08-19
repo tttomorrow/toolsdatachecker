@@ -67,6 +67,13 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+/**
+ * DataExtractServiceImpl
+ *
+ * @author ：wangchao
+ * @date ：Created in 2022/7/1
+ * @since ：11
+ */
 @Slf4j
 @Service
 @DependsOn("extractThreadExecutor")
@@ -196,7 +203,7 @@ public class DataExtractServiceImpl implements DataExtractService {
             atomicProcessNo.set(processNo);
 
             // taskCountMap is used to count the number of tasks in table fragment query
-            Map<String, Integer> taskCountMap = new HashMap<>(Constants.InitialCapacity.MAP);
+            Map<String, Integer> taskCountMap = new HashMap<>(Constants.InitialCapacity.EMPTY);
             taskList.forEach(task -> {
                 if (!taskCountMap.containsKey(task.getTableName())) {
                     taskCountMap.put(task.getTableName(), task.getDivisionsTotalNumber());
@@ -392,7 +399,7 @@ public class DataExtractServiceImpl implements DataExtractService {
 
         List<String> tableNameList =
             sourceDataLogs.stream().map(SourceDataLog::getTableName).collect(Collectors.toList());
-        Map<String, Integer> taskCount = new HashMap<>(Constants.InitialCapacity.MAP);
+        Map<String, Integer> taskCount = new HashMap<>(Constants.InitialCapacity.EMPTY);
         createTaskCountMapping(tableNameList, taskCount);
         TableExtractStatusCache.init(taskCount);
         initTableExtractStatus(tableNameList);
