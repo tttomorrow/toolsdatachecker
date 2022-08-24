@@ -37,6 +37,26 @@ public interface Constants {
         /**
          * map initial capacity
          */
-        int MAP = 0;
+        int EMPTY = 0;
+
+        /**
+         * Collection capacity size: size 1
+         */
+        int CAPACITY_1 = 1;
+
+        /**
+         * Collection capacity size: size 16
+         */
+        int CAPACITY_16 = 16;
+
+        /**
+         * Collection capacity size: size 64
+         */
+        int CAPACITY_64 = 64;
+
+        /**
+         * Collection capacity size: size 128
+         */
+        int CAPACITY_128 = 128;
     }
 }

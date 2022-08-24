@@ -13,24 +13,37 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.config;
+package org.opengauss.datachecker.common.entry.debezium;
 
-import lombok.Getter;
-import org.opengauss.datachecker.common.entry.enums.DataBaseType;
-import org.opengauss.datachecker.common.entry.enums.DataSourceType;
-import org.springframework.context.annotation.Configuration;
+import lombok.Data;
+
+import java.util.List;
 
 /**
- * ExtractConfig
+ * DebeziumData
  *
  * @author ：wangchao
- * @date ：Created in 2022/7/1
+ * @date ：Created in 2022/6/24
  * @since ：11
  */
-@Configuration
-@Getter
-public class ExtractConfig {
-    private final String schema = "test";
-    private final DataSourceType dataSourceType = DataSourceType.Source;
-    private final DataBaseType databaseType = DataBaseType.MS;
+@Data
+public class DebeziumData {
+    private DebePayload payload;
+}
+
+@Data
+class DebeSchema {
+    private String name;
+    private String type;
+    private List<Field> fields;
+    private boolean optional;
+}
+
+@Data
+class Field {
+    private String name;
+    private String field;
+    private String type;
+    private List<Field> fields;
+    private boolean optional;
 }

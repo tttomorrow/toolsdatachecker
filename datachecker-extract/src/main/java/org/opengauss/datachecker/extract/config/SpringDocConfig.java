@@ -48,7 +48,7 @@ public class SpringDocConfig implements WebMvcConfigurer {
      * @return OpenAPI
      */
     @Bean
-    public OpenAPI mallTinyOpenAPI() {
+    public OpenAPI mallTinyOpenApi() {
         return new OpenAPI().info(
             new Info().title("Data extraction").description("Data validation tool data extraction API")
                       .version("v1.0.0"));

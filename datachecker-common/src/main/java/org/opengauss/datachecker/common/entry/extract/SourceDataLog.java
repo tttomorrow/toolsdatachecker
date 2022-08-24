@@ -33,7 +33,6 @@ import java.util.List;
 @Data
 @Accessors(chain = true)
 public class SourceDataLog {
-
     private static final String PRIMARY_DELIMITER = Constants.PRIMARY_DELIMITER;
     /**
      * Data change log corresponding table name

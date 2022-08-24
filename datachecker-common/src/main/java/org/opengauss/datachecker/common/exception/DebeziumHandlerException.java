@@ -13,24 +13,19 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.config;
-
-import lombok.Getter;
-import org.opengauss.datachecker.common.entry.enums.DataBaseType;
-import org.opengauss.datachecker.common.entry.enums.DataSourceType;
-import org.springframework.context.annotation.Configuration;
+package org.opengauss.datachecker.common.exception;
 
 /**
- * ExtractConfig
+ * Debezium handler error
  *
  * @author ：wangchao
- * @date ：Created in 2022/7/1
+ * @date ：Created in 2022/5/23
  * @since ：11
  */
-@Configuration
-@Getter
-public class ExtractConfig {
-    private final String schema = "test";
-    private final DataSourceType dataSourceType = DataSourceType.Source;
-    private final DataBaseType databaseType = DataBaseType.MS;
+public class DebeziumHandlerException extends ExtractException {
+    private static final long serialVersionUID = 5536708506446596642L;
+
+    public DebeziumHandlerException(String message) {
+        super(message);
+    }
 }
