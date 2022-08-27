@@ -22,7 +22,6 @@ import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.sql.SQLException;
 import java.util.List;
 
 /**
@@ -34,20 +33,26 @@ import java.util.List;
  */
 @Slf4j
 @SpringBootTest
-class DataBaseMetaDataDAOImplTests {
+public class DataBaseMetaDataDAOImplTests {
     @Autowired
     private MetaDataDAO mysqlMetadataDAO;
 
+    /**
+     * queryTableMetadata
+     */
     @Test
-    void queryTableMetadata() throws SQLException {
+    public void queryTableMetadata() {
         List<TableMetadata> tableMetadata = mysqlMetadataDAO.queryTableMetadata();
         for (TableMetadata metadata : tableMetadata) {
             log.info(metadata.toString());
         }
     }
 
+    /**
+     * queryColumnMetadata
+     */
     @Test
-    void queryColumnMetadata() throws SQLException {
+    public void queryColumnMetadata() {
         List<TableMetadata> tableMetadata = mysqlMetadataDAO.queryTableMetadata();
         for (TableMetadata metadata : tableMetadata) {
             List<ColumnsMetaData> columnsMetadata = mysqlMetadataDAO.queryColumnMetadata(metadata.getTableName());

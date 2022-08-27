@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.task;
 
 import org.apache.commons.lang3.StringUtils;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
@@ -106,7 +107,7 @@ public class DataManipulationService {
      */
     private List<Map<String, String>> queryColumnValuesByCompositePrimary(String selectDml, List<Object[]> batchParam) {
         // Query the current task data and organize the data
-        HashMap<String, Object> paramMap = new HashMap<>();
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_16);
         paramMap.put(DmlBuilder.PRIMARY_KEYS, batchParam);
         return queryColumnValues(selectDml, paramMap);
     }
@@ -120,7 +121,7 @@ public class DataManipulationService {
      */
     private List<Map<String, String>> queryColumnValues(String selectDml, List<String> primaryKeys) {
         // Query the current task data and organize the data
-        HashMap<String, Object> paramMap = new HashMap<>();
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_16);
         paramMap.put(DmlBuilder.PRIMARY_KEYS, primaryKeys);
         return queryColumnValues(selectDml, paramMap);
     }
@@ -205,7 +206,7 @@ public class DataManipulationService {
     private Map<String, Map<String, String>> transtlateColumnValues(List<Map<String, String>> columnValues,
         List<ColumnsMetaData> primaryMetas) {
         final List<String> primaryKeys = getCompositeKeyColumns(primaryMetas);
-        Map<String, Map<String, String>> map = new HashMap<>();
+        Map<String, Map<String, String>> map = new HashMap<>(InitialCapacity.CAPACITY_16);
         columnValues.forEach(values -> {
             map.put(getCompositeKey(values, primaryKeys), values);
         });

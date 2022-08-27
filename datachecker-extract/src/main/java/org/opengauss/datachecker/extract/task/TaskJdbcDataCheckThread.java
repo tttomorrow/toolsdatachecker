@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.util.FileUtils;
@@ -72,7 +73,7 @@ public class TaskJdbcDataCheckThread extends Thread {
         FileUtils.createDirectories(path);
         FileUtils.deleteFile(fileName);
         FileUtils.writeAppendFile(fileName, JsonObjectUtil.format(dataRowList));
-        Map<String, RowDataHash> dataMap = new HashMap<>();
+        Map<String, RowDataHash> dataMap = new HashMap<>(InitialCapacity.CAPACITY_16);
         dataRowList.forEach(row -> {
             if (dataMap.containsKey(row.getPrimaryKey())) {
                 replateList.add(row.getPrimaryKey());

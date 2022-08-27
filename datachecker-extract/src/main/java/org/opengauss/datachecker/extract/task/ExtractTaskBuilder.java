@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.task;
 
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.extract.ExtractIncrementTask;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -75,7 +76,7 @@ public class ExtractTaskBuilder {
             }).collect(Collectors.toList());
 
         // taskCountMap is used to count the number of tasks in table fragment query
-        Map<String, Integer> taskCountMap = new HashMap<>();
+        Map<String, Integer> taskCountMap = new HashMap<>(InitialCapacity.CAPACITY_16);
         tableNameOrderList.forEach(tableName -> {
             TableMetadata metadata = MetaDataCache.get(tableName);
             if (Objects.nonNull(metadata)) {

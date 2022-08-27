@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.cache;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.lang.NonNull;
 import org.springframework.util.Assert;
 
@@ -67,7 +68,7 @@ public class TableExtractStatusCache {
     public static void init(Map<String, Integer> map) {
         Assert.isTrue(Objects.nonNull(map), Message.INIT_STATUS_PARAM_EMPTY);
         map.forEach((table, taskCount) -> {
-            Map<Integer, Byte> tableStatus = new ConcurrentHashMap<>();
+            Map<Integer, Byte> tableStatus = new ConcurrentHashMap<>(InitialCapacity.CAPACITY_16);
             IntStream.rangeClosed(TASK_ORDINAL_START_INDEX, taskCount).forEach(ordinal -> {
                 tableStatus.put(ordinal, STATUS_INIT);
             });

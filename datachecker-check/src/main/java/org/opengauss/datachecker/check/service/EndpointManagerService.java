@@ -20,6 +20,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.config.DataCheckProperties;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +43,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class EndpointManagerService {
     private static final String ENDPOINT_HEALTH_CHECK_THREAD_NAME = "endpoint-health-check-thread";
-    private static final ScheduledExecutorService SCHEDULED_EXECUTOR = Executors.newSingleThreadScheduledExecutor();
+    private static final ScheduledExecutorService SCHEDULED_EXECUTOR = ThreadUtil.newSingleThreadScheduledExecutor();
 
     @Autowired
     private FeignClientService feignClientService;

@@ -16,8 +16,10 @@
 package org.opengauss.datachecker.check.cache;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.exception.ExtractException;
+import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotEmpty;
@@ -27,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -97,7 +98,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      * Start and execute self-test thread
      */
     public void selfCheck() {
-        ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+        ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
         scheduledExecutor.scheduleWithFixedDelay(() -> {
             Thread.currentThread().setName(SELF_CHECK_THREAD_NAME);
             doCheckingStatus();
@@ -190,8 +191,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
     /**
      * Initialize cache and set default values for key values
      *
-     * @param keys
-     * @return
+     * @param keys keys
      */
     @Override
     public void init(@NotEmpty Set<String> keys) {
@@ -226,7 +226,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
             // The current key already exists and cannot be added repeatedly
             throw new ExtractException("The current key= " + key + " already exists and cannot be added repeatedly");
         }
-        Map<Integer, Integer> partitionMap = new ConcurrentHashMap<>();
+        Map<Integer, Integer> partitionMap = new ConcurrentHashMap<>(InitialCapacity.CAPACITY_16);
         IntStream.range(0, partitions).forEach(partition -> {
             partitionMap.put(partition, TASK_STATUS_COMPLETED_VALUE);
         });

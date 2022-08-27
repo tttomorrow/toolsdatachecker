@@ -216,7 +216,7 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
      * @param bucketList Bucket list
      */
     private void initBucketList(Endpoint endpoint, int partitions, List<Bucket> bucketList) {
-        Map<Integer, Bucket> bucketMap = new ConcurrentHashMap<>(Constants.InitialCapacity.MAP);
+        Map<Integer, Bucket> bucketMap = new ConcurrentHashMap<>(Constants.InitialCapacity.EMPTY);
         // Use feign client to pull Kafka data
         List<RowDataHash> dataList = getTopicPartitionsData(endpoint, partitions);
         if (CollectionUtils.isEmpty(dataList)) {
@@ -273,7 +273,7 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
         Map<String, RowDataHash> entriesOnlyOnLeft = bucketDifference.entriesOnlyOnLeft();
         Map<String, RowDataHash> entriesOnlyOnRight = bucketDifference.entriesOnlyOnRight();
         Map<String, MapDifference.ValueDifference<RowDataHash>> entriesDiffering = bucketDifference.entriesDiffering();
-        Map<String, Pair<RowDataHash, RowDataHash>> differing = new HashMap<>(Constants.InitialCapacity.MAP);
+        Map<String, Pair<RowDataHash, RowDataHash>> differing = new HashMap<>(Constants.InitialCapacity.EMPTY);
         entriesDiffering.forEach((key, diff) -> {
             differing.put(key, Pair.of(diff.leftValue(), diff.rightValue()));
         });

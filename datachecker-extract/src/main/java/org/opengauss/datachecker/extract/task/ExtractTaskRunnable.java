@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
@@ -116,7 +117,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
     }
 
     private List<Map<String, String>> queryColumnValues(String sql) {
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>(InitialCapacity.CAPACITY_16);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
         return jdbc.query(sql, map, (rs, rowNum) -> {
             ResultSetMetaData metaData = rs.getMetaData();
