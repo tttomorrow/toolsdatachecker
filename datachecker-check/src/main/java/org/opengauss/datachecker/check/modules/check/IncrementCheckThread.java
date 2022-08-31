@@ -23,6 +23,7 @@ import org.opengauss.datachecker.check.modules.bucket.Bucket;
 import org.opengauss.datachecker.check.modules.bucket.BuilderBucketHandler;
 import org.opengauss.datachecker.check.modules.merkle.MerkleTree;
 import org.opengauss.datachecker.check.modules.merkle.MerkleTree.Node;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.check.DataCheckParam;
 import org.opengauss.datachecker.common.entry.check.DifferencePair;
 import org.opengauss.datachecker.common.entry.check.Pair;
@@ -318,7 +319,7 @@ public class IncrementCheckThread extends Thread {
         if (CollectionUtils.isEmpty(dataList)) {
             return;
         }
-        Map<Integer, Bucket> bucketMap = new HashMap<>();
+        Map<Integer, Bucket> bucketMap = new HashMap<>(InitialCapacity.CAPACITY_16);
         BuilderBucketHandler bucketBuilder = new BuilderBucketHandler(bucketCapacity);
 
         // Pull the data to build the bucket list
@@ -393,7 +394,7 @@ public class IncrementCheckThread extends Thread {
         Map<String, RowDataHash> entriesOnlyOnLeft = bucketDifference.entriesOnlyOnLeft();
         Map<String, RowDataHash> entriesOnlyOnRight = bucketDifference.entriesOnlyOnRight();
         Map<String, MapDifference.ValueDifference<RowDataHash>> entriesDiffering = bucketDifference.entriesDiffering();
-        Map<String, Pair<RowDataHash, RowDataHash>> differing = new HashMap<>();
+        Map<String, Pair<RowDataHash, RowDataHash>> differing = new HashMap<>(InitialCapacity.CAPACITY_16);
         entriesDiffering.forEach((key, diff) -> {
             differing.put(key, Pair.of(diff.leftValue(), diff.rightValue()));
         });

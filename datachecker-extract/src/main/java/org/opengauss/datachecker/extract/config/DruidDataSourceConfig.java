@@ -18,6 +18,7 @@ package org.opengauss.datachecker.extract.config;
 import com.alibaba.druid.pool.DruidDataSource;
 import com.alibaba.druid.support.http.StatViewServlet;
 import com.alibaba.druid.support.http.WebStatFilter;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -74,7 +75,7 @@ public class DruidDataSourceConfig {
     public ServletRegistrationBean<StatViewServlet> initServletRegistrationBean() {
         ServletRegistrationBean<StatViewServlet> bean =
             new ServletRegistrationBean<>(new StatViewServlet(), "/druid/*");
-        HashMap<String, String> initParameters = new HashMap<>();
+        HashMap<String, String> initParameters = new HashMap<>(InitialCapacity.CAPACITY_1);
         initParameters.put("allow", "");
         bean.setInitParameters(initParameters);
         return bean;
@@ -92,7 +93,7 @@ public class DruidDataSourceConfig {
         bean.setFilter(new WebStatFilter());
 
         // exclusions: sets the requests to be filtered out so that statistics are not collected.
-        Map<String, String> initParams = new HashMap<>();
+        Map<String, String> initParams = new HashMap<>(InitialCapacity.CAPACITY_1);
         // this things don't count.
         initParams.put("exclusions", "*.js,*.css,/druid/*,/jdbc/*");
         bean.setInitParameters(initParams);

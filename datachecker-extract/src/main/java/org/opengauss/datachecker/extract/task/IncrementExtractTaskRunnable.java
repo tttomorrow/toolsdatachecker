@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.ExtractIncrementTask;
@@ -90,7 +91,7 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
         SelectDmlBuilder sqlBuilder = buildSelectSql(tableMetadata, schema);
 
         // Query the current task data and organize the data
-        HashMap<String, Object> paramMap = new HashMap<>();
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_16);
         final List<String> compositePrimaryValues = sourceDataLog.getCompositePrimaryValues();
         paramMap.put(DmlBuilder.PRIMARY_KEYS,
             getSqlParam(sqlBuilder, tableMetadata.getPrimaryMetas(), compositePrimaryValues));

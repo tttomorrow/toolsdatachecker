@@ -31,9 +31,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableFeignClients(basePackages = {"org.opengauss.datachecker.extract.client"})
 @SpringBootApplication
 public class ExtractApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(ExtractApplication.class, args);
     }
-
 }

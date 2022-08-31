@@ -194,6 +194,8 @@ public class DataExtractServiceImpl implements DataExtractService {
         final Set<String> tableNames = MetaDataCache.getAllKeys();
         if (atomicProcessNo.compareAndSet(PROCESS_NO_RESET, processNo)) {
             if (CollectionUtils.isEmpty(taskList) || CollectionUtils.isEmpty(tableNames)) {
+                log.info("build extract task process={} taskList={} ,MetaCache tableNames={}", processNo,
+                    taskList.size(), tableNames);
                 return;
             }
             final List<ExtractTask> extractTasks =

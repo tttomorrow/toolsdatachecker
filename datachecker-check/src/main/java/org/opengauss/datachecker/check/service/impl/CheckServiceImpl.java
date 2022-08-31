@@ -15,7 +15,6 @@
 
 package org.opengauss.datachecker.check.service.impl;
 
-import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -49,7 +48,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -179,8 +177,6 @@ public class CheckServiceImpl implements CheckService {
         log.info("check full mode : query meta data from db schema (source and sink )");
         // Source endpoint task construction
         final List<ExtractTask> extractTasks = feignClientService.buildExtractTaskAllTables(Endpoint.SOURCE, processNo);
-        extractTasks.forEach(task -> log
-            .debug("check full mode : build extract task source {} : {}", processNo, JSON.toJSONString(task)));
         // Sink endpoint task construction
         feignClientService.buildExtractTaskAllTables(Endpoint.SINK, processNo, extractTasks);
         log.info("check full mode : build extract task sink {}", processNo);
@@ -199,7 +195,7 @@ public class CheckServiceImpl implements CheckService {
      */
     public void startCheckPollingThread() {
         if (Objects.nonNull(PROCESS_SIGNATURE.get()) && Objects.equals(CHECK_MODE_REF.getAcquire(), CheckMode.FULL)) {
-            ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+            ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
             endpointMetaDataManager.load();
             scheduledExecutor.scheduleWithFixedDelay(() -> {
                 Thread.currentThread().setName(SELF_CHECK_POLL_THREAD_NAME);
@@ -224,7 +220,7 @@ public class CheckServiceImpl implements CheckService {
     private void startCheckIncrementMode() {
         //  Enable incremental verification mode - polling thread start
         if (Objects.equals(CHECK_MODE_REF.getAcquire(), CheckMode.INCREMENT)) {
-            ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+            ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
             scheduledExecutor.scheduleWithFixedDelay(() -> {
                 Thread.currentThread().setName(SELF_CHECK_POLL_THREAD_NAME);
                 log.debug("check polling check mode=[{}]", CHECK_MODE_REF.get());
@@ -332,7 +328,9 @@ public class CheckServiceImpl implements CheckService {
     @Override
     public synchronized void cleanCheck() {
         final String processNo = PROCESS_SIGNATURE.get();
-        cleanBuildTask(processNo);
+        if (Objects.nonNull(processNo)) {
+            cleanBuildTask(processNo);
+        }
         ThreadUtil.sleep(3000);
         CHECK_MODE_REF.set(null);
         PROCESS_SIGNATURE.set(null);

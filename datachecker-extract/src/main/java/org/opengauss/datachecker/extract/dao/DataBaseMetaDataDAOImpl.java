@@ -35,7 +35,6 @@ import org.springframework.util.CollectionUtils;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,7 +162,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         final List<TableMetadata> tableMetadata = new ArrayList<>();
         String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
         final String schema = getSchema();
-        tableNameList.stream().forEach(tableName -> {
+        tableNameList.forEach(tableName -> {
             final Long rowCount =
                 JdbcTemplateOne.queryForObject(String.format(sqlQueryTableRowCount, schema, tableName), Long.class);
             tableMetadata.add(new TableMetadata().setTableName(tableName).setTableRows(rowCount));
@@ -173,22 +172,21 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
 
     @Override
     public List<ColumnsMetaData> queryColumnMetadata(String tableName) {
-        return queryColumnMetadata(Arrays.asList(tableName));
+        return queryColumnMetadata(List.of(tableName));
     }
 
     @Override
     public List<ColumnsMetaData> queryColumnMetadata(List<String> tableNames) {
-        Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.MAP);
+        Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.EMPTY);
         map.put("tableNames", tableNames);
         map.put("databaseSchema", getSchema());
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.COLUMN);
-        return jdbc.query(sql, map, new RowMapper<ColumnsMetaData>() {
+        return jdbc.query(sql, map, new RowMapper<>() {
             int columnIndex = COLUMN_INDEX_FIRST_ZERO;
 
             @Override
             public ColumnsMetaData mapRow(ResultSet rs, int rowNum) throws SQLException {
-
                 ColumnsMetaData columnsMetaData = new ColumnsMetaData().setTableName(rs.getString(++columnIndex))
                                                                        .setColumnName(rs.getString(++columnIndex))
                                                                        .setOrdinalPosition(rs.getInt(++columnIndex))
@@ -210,5 +208,4 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     private String getSchema() {
         return extractProperties.getSchema();
     }
-
 }
