@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.service;
 
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
@@ -39,7 +40,7 @@ public class QueryDataWapper {
      * @return data
      */
     public List<String> queryPrimaryValues(JdbcTemplate jdbcTemplate, String sql, String tableName) {
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>(InitialCapacity.CAPACITY_1);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
         final String execSql = sql.replace(":table", tableName);
         return jdbc.queryForList(execSql, map, String.class);

@@ -73,7 +73,6 @@ public class IncrementCheckThread extends Thread {
         difference = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
     private final Map<Integer, Pair<Integer, Integer>> bucketNumberDiffMap = new HashMap<>();
     private final QueryRowDataWapper queryRowDataWapper;
-    private final DataCheckWapper dataCheckWapper;
     private String sinkSchema;
 
     /**
@@ -91,7 +90,6 @@ public class IncrementCheckThread extends Thread {
         bucketCapacity = checkParam.getBucketCapacity();
         feignClient = support.getFeignClientService();
         queryRowDataWapper = new QueryRowDataWapper(feignClient);
-        dataCheckWapper = new DataCheckWapper();
     }
 
     /**
@@ -297,7 +295,7 @@ public class IncrementCheckThread extends Thread {
      * difference information {@code bucketNumberDiffMap}.
      */
     private void alignAllBuckets() {
-        dataCheckWapper.alignAllBuckets(bucketNumberDiffMap, sourceBucketList, sinkBucketList);
+        new DataCheckWapper().alignAllBuckets(bucketNumberDiffMap, sourceBucketList, sinkBucketList);
     }
 
     /**

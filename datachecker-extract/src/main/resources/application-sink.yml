@@ -1,5 +1,5 @@
 server:
-  port: 7001
+  port: 9001
   shutdown: graceful
 
 debug: false
@@ -13,11 +13,12 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 5
   extract:
-    schema: jack  # 宿端数据实例
-    databaseType: OG  # 宿端数据库类型 OG opengauss
-    endpoint: SINK   # 宿端端点类型
-    debezium-enable: false #是否开启增量debezium配置 默认不开启
-    sync-extract: true
+    schema: jack
+    databaseType: OG  #OG opengauss
+    endpoint: SINK
+    query-table-row-count: true
+    debezium-enable: false
+    sync-extract: false
 
   datasource:
     druid:
@@ -27,23 +28,17 @@ spring:
         username: xxxxx
         password: xxxxxxxx
         type: com.alibaba.druid.pool.DruidDataSource
-        #Spring Boot 默认是不注入这些属性值的，需要自己绑定
-        #druid 数据源专有配置
         initialSize: 50
         minIdle: 5
         maxActive: 200
         maxWait: 60000
         timeBetweenEvictionRunsMillis: 60000
         minEvictableIdleTimeMillis: 300000
-        #validationQuery: SELECT 1 FROM DUAL
         testWhileIdle: true
         testOnBorrow: false
         testOnReturn: false
         poolPreparedStatements: true
 
-        #配置监控统计拦截的filters，stat:监控统计、log4j：日志记录、wall：防御sql注入
-        #如果允许时报错  java.lang.ClassNotFoundException: org.apache.log4j.Priority
-        #则导入 log4j 依赖即可，Maven 地址：https://mvnrepository.com/artifact/log4j/log4j
       filters: stat,wall,log4j
       maxPoolPreparedStatementPerConnectionSize: 20
       useGlobalDataSourceStat: true

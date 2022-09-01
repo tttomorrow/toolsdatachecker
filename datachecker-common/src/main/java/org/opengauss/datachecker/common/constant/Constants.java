@@ -45,6 +45,11 @@ public interface Constants {
         int CAPACITY_1 = 1;
 
         /**
+         * Collection capacity size: size 8
+         */
+        int CAPACITY_8 = 8;
+
+        /**
          * Collection capacity size: size 16
          */
         int CAPACITY_16 = 16;

@@ -1,5 +1,5 @@
 server:
-  port: 7000
+  port: 9000
   shutdown: graceful
 
 debug: false
@@ -14,10 +14,10 @@ spring:
       group-id: checkgroup
       enable-auto-commit: true
       auto-commit-interval: 100
-
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      fetch-min-size: 1
       max-poll-records: 10000
 
   datasource:
@@ -62,6 +62,7 @@ data:
     # If set to true, the environment will be cleaned automatically after the full verification process is completed.
     auto-clean-environment: true
     check-with-sync-extracting: true
+    retry-fetch-record-times: 5
 
 
 

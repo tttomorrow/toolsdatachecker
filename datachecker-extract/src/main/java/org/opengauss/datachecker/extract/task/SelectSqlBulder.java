@@ -140,7 +140,7 @@ public class SelectSqlBulder {
             primaryKey =
                 primaryMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
             String joinOn = primaryMetas.stream().map(ColumnsMetaData::getColumnName).map(
-                coumn -> TABLE_ALIAS.concat(coumn).concat(EQUAL_CONDITION).concat(SUB_TABLE_ALIAS).concat(coumn))
+                column -> TABLE_ALIAS.concat(column).concat(EQUAL_CONDITION).concat(SUB_TABLE_ALIAS).concat(column))
                                         .collect(Collectors.joining(AND_CONDITION));
             return QUERY_MULTIPLE_PRIMARY_KEY_OFF_SET.replace(COLUMN, columnNames).replace(SCHEMA, schema)
                                                      .replace(TABLE_NAME, tableName).replace(PRIMARY_KEY, primaryKey)

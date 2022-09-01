@@ -21,6 +21,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.util.IdGenerator;
@@ -56,10 +57,10 @@ public class ExtractKafkaDataService {
      * @return topic
      */
     public List<String> checkKafkaTopicData(String topicSource, String topicSink) {
-        Map<String, RowDataHash> source = new HashMap<>();
+        Map<String, RowDataHash> source = new HashMap<>(InitialCapacity.CAPACITY_1);
         List<Pair<RowDataHash, RowDataHash>> sourceRepeatList = new ArrayList<>();
         int sourceCount = getTopicRecords(topicSource, source, sourceRepeatList);
-        Map<String, RowDataHash> sink = new HashMap<>();
+        Map<String, RowDataHash> sink = new HashMap<>(InitialCapacity.CAPACITY_64);
         List<Pair<RowDataHash, RowDataHash>> sinkRepeatList = new ArrayList<>();
         int sinkCount = getTopicRecords(topicSink, sink, sinkRepeatList);
         if (sourceCount == sinkCount && sinkCount > 0) {

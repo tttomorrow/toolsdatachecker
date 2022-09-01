@@ -16,11 +16,9 @@
 package org.opengauss.datachecker.check;
 
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.check.service.EndpointManagerService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
@@ -35,16 +33,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableFeignClients(basePackages = {"org.opengauss.datachecker.check.client"})
 @SpringBootApplication
 public class DatacheckerCheckApplication {
-    private static ConfigurableApplicationContext context;
-
     public static void main(String[] args) {
-        context = SpringApplication.run(DatacheckerCheckApplication.class, args);
-        final EndpointManagerService managerService = context.getBean(EndpointManagerService.class);
-        managerService.start();
-        if (!managerService.isEndpointHealth()) {
-            log.error("The verification service failed to start due to the abnormal state of the endpoint service");
-            managerService.shutdown();
-            context.close();
-        }
+        SpringApplication.run(DatacheckerCheckApplication.class, args);
     }
 }
