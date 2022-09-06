@@ -16,11 +16,11 @@
 package org.opengauss.datachecker.check.modules.check;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.opengauss.datachecker.check.cache.TableStatusRegister;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.config.DataCheckConfig;
 import org.opengauss.datachecker.check.service.StatisticalService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -32,16 +32,11 @@ import org.springframework.stereotype.Service;
  */
 @Getter
 @Service
+@RequiredArgsConstructor
 public class DataCheckRunnableSupport {
-    @Autowired
-    private FeignClientService feignClientService;
-
-    @Autowired
-    private TableStatusRegister tableStatusRegister;
-
-    @Autowired
-    private DataCheckConfig dataCheckConfig;
-
-    @Autowired
-    private StatisticalService statisticalService;
+    private final FeignClientService feignClientService;
+    private final TableStatusRegister tableStatusRegister;
+    private final DataCheckConfig dataCheckConfig;
+    private final StatisticalService statisticalService;
+    private final KafkaConsumerService kafkaConsumerService;
 }

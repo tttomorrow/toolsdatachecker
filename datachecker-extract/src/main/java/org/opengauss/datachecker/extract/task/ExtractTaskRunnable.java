@@ -89,15 +89,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         syncSend(topic, recordHashList);
 
         String tableName = task.getTableName();
-        // If the current task is a sharding task, check the sharding status of the current task before sharding and
-        // whether the execution is completed.
-        // If the previous sharding task is not completed, wait 100 milliseconds,
-        // check again and try until all the previous sharding tasks are completed,
-        // and then refresh the current sharding status.
-        while (task.isDivisions() && !TableExtractStatusCache.checkCompleted(tableName, task.getDivisionsOrdinal())) {
-            log.info("task=[{}] wait divisions of before , send data to kafka completed", task.getTaskName());
-            ThreadUtil.sleep(100);
-        }
+
         // When the push is completed, the extraction status of the current task will be updated
         TableExtractStatusCache.update(tableName, task.getDivisionsOrdinal());
         log.info("update extract task={} status completed", task.getTaskName());
@@ -107,10 +99,18 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
             checkingFeignClient.refreshTableExtractStatus(tableName, endpoint);
             log.info("refresh table extract status tableName={} status completed", task.getTaskName());
         }
+        // If the current task is a sharding task, check the sharding status of the current task before sharding and
+        // whether the execution is completed.
+        // If the previous sharding task is not completed, wait 1000 milliseconds,
+        // check again and try until all the previous sharding tasks are completed,
+        // and then refresh the current sharding status.
         if (task.isDivisions() && task.getDivisionsOrdinal() == task.getDivisionsTotalNumber()) {
             // The data extraction task of the current table is completed (all subtasks are completed)
             // Notify the verification service that the task data extraction corresponding to
             // the current table has been completed
+            while (!TableExtractStatusCache.checkCompleted(tableName, task.getDivisionsOrdinal())) {
+                ThreadUtil.sleep(1000);
+            }
             checkingFeignClient.refreshTableExtractStatus(tableName, endpoint);
             log.info("refresh table=[{}] extract status completed,task=[{}]", tableName, task.getTaskName());
         }

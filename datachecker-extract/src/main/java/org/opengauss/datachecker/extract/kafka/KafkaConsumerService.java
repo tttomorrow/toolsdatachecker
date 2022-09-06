@@ -27,7 +27,7 @@ import org.opengauss.datachecker.extract.config.KafkaConsumerConfig;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -54,10 +54,8 @@ public class KafkaConsumerService {
     public List<RowDataHash> getTopicRecords(String tableName, int partitions) {
         Topic topic = kafkaCommonService.getTopic(tableName);
         KafkaConsumer<String, String> kafkaConsumer = consumerConfig.getKafkaConsumer(topic.getTopicName(), partitions);
-
-        // Consume a partition data of a topic
         kafkaConsumer.assign(List.of(new TopicPartition(topic.getTopicName(), partitions)));
-        List<RowDataHash> dataList = new ArrayList<>();
+        List<RowDataHash> dataList = new LinkedList<>();
         ConsumerRecords<String, String> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(200));
         consumerRecords.forEach(record -> {
             dataList.add(JSON.parseObject(record.value(), RowDataHash.class));
@@ -77,7 +75,7 @@ public class KafkaConsumerService {
         Topic topic = kafkaCommonService.getIncrementTopicInfo(tableName);
         KafkaConsumer<String, String> kafkaConsumer = consumerConfig.getKafkaConsumer(topic.getTopicName(), 1);
         kafkaConsumer.subscribe(List.of(topic.getTopicName()));
-        List<RowDataHash> dataList = new ArrayList<>();
+        List<RowDataHash> dataList = new LinkedList<>();
         ConsumerRecords<String, String> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(200));
         consumerRecords.forEach(record -> {
             dataList.add(JSON.parseObject(record.value(), RowDataHash.class));

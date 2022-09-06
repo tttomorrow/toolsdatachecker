@@ -1,5 +1,5 @@
 server:
-  port: 7002
+  port: 9002
   shutdown: graceful
 
 debug: false
@@ -13,16 +13,19 @@ spring:
     timeout-per-shutdown-phase: 5
 
   extract:
-    schema: test  # 源端数据实例
-    databaseType: MS  # 源端数据库类型 MS mysql
-    endpoint: SOURCE  # 源端端点类型
-    debezium-enable: false #是否开启增量debezium配置 默认不开启
-    debezium-topic:  # debezium监听表增量数据，使用单一topic进行增量数据管理
-    debezium-groupId: debezium-extract-group # d debezium增量迁移topic ，groupId消费Group设置
-    debezium-topic-partitions: 1 # debezium监听topic 分区数量配置
-    debezium-tables: # debezium-tables配置debezium监听的表名称列表; 该配置只在源端服务配置并生效
-    debezium-time-period: 1 # debezium增量迁移校验 时间周期 24*60 单位分钟
-    debezium-num-period: 1000 #debezium增量迁移校验 统计增量变更记录数量阀值，默认值1000 阀值应大于100
+    schema: test
+    databaseType: MS  # MS mysql
+    endpoint: SOURCE
+    query-table-row-count: true
+    debezium-enable: false # Whether to enable incremental debezium configuration (not enabled by default)
+    debezium-topic:
+    debezium-groupId: debezium-extract-group
+    debezium-topic-partitions: 1
+    debezium-tables:
+    debezium-time-period: 1 # Debezium incremental migration verification time period: 24 * 60 unit: Min
+    # debezium-num-period: Debezium incremental migration verification is the threshold value of the number
+    # of incremental change records. The default value is 1000. The threshold value should be greater than 100
+    debezium-num-period: 1000
     sync-extract: false
 
   datasource:
@@ -33,8 +36,6 @@ spring:
         username: xxxxx
         password: xxxxxx
         type: com.alibaba.druid.pool.DruidDataSource
-        #Spring Boot 默认是不注入这些属性值的，需要自己绑定
-        #druid 数据源专有配置
         initialSize: 20
         minIdle: 5
         maxActive: 200
@@ -46,10 +47,6 @@ spring:
         testOnBorrow: false
         testOnReturn: false
         poolPreparedStatements: true
-
-        #配置监控统计拦截的filters，stat:监控统计、log4j：日志记录、wall：防御sql注入
-        #如果允许时报错  java.lang.ClassNotFoundException: org.apache.log4j.Priority
-        #则导入 log4j 依赖即可，Maven 地址：https://mvnrepository.com/artifact/log4j/log4j
       filters: stat,wall,log4j
       maxPoolPreparedStatementPerConnectionSize: 20
       useGlobalDataSourceStat: true

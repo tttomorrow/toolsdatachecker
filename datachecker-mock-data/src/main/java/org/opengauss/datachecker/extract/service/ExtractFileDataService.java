@@ -18,6 +18,7 @@ package org.opengauss.datachecker.extract.service;
 import com.alibaba.fastjson.JSONObject;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.JsonObjectUtil;
@@ -72,7 +73,7 @@ public class ExtractFileDataService {
         final Map<String, RowDataHash> sinkMap = sinkDataList.parallelStream().collect(
             Collectors.toConcurrentMap(RowDataHash::getPrimaryKey, Function.identity()));
         log.info("transform sinkDataList to map {} ", sinkMap.size());
-        Map<RowDataHash, RowDataHash> sourceDiffMap = new HashMap<>();
+        Map<RowDataHash, RowDataHash> sourceDiffMap = new HashMap<>(InitialCapacity.CAPACITY_1);
         sourceMap.forEach((key, value) -> {
             if (sinkMap.containsKey(key)) {
                 RowDataHash sinkValue = sinkMap.get(key);

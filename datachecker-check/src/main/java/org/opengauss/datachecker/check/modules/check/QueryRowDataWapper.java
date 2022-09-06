@@ -28,42 +28,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * QueryRowDataWapper
+ *
  * @author ：wangchao
  * @date ：Created in 2022/6/18
  * @since ：11
  */
 @Slf4j
 public class QueryRowDataWapper {
-
     private final FeignClientService feignClient;
 
+    /**
+     * QueryRowDataWapper constructed function
+     *
+     * @param feignClient feignClient
+     */
     public QueryRowDataWapper(FeignClientService feignClient) {
         this.feignClient = feignClient;
     }
 
     /**
-     * Pull the Kafka partition {@code partitions} data
-     * of the table {@code tableName} of the specified endpoint {@code endpoint}
+     * Query incremental data
      *
-     * @param endpoint   endpoint
-     * @param partitions kafka partitions
-     * @return Specify table Kafka partition data
+     * @param endpoint  endpoint
+     * @param tableName tableName
+     * @return result
      */
-    public List<RowDataHash> queryRowData(Endpoint endpoint, String tableName, int partitions) {
-        List<RowDataHash> data = new ArrayList<>();
-        Result<List<RowDataHash>> result = feignClient.getClient(endpoint).queryTopicData(tableName, partitions);
-        if (!result.isSuccess()) {
-            throw new DispatchClientException(endpoint,
-                "query topic data of tableName " + tableName + " partitions=" + partitions + " error, " + result
-                    .getMessage());
-        }
-        while (result.isSuccess() && !CollectionUtils.isEmpty(result.getData())) {
-            data.addAll(result.getData());
-            result = feignClient.getClient(endpoint).queryTopicData(tableName, partitions);
-        }
-        return data;
-    }
-
     public List<RowDataHash> queryIncrementRowData(Endpoint endpoint, String tableName) {
         List<RowDataHash> data = new ArrayList<>();
         Result<List<RowDataHash>> result = feignClient.getClient(endpoint).queryIncrementTopicData(tableName);
@@ -78,6 +68,13 @@ public class QueryRowDataWapper {
         return data;
     }
 
+    /**
+     * Query incremental data
+     *
+     * @param endpoint endpoint
+     * @param dataLog  dataLog
+     * @return result
+     */
     public List<RowDataHash> queryRowData(Endpoint endpoint, SourceDataLog dataLog) {
         Result<List<RowDataHash>> result = feignClient.getClient(endpoint).querySecondaryCheckRowData(dataLog);
         if (!result.isSuccess()) {

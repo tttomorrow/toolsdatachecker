@@ -58,7 +58,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @since ：11
  */
 @Slf4j
-public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnable {
+public class DataCheckRunnable implements Runnable {
     private static final int THRESHOLD_MIN_BUCKET_SIZE = 2;
     private static final String THREAD_NAME_PRIFEX = "DATA_CHECK_";
 
@@ -69,10 +69,10 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
         difference = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
     private final Map<Integer, Pair<Integer, Integer>> bucketNumberDiffMap = new HashMap<>();
     private final FeignClientService feignClient;
-    private final DataCheckWapper dataCheckWapper;
     private final StatisticalService statisticalService;
     private final TableStatusRegister tableStatusRegister;
     private final DataCheckParam checkParam;
+    private final KafkaConsumerService kafkaConsumerService;
 
     private String sinkSchema;
     private Topic topic;
@@ -88,13 +88,12 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
      * @param support    support
      */
     public DataCheckRunnable(@NonNull DataCheckParam checkParam, @NonNull DataCheckRunnableSupport support) {
-        super(checkParam.getProperties(), support.getFeignClientService());
         this.checkParam = checkParam;
         start = LocalDateTime.now();
         feignClient = support.getFeignClientService();
         statisticalService = support.getStatisticalService();
         tableStatusRegister = support.getTableStatusRegister();
-        dataCheckWapper = new DataCheckWapper();
+        kafkaConsumerService = support.getKafkaConsumerService();
     }
 
     /**
@@ -114,26 +113,24 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
         // Initialize bucket list
         initBucketList();
         // No Merkel tree verification algorithm scenario
-        if (checkNotMerkleCompare(sourceBucketList.size(), sinkBucketList.size())) {
-            log.info("No Merkel tree verification algorithm scenario : [{}-{}],source-bucket-row={},sink-bucket-row={}",
-                tableName, partitions, sourceBucketList.size(), sinkBucketList.size());
-            refreshCheckStatus();
-            return;
-        }
-        // Construct Merkel tree constraint: bucketList cannot be empty, and size > =2
-        MerkleTree sourceTree = new MerkleTree(sourceBucketList);
-        MerkleTree sinkTree = new MerkleTree(sinkBucketList);
+        if (!shouldCheckMerkleTree(sourceBucketList.size(), sinkBucketList.size())) {
+            compareNoMerkleTree(sourceBucketList.size(), sinkBucketList.size());
+        } else {
+            // Construct Merkel tree constraint: bucketList cannot be empty, and size > =2
+            MerkleTree sourceTree = new MerkleTree(sourceBucketList);
+            MerkleTree sinkTree = new MerkleTree(sinkBucketList);
 
-        // Merkel tree comparison
-        if (sourceTree.getDepth() != sinkTree.getDepth()) {
-            refreshCheckStatus();
-            throw new MerkleTreeDepthException(String.format(Locale.ROOT,
-                "source & sink data have large different, Please synchronize data again! "
-                    + "merkel tree depth different,source depth=[%d],sink depth=[%d]", sourceTree.getDepth(),
-                sinkTree.getDepth()));
+            // Merkel tree comparison
+            if (sourceTree.getDepth() != sinkTree.getDepth()) {
+                refreshCheckStatus();
+                throw new MerkleTreeDepthException(String.format(Locale.ROOT,
+                    "source & sink data have large different, Please synchronize data again! "
+                        + "merkel tree depth different,source depth=[%d],sink depth=[%d]", sourceTree.getDepth(),
+                    sinkTree.getDepth()));
+            }
+            // Recursively compare two Merkel trees and return the difference record.
+            compareMerkleTree(sourceTree, sinkTree);
         }
-        // Recursively compare two Merkel trees and return the difference record.
-        compareMerkleTree(sourceTree, sinkTree);
 
         // Verification result verification repair report
         checkResult();
@@ -202,7 +199,7 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
      * </pre>
      */
     private void alignAllBuckets() {
-        dataCheckWapper.alignAllBuckets(bucketNumberDiffMap, sourceBucketList, sinkBucketList);
+        new DataCheckWapper().alignAllBuckets(bucketNumberDiffMap, sourceBucketList, sinkBucketList);
     }
 
     /**
@@ -348,7 +345,11 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
      * @return Specify table Kafka partition data
      */
     private List<RowDataHash> getTopicPartitionsData(Endpoint endpoint, int partitions) {
-        return queryRowData(endpoint, tableName, partitions);
+        return kafkaConsumerService.queryCheckRowData(topic, partitions);
+    }
+
+    private boolean shouldCheckMerkleTree(int sourceBucketCount, int sinkBucketCount) {
+        return sourceBucketCount >= THRESHOLD_MIN_BUCKET_SIZE && sinkBucketCount >= THRESHOLD_MIN_BUCKET_SIZE;
     }
 
     /**
@@ -358,11 +359,7 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
      * @param sinkBucketCount   sink bucket count
      * @return Whether it meets the Merkel verification scenario
      */
-    private boolean checkNotMerkleCompare(int sourceBucketCount, int sinkBucketCount) {
-        // Meet the constraints of constructing Merkel tree
-        if (sourceBucketCount >= THRESHOLD_MIN_BUCKET_SIZE && sinkBucketCount >= THRESHOLD_MIN_BUCKET_SIZE) {
-            return false;
-        }
+    private void compareNoMerkleTree(int sourceBucketCount, int sinkBucketCount) {
         // Comparison without Merkel tree constraint
         if (sourceBucketCount == sinkBucketCount) {
             // sourceSize == 0, that is, all buckets are empty
@@ -377,13 +374,13 @@ public class DataCheckRunnable extends DataCheckKafkaConsumer implements Runnabl
                 difference.getOnlyOnLeft().putAll(subDifference.getOnlyOnLeft());
                 difference.getOnlyOnRight().putAll(subDifference.getOnlyOnRight());
             }
+            refreshCheckStatus();
         } else {
             refreshCheckStatus();
             throw new LargeDataDiffException(String.format(
                 "table[%s] source & sink data have large different," + "source-bucket-count=[%s] sink-bucket-count=[%s]"
                     + " Please synchronize data again! ", tableName, sourceBucketCount, sinkBucketCount));
         }
-        return true;
     }
 
     private void checkResult() {

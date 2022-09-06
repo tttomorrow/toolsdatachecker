@@ -46,7 +46,7 @@ import java.util.stream.IntStream;
  **/
 @Service
 public class ExtractTaskBuilder {
-    private static final int EXTRACT_MAX_ROW_COUNT = 100000;
+    private static final int EXTRACT_MAX_ROW_COUNT = 50000;
     private static final String TASK_NAME_PREFIX = "TASK_TABLE_";
     private static final String INCREMENT_TASK_NAME_PREFIX = "INCREMENT_TASK_TABLE_";
 
