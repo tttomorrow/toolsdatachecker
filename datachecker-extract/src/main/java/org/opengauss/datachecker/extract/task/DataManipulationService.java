@@ -18,6 +18,7 @@ package org.opengauss.datachecker.extract.task;
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
 import org.opengauss.datachecker.common.util.LongHashFunctionWrapper;
@@ -30,6 +31,7 @@ import org.opengauss.datachecker.extract.dml.InsertDmlBuilder;
 import org.opengauss.datachecker.extract.dml.ReplaceDmlBuilder;
 import org.opengauss.datachecker.extract.dml.SelectDmlBuilder;
 import org.opengauss.datachecker.extract.service.MetaDataService;
+import org.opengauss.datachecker.extract.util.MetaDataUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -37,7 +39,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -58,6 +59,8 @@ import java.util.stream.Collectors;
 public class DataManipulationService {
     private static final LongHashFunctionWrapper HASH_UTIL = new LongHashFunctionWrapper();
 
+    private final ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
+    private final ResultSetHandler resultSetHandler = new ResultSetHandler();
     @Autowired
     private JdbcTemplate jdbcTemplateOne;
     @Autowired
@@ -70,7 +73,40 @@ public class DataManipulationService {
      *
      * @param tableName     tableName
      * @param compositeKeys compositeKeys
-     * @param metadata      metadata
+     * @param tableMetadata tableMetadata
+     * @return query result
+     */
+    public List<RowDataHash> queryColumnHashValues(String tableName, List<String> compositeKeys,
+        TableMetadata tableMetadata) {
+        Assert.isTrue(Objects.nonNull(tableMetadata), "Abnormal table metadata , failed to build select SQL");
+        final List<ColumnsMetaData> primaryMetas = tableMetadata.getPrimaryMetas();
+
+        Assert.isTrue(!CollectionUtils.isEmpty(primaryMetas),
+            "The metadata information of the table primary key is abnormal, and the construction of select SQL failed");
+
+        // Single primary key table data query
+        if (primaryMetas.size() == 1) {
+            final ColumnsMetaData primaryData = primaryMetas.get(0);
+            String querySql =
+                new SelectDmlBuilder().schema(extractProperties.getSchema()).columns(tableMetadata.getColumnsMetas())
+                                      .tableName(tableName).conditionPrimary(primaryData).build();
+            return queryColumnValuesSinglePrimaryKey(querySql, compositeKeys, tableMetadata);
+        } else {
+            // Compound primary key table data query
+            final SelectDmlBuilder dmlBuilder = new SelectDmlBuilder();
+            String querySql = dmlBuilder.schema(extractProperties.getSchema()).columns(tableMetadata.getColumnsMetas())
+                                        .tableName(tableName).conditionCompositePrimary(primaryMetas).build();
+            List<Object[]> batchParam = dmlBuilder.conditionCompositePrimaryValue(primaryMetas, compositeKeys);
+            return queryColumnValuesByCompositePrimary(querySql, batchParam, tableMetadata);
+        }
+    }
+
+    /**
+     * queryColumnValues
+     *
+     * @param tableName     tableName
+     * @param compositeKeys compositeKeys
+     * @param metadata      tableMetadata
      * @return query result
      */
     public List<Map<String, String>> queryColumnValues(String tableName, List<String> compositeKeys,
@@ -87,7 +123,7 @@ public class DataManipulationService {
             String querySql =
                 new SelectDmlBuilder().schema(extractProperties.getSchema()).columns(metadata.getColumnsMetas())
                                       .tableName(tableName).conditionPrimary(primaryData).build();
-            return queryColumnValues(querySql, compositeKeys);
+            return queryColumnValuesSinglePrimaryKey(querySql, compositeKeys);
         } else {
             // Compound primary key table data query
             final SelectDmlBuilder dmlBuilder = new SelectDmlBuilder();
@@ -101,13 +137,22 @@ public class DataManipulationService {
     /**
      * Compound primary key table data query
      *
-     * @param selectDml  Query SQL
-     * @param batchParam Compound PK query parameters
+     * @param selectDml     Query SQL
+     * @param batchParam    Compound PK query parameters
+     * @param tableMetadata tableMetadata
      * @return Query data results
      */
+    private List<RowDataHash> queryColumnValuesByCompositePrimary(String selectDml, List<Object[]> batchParam,
+        TableMetadata tableMetadata) {
+        // Query the current task data and organize the data
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_1);
+        paramMap.put(DmlBuilder.PRIMARY_KEYS, batchParam);
+        return queryColumnValues(selectDml, paramMap, tableMetadata);
+    }
+
     private List<Map<String, String>> queryColumnValuesByCompositePrimary(String selectDml, List<Object[]> batchParam) {
         // Query the current task data and organize the data
-        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_16);
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_1);
         paramMap.put(DmlBuilder.PRIMARY_KEYS, batchParam);
         return queryColumnValues(selectDml, paramMap);
     }
@@ -115,13 +160,22 @@ public class DataManipulationService {
     /**
      * Single primary key table data query
      *
-     * @param selectDml   Query SQL
-     * @param primaryKeys Query primary key collection
+     * @param selectDml     Query SQL
+     * @param primaryKeys   Query primary key collection
+     * @param tableMetadata tableMetadata
      * @return Query data results
      */
-    private List<Map<String, String>> queryColumnValues(String selectDml, List<String> primaryKeys) {
+    private List<RowDataHash> queryColumnValuesSinglePrimaryKey(String selectDml, List<String> primaryKeys,
+        TableMetadata tableMetadata) {
         // Query the current task data and organize the data
-        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_16);
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_1);
+        paramMap.put(DmlBuilder.PRIMARY_KEYS, primaryKeys);
+        return queryColumnValues(selectDml, paramMap, tableMetadata);
+    }
+
+    private List<Map<String, String>> queryColumnValuesSinglePrimaryKey(String selectDml, List<String> primaryKeys) {
+        // Query the current task data and organize the data
+        HashMap<String, Object> paramMap = new HashMap<>(InitialCapacity.CAPACITY_1);
         paramMap.put(DmlBuilder.PRIMARY_KEYS, primaryKeys);
         return queryColumnValues(selectDml, paramMap);
     }
@@ -133,17 +187,20 @@ public class DataManipulationService {
      * @param paramMap  query parameters
      * @return query result
      */
-    private List<Map<String, String>> queryColumnValues(String selectDml, Map<String, Object> paramMap) {
+    private List<RowDataHash> queryColumnValues(String selectDml, Map<String, Object> paramMap,
+        TableMetadata tableMetadata) {
+        List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);
+        List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
         // Use JDBC to query the current task to extract data
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplateOne);
-        return jdbc.query(selectDml, paramMap, (rs, rowNum) -> {
-            // Get the metadata information corresponding to the current result set
-            ResultSetMetaData metaData = rs.getMetaData();
-            // Result set processor
-            ResultSetHandler handler = new ResultSetHandler();
-            // Data conversion of query result set according to metadata information
-            return handler.putOneResultSetToMap(rs, metaData);
-        });
+        return jdbc.query(selectDml, paramMap,
+            (rs, rowNum) -> resultSetHashHandler.handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)));
+    }
+
+    private List<Map<String, String>> queryColumnValues(String selectDml, Map<String, Object> paramMap) {
+        ResultSetHandler handler = new ResultSetHandler();
+        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplateOne);
+        return jdbc.query(selectDml, paramMap, (rs, rowNum) -> handler.putOneResultSetToMap(rs));
     }
 
     /**

@@ -62,20 +62,20 @@ public class ResultSetHandler {
      * Convert the current query result set into map according to the metadata information of the result set
      *
      * @param resultSet JDBC Data query result set
-     * @param rsmd      JDBC ResultSet Metadata
      * @return JDBC Data encapsulation results
      * @throws SQLException Return SQL exception
      */
-    public Map<String, String> putOneResultSetToMap(ResultSet resultSet, ResultSetMetaData rsmd) throws SQLException {
-        Map<String, String> values = new HashMap<>(InitialCapacity.CAPACITY_16);
-        IntStream.range(0, rsmd.getColumnCount()).forEach(idx -> {
+    public Map<String, String> putOneResultSetToMap(ResultSet resultSet) throws SQLException {
+        Map<String, String> values = new HashMap<>(InitialCapacity.CAPACITY_64);
+        final ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        IntStream.range(0, resultSetMetaData.getColumnCount()).forEach(idx -> {
             try {
                 int columnIdx = idx + 1;
                 // Get the column and its corresponding column name
-                String columnLabel = rsmd.getColumnLabel(columnIdx);
+                String columnLabel = resultSetMetaData.getColumnLabel(columnIdx);
                 // Get the corresponding value from the resultset result set according to the column name
                 Object columnValue;
-                final int columnType = rsmd.getColumnType(columnIdx);
+                final int columnType = resultSetMetaData.getColumnType(columnIdx);
                 if (SQL_TIME_TYPES.contains(columnType)) {
                     columnValue = timeHandler(resultSet, columnIdx, columnType);
                 } else {
@@ -83,8 +83,7 @@ public class ResultSetHandler {
                 }
                 values.put(columnLabel, MAPPER.convertValue(columnValue, String.class));
             } catch (SQLException ex) {
-                log.error("putOneResultSetToMap Convert data according to result set metadata information."
-                    + " Result set exception {}", ex.getMessage());
+                log.error("putOneResultSetToMap Convert data according to result set metadata information.", ex);
             }
         });
         return values;

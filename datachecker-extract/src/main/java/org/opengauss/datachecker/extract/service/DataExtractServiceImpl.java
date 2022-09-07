@@ -43,7 +43,6 @@ import org.opengauss.datachecker.extract.task.ExtractTaskRunnable;
 import org.opengauss.datachecker.extract.task.ExtractThreadSupport;
 import org.opengauss.datachecker.extract.task.IncrementExtractTaskRunnable;
 import org.opengauss.datachecker.extract.task.IncrementExtractThreadSupport;
-import org.opengauss.datachecker.extract.task.RowDataHashHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -323,23 +322,6 @@ public class DataExtractServiceImpl implements DataExtractService {
         }
     }
 
-    static class DataExtractThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
-
-        /**
-         * Method invoked when the given thread terminates due to the
-         * given uncaught exception.
-         * <p>Any exception thrown by this method will be ignored by the
-         * Java Virtual Machine.
-         *
-         * @param thread    the thread
-         * @param throwable the exception
-         */
-        @Override
-        public void uncaughtException(Thread thread, Throwable throwable) {
-            log.error(thread.getName() + " exception: " + throwable);
-        }
-    }
-
     /**
      * DML statement generating repair report
      *
@@ -456,15 +438,11 @@ public class DataExtractServiceImpl implements DataExtractService {
     public List<RowDataHash> querySecondaryCheckRowData(SourceDataLog dataLog) {
         final String tableName = dataLog.getTableName();
         final List<String> compositeKeys = dataLog.getCompositePrimaryValues();
-
         final TableMetadata metadata = MetaDataCache.get(tableName);
         if (Objects.isNull(metadata)) {
             throw new TableNotExistException(tableName);
         }
-        List<Map<String, String>> dataRowList =
-            dataManipulationService.queryColumnValues(tableName, compositeKeys, metadata);
-        RowDataHashHandler handler = new RowDataHashHandler();
-        return handler.handlerQueryResult(metadata, dataRowList);
+        return dataManipulationService.queryColumnHashValues(tableName, compositeKeys, metadata);
     }
 
     @Override

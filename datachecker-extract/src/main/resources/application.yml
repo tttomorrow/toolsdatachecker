@@ -12,8 +12,8 @@ spring:
     producer:
       retries: 1
       acks: all
-      batch-size: 262144 # 256K
-      buffer-memory: 134217728 # 128M
+      batch-size: 1048576
+      buffer-memory: 536870912
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
@@ -25,7 +25,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       fetch-min-size: 1
-      max-poll-records: 10000
+      max-poll-records: 20000
+      fetch-max-bytes: 536870912  # 512M
 
 feign:
   okhttp:

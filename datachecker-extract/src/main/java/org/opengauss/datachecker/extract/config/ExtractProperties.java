@@ -59,7 +59,7 @@ public class ExtractProperties {
      * By default,this function is disabled. the default value is false.
      */
     @NotNull(message = "whether to enable debezium configuration, which cannot be empty")
-    private Boolean debeziumEnable;
+    private boolean isDebeziumEnable = false;
     /**
      * Debezium incremental migration verification topic.
      * Debezium listens to incremental data in tables and uses a single topic for incremental data management.
@@ -83,10 +83,11 @@ public class ExtractProperties {
     /**
      * debezium incremental migration verification period: 24 x 60 (unit:minute)
      */
-    private int debeziumTimePeriod;
+    private int debeziumTimePeriod = 1;
     /**
      * debezium incremental migration verification statistics incremental change record count threshold.
      * the threshold must be greater than 100.
      */
     private int debeziumNumPeriod = 1000;
+    private int debeziumNumDefaultPeriod = 1000;
 }

@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 
 /**
+ * TaskManagerServiceImpl
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/25
  * @since ：11
@@ -34,7 +36,6 @@ import java.util.List;
 @Slf4j
 @Service
 public class TaskManagerServiceImpl implements TaskManagerService {
-
     @Autowired
     private TableStatusRegister tableStatusRegister;
 
@@ -43,12 +44,13 @@ public class TaskManagerServiceImpl implements TaskManagerService {
      *
      * @param tableName tableName
      * @param endpoint  endpoint {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param status    status
      */
     @Override
-    public void refreshTableExtractStatus(String tableName, Endpoint endpoint) {
+    public void refreshTableExtractStatus(String tableName, Endpoint endpoint, int status) {
         log.info("check server refresh endpoint=[{}]  extract tableName=[{}] status=[{}]  ", endpoint.getDescription(),
-            tableName, endpoint.getCode());
-        tableStatusRegister.update(tableName, endpoint.getCode());
+            tableName, status);
+        tableStatusRegister.update(tableName, status);
     }
 
     /**
@@ -68,7 +70,6 @@ public class TaskManagerServiceImpl implements TaskManagerService {
             throw new CheckingException("The last verification process is being executed,"
                 + " and the table verification status data cannot be reinitialized!");
         }
-
     }
 
     /**
@@ -77,5 +78,16 @@ public class TaskManagerServiceImpl implements TaskManagerService {
     @Override
     public void cleanTaskStatus() {
         tableStatusRegister.removeAll();
+    }
+
+    /**
+     * query check status of current table
+     *
+     * @param tableName tableName
+     * @return status
+     */
+    @Override
+    public int queryTableCheckStatus(String tableName) {
+        return tableStatusRegister.get(tableName);
     }
 }

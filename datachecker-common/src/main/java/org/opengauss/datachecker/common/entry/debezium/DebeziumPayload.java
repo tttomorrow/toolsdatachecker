@@ -17,34 +17,21 @@ package org.opengauss.datachecker.common.entry.debezium;
 
 import lombok.Data;
 
-import java.util.List;
+import java.util.Map;
 
 /**
- * DebeziumData
+ * DebeziumPayload
  *
  * @author ：wangchao
- * @date ：Created in 2022/6/24
+ * @date ：Created in 2022/6/30
  * @since ：11
  */
 @Data
-public class DebeziumData {
-    private DebeziumSchema schema;
-    private DebeziumPayload payload;
-}
-
-@Data
-class DebeziumSchema {
-    private String name;
-    private String type;
-    private List<Field> fields;
-    private boolean optional;
-}
-
-@Data
-class Field {
-    private String name;
-    private String field;
-    private String type;
-    private List<Field> fields;
-    private boolean optional;
+public class DebeziumPayload {
+    private PayloadSource source;
+    private Map<String, String> before;
+    private Map<String, String> after;
+    private String op;
+    private String ts_ms;
+    private String transaction;
 }

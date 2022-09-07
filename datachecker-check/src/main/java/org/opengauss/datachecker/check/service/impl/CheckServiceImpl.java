@@ -47,8 +47,6 @@ import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -91,27 +89,20 @@ public class CheckServiceImpl implements CheckService {
      * Verify polling thread name
      */
     private static final String SELF_CHECK_POLL_THREAD_NAME = "check-polling-thread";
-
     private static final String START_MESSAGE = "the execution time of %s process is %s";
 
     @Autowired
     private FeignClientService feignClientService;
-
     @Autowired
     private TableStatusRegister tableStatusRegister;
-
     @Resource
     private DataCheckService dataCheckService;
-
     @Autowired
     private DataCheckProperties properties;
-
     @Autowired
     private EndpointMetaDataManager endpointMetaDataManager;
-
     @Value("${data.check.auto-clean-environment}")
     private boolean isAutoCleanEnvironment = true;
-
     @Value("${data.check.check-with-sync-extracting}")
     private boolean isCheckWithSyncExtracting = true;
 
@@ -279,18 +270,12 @@ public class CheckServiceImpl implements CheckService {
 
     private void startCheckTableThread(String tableName) {
         Topic topic = feignClientService.queryTopicInfo(Endpoint.SOURCE, tableName);
-
         if (Objects.nonNull(topic)) {
             tableStatusRegister.initPartitionsStatus(tableName, topic.getPartitions());
             IntStream.range(0, topic.getPartitions()).forEach(idxPartition -> {
                 log.info("kafka consumer topic=[{}] partitions=[{}]", topic.toString(), idxPartition);
                 // Verify the data according to the table name and Kafka partition
-                try {
-                    final Future<?> future = dataCheckService.checkTableData(topic, idxPartition);
-                    future.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    log.info("data check topic=[{}] partitions=[{}] error:", topic.toString(), idxPartition, e);
-                }
+                dataCheckService.checkTableData(topic, idxPartition);
             });
         }
     }

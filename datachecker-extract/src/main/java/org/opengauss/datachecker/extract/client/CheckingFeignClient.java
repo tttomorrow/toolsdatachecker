@@ -19,6 +19,7 @@ import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.lang.NonNull;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -48,10 +49,11 @@ public interface CheckingFeignClient {
      *
      * @param tableName table name
      * @param endpoint  endpoint enum type {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param status    status
      */
     @PostMapping("/table/extract/status")
     void refreshTableExtractStatus(@RequestParam(value = "tableName") @NotEmpty String tableName,
-                                  @RequestParam(value = "endpoint") @NonNull Endpoint endpoint);
+        @RequestParam(value = "endpoint") @NonNull Endpoint endpoint, @RequestParam(value = "status") int status);
 
     /**
      * Initializing task status
@@ -68,4 +70,10 @@ public interface CheckingFeignClient {
      */
     @PostMapping("/notify/source/increment/data/logs")
     void notifySourceIncrementDataLogs(@RequestBody @NotEmpty List<SourceDataLog> dataLogList);
+
+    /**
+     * health check
+     */
+    @GetMapping("/check/health")
+    void health();
 }

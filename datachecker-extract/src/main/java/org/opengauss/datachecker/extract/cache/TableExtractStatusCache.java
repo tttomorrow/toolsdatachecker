@@ -23,6 +23,7 @@ import org.springframework.util.Assert;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
@@ -59,6 +60,8 @@ public class TableExtractStatusCache {
      * Table data extraction status cache : {@code Map<String,  Map<Integer, Byte>>}
      */
     private static final Map<String, Map<Integer, Byte>> TABLE_EXTRACT_STATUS_MAP = new ConcurrentHashMap<>();
+
+    private static final Vector<String> ERROR_LIST = new Vector<>();
 
     /**
      * Table data extraction task status initialization. {code map} is a set of table decomposition tasks.
@@ -97,11 +100,30 @@ public class TableExtractStatusCache {
 
             // update status
             tableStatus.put(ordinal, STATUS_COMPLATE);
-            log.info("update tableName : {}, ordinal : {} check completed-status {}", tableName, ordinal,
+            log.info("update tableName : {}, ordinal : {} extract completed-status {}", tableName, ordinal,
                 STATUS_COMPLATE);
         } catch (Exception exception) {
             log.error(Message.UPDATE_STATUS_EXCEPTION, exception);
         }
+    }
+
+    /**
+     * Mark current table data extraction exception
+     *
+     * @param tableName tableName
+     */
+    public static void addErrorList(String tableName) {
+        ERROR_LIST.add(tableName);
+    }
+
+    /**
+     * Check whether the current table is marked as data extraction exception table
+     *
+     * @param tableName tableName
+     * @return If true is returned, it indicates that the current table has a task occurred an exceptio
+     */
+    public static boolean hasErrorOccurred(String tableName) {
+        return ERROR_LIST.contains(tableName);
     }
 
     /**

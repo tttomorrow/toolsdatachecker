@@ -51,6 +51,10 @@ public class KafkaConsumerConfig {
     private String autoOffsetReset;
     @Value("${spring.kafka.consumer.max-poll-records}")
     private int maxPollRecordsConfig;
+    @Value("${spring.kafka.consumer.fetch-max-bytes}")
+    private int fetchMaxBytes;
+    @Value("${spring.kafka.consumer.request-timeout-ms}")
+    private int requestTimeoutMs;
 
     /**
      * consumerConfigs
@@ -66,6 +70,8 @@ public class KafkaConsumerConfig {
         propsMap.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         propsMap.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
         propsMap.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecordsConfig);
+        propsMap.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, fetchMaxBytes);
+        propsMap.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeoutMs);
         return propsMap;
     }
 

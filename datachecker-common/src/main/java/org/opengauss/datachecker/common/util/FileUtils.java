@@ -16,15 +16,20 @@
 package org.opengauss.datachecker.common.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NotDirectoryException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * FileUtils
@@ -96,6 +101,26 @@ public class FileUtils {
     }
 
     /**
+     * Load files under the specified path
+     *
+     * @param fileDirectory fileDirectory
+     * @return file paths
+     */
+    public static List<Path> loadDirectory(String fileDirectory) {
+        try {
+            final Path pathDirectory = Path.of(fileDirectory);
+            if (Files.isDirectory(pathDirectory)) {
+                return Files.list(pathDirectory).collect(Collectors.toList());
+            } else {
+                throw new NotDirectoryException(fileDirectory);
+            }
+        } catch (IOException e) {
+            log.error("file write error:", e);
+        }
+        return new ArrayList<>(0);
+    }
+
+    /**
      * Deletes a file if it exists.
      *
      * @param filename filename
@@ -106,5 +131,21 @@ public class FileUtils {
         } catch (IOException e) {
             log.error("file write error:", e);
         }
+    }
+
+    /**
+     * Read the contents of the specified file
+     *
+     * @param filePath filePath
+     * @return file content
+     */
+    public static String readFileContents(Path filePath) {
+        try {
+            final byte[] bytes = Files.readAllBytes(filePath);
+            return new String(bytes, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("file read error:", e);
+        }
+        return StringUtils.EMPTY;
     }
 }

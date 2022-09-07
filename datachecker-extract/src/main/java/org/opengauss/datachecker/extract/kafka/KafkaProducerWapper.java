@@ -25,7 +25,6 @@ import org.opengauss.datachecker.extract.config.KafkaProducerConfig;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * KafkaProducerWapper
@@ -68,20 +67,18 @@ public class KafkaProducerWapper {
 
     private void sendRecordToSinglePartitionTopic(List<RowDataHash> recordHashList, String topicName) {
         final KafkaProducer<String, String> kafkaProducer = kafkaProducerConfig.getKafkaProducer(topicName);
-        AtomicInteger cnt = new AtomicInteger(0);
         recordHashList.forEach(record -> {
             record.setPartition(DEFAULT_PARTITION);
             final ProducerRecord<String, String> producerRecord =
                 new ProducerRecord<>(topicName, DEFAULT_PARTITION, record.getPrimaryKey(), JSON.toJSONString(record));
-            sendMessage(kafkaProducer, producerRecord, cnt);
+            sendMessage(kafkaProducer, producerRecord);
         });
         kafkaProducer.flush();
-        log.info("send topic={}, record size :{},cnt:{}", topicName, recordHashList.size(), cnt.get());
+        log.info("send topic={}, record size :{}", topicName, recordHashList.size());
     }
 
     private void sendMultiPartitionTopic(List<RowDataHash> recordHashList, String topicName, int partitions) {
         final KafkaProducer<String, String> kafkaProducer = kafkaProducerConfig.getKafkaProducer(topicName);
-        AtomicInteger cnt = new AtomicInteger(0);
         List<ProducerRecord> kafkaRecordList = new ArrayList<>();
         recordHashList.forEach(record -> {
             int partition = calcSimplePartition(record.getPrimaryKeyHash(), partitions);
@@ -89,7 +86,7 @@ public class KafkaProducerWapper {
             ProducerRecord<String, String> producerRecord =
                 new ProducerRecord<>(topicName, partition, record.getPrimaryKey(), JSON.toJSONString(record));
             kafkaRecordList.add(producerRecord);
-            sendMessage(kafkaProducer, producerRecord, cnt);
+            sendMessage(kafkaProducer, producerRecord);
         });
         kafkaProducer.flush();
     }
@@ -98,16 +95,12 @@ public class KafkaProducerWapper {
         return (int) Math.abs(value % mod);
     }
 
-    private void sendMessage(KafkaProducer<String, String> kafkaProducer, ProducerRecord<String, String> producerRecord,
-        AtomicInteger cnt) {
-        kafkaProducer.send(producerRecord, (metadata, exception) -> {
+    private void sendMessage(KafkaProducer<String, String> kafkaProducer, ProducerRecord<String, String> record) {
+        kafkaProducer.send(record, (metadata, exception) -> {
             if (exception != null) {
-                log.error("send failed,topic={},key:{} ,partition:{},offset:{}", metadata.topic(), producerRecord.key(),
+                log.error("send failed,topic={},key:{} ,partition:{},offset:{}", metadata.topic(), record.key(),
                     metadata.partition(), metadata.offset(), exception);
             }
         });
-        if (cnt.incrementAndGet() % FLUSH_KAFKA_PARALLEL_THRESHOLD == 0) {
-            kafkaProducer.flush();
-        }
     }
 }

@@ -17,6 +17,7 @@ package org.opengauss.datachecker.check.modules.check;
 
 import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
+import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,14 +31,16 @@ import java.util.Set;
  * @since ：11
  */
 @Data
-@JSONType(orders = {"schema", "table", "topic", "partitions", "createTime", "keyInsertSet", "keyUpdateSet",
-    "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"})
+@JSONType(orders = {"schema", "table", "topic", "partitions", "result", "message", "createTime", "keyInsertSet",
+    "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"})
 public class CheckDiffResult {
     private String schema;
     private String table;
     private String topic;
     private int partitions;
     private LocalDateTime createTime;
+    private String result;
+    private String message;
 
     private Set<String> keyInsertSet;
     private Set<String> keyUpdateSet;
@@ -47,6 +50,17 @@ public class CheckDiffResult {
     private List<String> repairUpdate;
     private List<String> repairDelete;
 
+    /**
+     * constructor
+     */
+    public CheckDiffResult() {
+    }
+
+    /**
+     * constructor
+     *
+     * @param builder builder
+     */
     public CheckDiffResult(final AbstractCheckDiffResultBuilder<?, ?> builder) {
         table = builder.getTable();
         partitions = builder.getPartitions();
@@ -59,5 +73,21 @@ public class CheckDiffResult {
         repairUpdate = builder.getRepairUpdate();
         repairInsert = builder.getRepairInsert();
         repairDelete = builder.getRepairDelete();
+        resultAnalysis();
+    }
+
+    private void resultAnalysis() {
+        if (CollectionUtils.isEmpty(keyInsertSet) && CollectionUtils.isEmpty(keyUpdateSet) && CollectionUtils
+            .isEmpty(keyDeleteSet)) {
+            result = "success";
+            message = schema.concat(".").concat(table).concat("_[").concat(String.valueOf(partitions))
+                            .concat("] check success");
+        } else {
+            result = "failed";
+            message =
+                schema.concat(".").concat(table).concat("_[").concat(String.valueOf(partitions)).concat("] check : ")
+                      .concat(" insert=" + keyInsertSet.size()).concat(" update=" + keyUpdateSet.size())
+                      .concat(" delete=" + keyDeleteSet.size());
+        }
     }
 }

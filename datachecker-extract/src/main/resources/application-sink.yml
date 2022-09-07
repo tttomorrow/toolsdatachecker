@@ -16,9 +16,8 @@ spring:
     schema: jack
     databaseType: OG  #OG opengauss
     endpoint: SINK
-    query-table-row-count: true
     debezium-enable: false
-    sync-extract: false
+    sync-extract: true
 
   datasource:
     druid:

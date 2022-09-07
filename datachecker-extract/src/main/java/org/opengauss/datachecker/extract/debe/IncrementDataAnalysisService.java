@@ -15,15 +15,18 @@
 
 package org.opengauss.datachecker.extract.debe;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.entry.check.IncrementCheckTopic;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
+import org.opengauss.datachecker.common.exception.ExtractException;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
@@ -38,6 +41,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @date ：Created in 2022/7/4
  * @since ：11
  */
+@Slf4j
 @RequiredArgsConstructor
 @Service
 public class IncrementDataAnalysisService {
@@ -68,6 +72,7 @@ public class IncrementDataAnalysisService {
     @PostConstruct
     public void startIncrDataAnalysis() {
         if (extractProperties.getDebeziumEnable() && consolidationService.isSourceEndpoint()) {
+            log.info("Start incremental verification analysis");
             verificationConfiguration();
             IncrementCheckTopic topicRecordOffSet = consolidationService.getDebeziumTopicRecordOffSet();
             // Start the initialization load to verify the topic offset
@@ -78,18 +83,21 @@ public class IncrementDataAnalysisService {
     }
 
     private void verificationConfiguration() {
+        log.info("Incremental verification configuration parameter check");
         final int debeziumTimePeriod = extractProperties.getDebeziumTimePeriod();
         final int debeziumNumPeriod = extractProperties.getDebeziumNumPeriod();
+        final int defaultPeriod = extractProperties.getDebeziumNumDefaultPeriod();
         Assert.isTrue(debeziumTimePeriod > 0,
             "Debezium incremental migration verification, the time period should be greater than 0");
-        Assert.isTrue(debeziumNumPeriod > 100, "Debezium incremental migration verification statistics:"
-            + "the threshold value of the number of incremental change records should be greater than 100");
+        Assert.isTrue(debeziumNumPeriod >= defaultPeriod, "Debezium incremental migration verification statistics:"
+            + "the value of the number of incremental change records should be greater than " + defaultPeriod);
     }
 
     /**
      * Incremental log data record extraction scheduling task
      */
     public void dataAnalysis() {
+        log.info("Start the incremental verification data analysis thread");
         SCHEDULED_EXECUTOR
             .scheduleWithFixedDelay(peekDebeziumTopicRecordOffset(), DataNumAnalysisThreadConstant.INITIAL_DELAY,
                 DataNumAnalysisThreadConstant.DELAY, TimeUnit.SECONDS);
@@ -103,8 +111,15 @@ public class IncrementDataAnalysisService {
     private Runnable peekDebeziumTopicRecordOffset() {
         return () -> {
             Thread.currentThread().setName(DataNumAnalysisThreadConstant.NAME);
-            dataNumAnalysis();
-            dataTimeAnalysis();
+            try {
+                checkingFeignClient.health();
+                dataNumAnalysis();
+                dataTimeAnalysis();
+            } catch (FeignException ex) {
+                log.error("check service has an error occurred. {}", ex.getMessage());
+            } catch (ExtractException ex) {
+                log.error("peek debezium topic record offset has an error occurred,", ex);
+            }
         };
     }
 
@@ -112,6 +127,7 @@ public class IncrementDataAnalysisService {
      * Incremental log data extraction and time latitude management
      */
     public void dataTimeAnalysis() {
+        log.info("Incremental log data extraction and time latitude management");
         long time = System.currentTimeMillis();
         if ((time - lastTimestampAtomic.get()) >= extractProperties.getDebeziumTimePeriod()) {
             final List<SourceDataLog> debeziumTopicRecords =
@@ -129,6 +145,7 @@ public class IncrementDataAnalysisService {
      * Incremental log data extraction, quantity and latitude management
      */
     public void dataNumAnalysis() {
+        log.info("Incremental log data extraction, quantity and latitude management");
         final long offset = consolidationService.getDebeziumTopicRecordEndOffSet();
         // Verify whether the data volume threshold dimension scenario trigger conditions are met
         if ((offset - lastOffSetAtomic.get()) >= extractProperties.getDebeziumNumPeriod()) {
@@ -136,8 +153,11 @@ public class IncrementDataAnalysisService {
             // the data is extracted and pushed to the verification service.
             final List<SourceDataLog> debeziumTopicRecords =
                 consolidationService.getDebeziumTopicRecords(extractProperties.getDebeziumTopic());
-            checkingFeignClient.notifySourceIncrementDataLogs(debeziumTopicRecords);
-            lastOffSetAtomic.addAndGet(debeziumTopicRecords.size());
+            if (CollectionUtils.isNotEmpty(debeziumTopicRecords)) {
+                checkingFeignClient.notifySourceIncrementDataLogs(debeziumTopicRecords);
+                lastOffSetAtomic.addAndGet(debeziumTopicRecords.size());
+            }
+
             // Trigger data volume threshold dimension scenario - update time threshold
             setLastTimestampAtomicCurrentTime();
         }

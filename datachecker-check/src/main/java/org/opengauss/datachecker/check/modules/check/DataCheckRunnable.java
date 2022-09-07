@@ -72,7 +72,7 @@ public class DataCheckRunnable implements Runnable {
     private final StatisticalService statisticalService;
     private final TableStatusRegister tableStatusRegister;
     private final DataCheckParam checkParam;
-    private final KafkaConsumerService kafkaConsumerService;
+    private final KafkaConsumerHandler kafkaConsumerHandler;
 
     private String sinkSchema;
     private Topic topic;
@@ -93,7 +93,13 @@ public class DataCheckRunnable implements Runnable {
         feignClient = support.getFeignClientService();
         statisticalService = support.getStatisticalService();
         tableStatusRegister = support.getTableStatusRegister();
-        kafkaConsumerService = support.getKafkaConsumerService();
+        kafkaConsumerHandler = buildKafkaHandler(support);
+    }
+
+    private KafkaConsumerHandler buildKafkaHandler(DataCheckRunnableSupport support) {
+        KafkaConsumerService kafkaConsumerService = support.getKafkaConsumerService();
+        return new KafkaConsumerHandler(kafkaConsumerService.buildKafkaConsumer(false),
+            kafkaConsumerService.getRetryFetchRecordTimes());
     }
 
     /**
@@ -345,7 +351,8 @@ public class DataCheckRunnable implements Runnable {
      * @return Specify table Kafka partition data
      */
     private List<RowDataHash> getTopicPartitionsData(Endpoint endpoint, int partitions) {
-        return kafkaConsumerService.queryCheckRowData(topic, partitions);
+        Topic endpointTopic = feignClient.queryTopicInfo(endpoint, tableName);
+        return kafkaConsumerHandler.queryCheckRowData(endpointTopic, partitions);
     }
 
     private boolean shouldCheckMerkleTree(int sourceBucketCount, int sinkBucketCount) {
