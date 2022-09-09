@@ -31,11 +31,11 @@ import org.opengauss.datachecker.extract.dml.DmlBuilder;
 import org.opengauss.datachecker.extract.dml.SelectDmlBuilder;
 import org.opengauss.datachecker.extract.kafka.KafkaProducerWapper;
 import org.opengauss.datachecker.extract.service.MetaDataService;
+import org.opengauss.datachecker.extract.util.MetaDataUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.util.CollectionUtils;
 
-import java.sql.ResultSetMetaData;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,22 +96,18 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
         paramMap.put(DmlBuilder.PRIMARY_KEYS,
             getSqlParam(sqlBuilder, tableMetadata.getPrimaryMetas(), compositePrimaryValues));
 
-        // Query the current task data and organize the data
-        List<Map<String, String>> dataRowList = queryColumnValues(sqlBuilder.build(), paramMap);
+        // Query the current task data and organize the data && Hash the queried data results
+        List<RowDataHash> dataRowList = queryColumnValues(sqlBuilder.build(), paramMap, tableMetadata);
         log.info("query extract task={} completed row count=[{}]", taskName, dataRowList.size());
-        // Hash the queried data results
-        RowDataHashHandler handler = new RowDataHashHandler();
-        List<RowDataHash> recordHashList = handler.handlerQueryResult(tableMetadata, dataRowList);
-        log.info("hash extract task={} completed", taskName);
         // Push the local cache to push the data to Kafka according to the fragmentation order
-        syncSend(topic, recordHashList);
+        syncSend(topic, dataRowList);
         log.info("send kafka extract task={} completed", taskName);
         // When the push is completed, the extraction status of the current task will be updated
         TableExtractStatusCache.update(tableName, 1);
         log.info("update extract task={} status completed", tableName);
         // Notify the verification service that the task data extraction corresponding to
         // the current table has been completed
-        checkingFeignClient.refreshTableExtractStatus(tableName, endpoint);
+        checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, endpoint.getCode());
         log.info("refush table extract status tableName={} status completed", tableName);
     }
 
@@ -177,17 +173,20 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
     /**
      * Primary key table data query
      *
-     * @param selectDml Query SQL
-     * @param paramMap  Query Parameter
+     * @param selectDml     Query SQL
+     * @param paramMap      Query Parameter
+     * @param tableMetadata tableMetadata
      * @return query results
      */
-    private List<Map<String, String>> queryColumnValues(String selectDml, Map<String, Object> paramMap) {
+    private List<RowDataHash> queryColumnValues(String selectDml, Map<String, Object> paramMap,
+        TableMetadata tableMetadata) {
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
-        return jdbc.query(selectDml, paramMap, (rs, rowNum) -> {
-            ResultSetMetaData metaData = rs.getMetaData();
-            ResultSetHandler handler = new ResultSetHandler();
-            return handler.putOneResultSetToMap(rs, metaData);
-        });
+        List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);
+        List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
+        ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
+        ResultSetHandler resultSetHandler = new ResultSetHandler();
+        return jdbc.query(selectDml, paramMap,
+            (rs, rowNum) -> resultSetHashHandler.handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)));
     }
 
     private TableMetadata getTableMetadata() {

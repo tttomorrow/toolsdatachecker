@@ -17,22 +17,24 @@ package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.Topic;
+import org.opengauss.datachecker.common.exception.ExtractException;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.extract.cache.TableExtractStatusCache;
 import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.kafka.KafkaProducerWapper;
+import org.opengauss.datachecker.extract.task.sql.SelectSqlBuilder;
+import org.opengauss.datachecker.extract.util.MetaDataUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-import java.sql.ResultSetMetaData;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Data extraction thread class
@@ -44,10 +46,12 @@ import java.util.Map;
 @Slf4j
 public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable {
     private static final String EXTRACT_THREAD_NAME_PREFIX = "EXTRACT_";
+    private static final String EXTRACT_STATUS_THREAD_NAME_PREFIX = "EXTRACT_STATUS_";
 
     private final Topic topic;
     private final ExtractTask task;
     private final Endpoint endpoint;
+    private final DataBaseType databaseType;
     private final String schema;
     private final JdbcTemplate jdbcTemplate;
     private final CheckingFeignClient checkingFeignClient;
@@ -63,66 +67,87 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         super(support.getKafkaProducerConfig());
         this.task = task;
         this.topic = topic;
+        databaseType = support.getExtractProperties().getDatabaseType();
         schema = support.getExtractProperties().getSchema();
         endpoint = support.getExtractProperties().getEndpoint();
         jdbcTemplate = new JdbcTemplate(support.getDataSourceOne());
         checkingFeignClient = support.getCheckingFeignClient();
     }
 
-    @Override
-    public void run() {
-        Thread.currentThread().setName(EXTRACT_THREAD_NAME_PREFIX.concat(task.getTaskName()));
-        log.info("Data extraction task {} is starting", task.getTaskName());
+    /**
+     * Core logic of data extraction task execution
+     */
+    public void executeTask() {
         TableMetadata tableMetadata = task.getTableMetadata();
         // Construct query SQL according to the metadata information of the table in the current task
-        String sql = new SelectSqlBulder(tableMetadata, schema, task.getStart(), task.getOffset()).builder();
+        final SelectSqlBuilder sqlBuilder = new SelectSqlBuilder(tableMetadata, schema);
+        String sql = sqlBuilder.dataBaseType(databaseType).offset(task.getStart(), task.getOffset()).builder();
         log.debug("selectSql {}", sql);
-        // Query data through JDBC SQL
-        List<Map<String, String>> dataRowList = queryColumnValues(sql);
-
-        log.info("Data extraction task {} completes basic data query through JDBC", task.getTaskName());
-        // Hash the queried data results
-        RowDataHashHandler handler = new RowDataHashHandler();
-        List<RowDataHash> recordHashList = handler.handlerQueryResult(tableMetadata, dataRowList);
+        // Query data through JDBC SQL and Hash the queried data results ,
+        // then package data into RowDataHash type Objects
+        log.info("Data extraction task {} start, data query through JDBC", task.getTaskName());
+        List<RowDataHash> recordHashList = queryAndConvertColumnValues(sql, tableMetadata);
+        log.info("Data extraction task {} completes, data query through JDBC", task.getTaskName());
 
         // Push the data to Kafka according to the fragmentation order
         syncSend(topic, recordHashList);
 
-        String tableName = task.getTableName();
-
-        // When the push is completed, the extraction status of the current task will be updated
-        TableExtractStatusCache.update(tableName, task.getDivisionsOrdinal());
-        log.info("update extract task={} status completed", task.getTaskName());
-        if (!task.isDivisions()) {
-            // Notify the verification service that the task data extraction corresponding to
-            // the current table has been completed
-            checkingFeignClient.refreshTableExtractStatus(tableName, endpoint);
-            log.info("refresh table extract status tableName={} status completed", task.getTaskName());
-        }
-        // If the current task is a sharding task, check the sharding status of the current task before sharding and
-        // whether the execution is completed.
-        // If the previous sharding task is not completed, wait 1000 milliseconds,
-        // check again and try until all the previous sharding tasks are completed,
-        // and then refresh the current sharding status.
-        if (task.isDivisions() && task.getDivisionsOrdinal() == task.getDivisionsTotalNumber()) {
-            // The data extraction task of the current table is completed (all subtasks are completed)
-            // Notify the verification service that the task data extraction corresponding to
-            // the current table has been completed
-            while (!TableExtractStatusCache.checkCompleted(tableName, task.getDivisionsOrdinal())) {
-                ThreadUtil.sleep(1000);
+        ThreadUtil.newSingleThreadExecutor().submit(() -> {
+            Thread.currentThread().setName(EXTRACT_STATUS_THREAD_NAME_PREFIX.concat(task.getTaskName()));
+            String tableName = task.getTableName();
+            // When the push is completed, the extraction status of the current task will be updated
+            TableExtractStatusCache.update(tableName, task.getDivisionsOrdinal());
+            if (!task.isDivisions()) {
+                // Notify the verification service that the task data extraction corresponding to
+                // the current table has been completed
+                checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, endpoint.getCode());
+                log.info("refresh table extract status tableName={} status completed", task.getTaskName());
             }
-            checkingFeignClient.refreshTableExtractStatus(tableName, endpoint);
-            log.info("refresh table=[{}] extract status completed,task=[{}]", tableName, task.getTaskName());
-        }
+            if (task.isDivisions() && task.getDivisionsOrdinal() == task.getDivisionsTotalNumber()) {
+                // The data extraction task of the current table is completed (all subtasks are completed)
+                // Notify the verification service that the task data extraction corresponding to
+                // the current table has been completed
+                while (!TableExtractStatusCache.checkCompleted(tableName, task.getDivisionsOrdinal())) {
+                    ThreadUtil.sleep(1000);
+                    if (TableExtractStatusCache.hasErrorOccurred(tableName)) {
+                        break;
+                    }
+                }
+                if (TableExtractStatusCache.hasErrorOccurred(tableName)) {
+                    checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, -1);
+                    log.error("refresh table=[{}] extract status error,task=[{}]", tableName, task.getTaskName());
+                } else {
+                    checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, endpoint.getCode());
+                    log.info("refresh table=[{}] extract status completed,task=[{}]", tableName, task.getTaskName());
+                }
+            }
+        });
     }
 
-    private List<Map<String, String>> queryColumnValues(String sql) {
-        Map<String, Object> map = new HashMap<>(InitialCapacity.CAPACITY_16);
+    private List<RowDataHash> queryAndConvertColumnValues(String sql, TableMetadata tableMetadata) {
+        List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);
+        List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
-        return jdbc.query(sql, map, (rs, rowNum) -> {
-            ResultSetMetaData metaData = rs.getMetaData();
-            ResultSetHandler handler = new ResultSetHandler();
-            return handler.putOneResultSetToMap(rs, metaData);
-        });
+        ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
+        ResultSetHandler resultSetHandler = new ResultSetHandler();
+        return jdbc.query(sql, new HashMap<>(InitialCapacity.EMPTY),
+            (rs, rowNum) -> resultSetHashHandler.handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)));
+    }
+
+    @Override
+    public void run() {
+        Thread.currentThread().setName(EXTRACT_THREAD_NAME_PREFIX.concat(task.getTaskName()));
+        final String tableName = task.getTableName();
+        log.info("Data extraction task {} is starting", tableName);
+        try {
+            if (TableExtractStatusCache.hasErrorOccurred(tableName)) {
+                log.error("table:[{}] has some error,current task=[{}] is canceled", tableName, task.getTaskName());
+                return;
+            }
+            executeTask();
+        } catch (ExtractException exp) {
+            log.error("Data extraction task {} has some exception,{}", task.getTaskName(), exp.getMessage());
+            TableExtractStatusCache.addErrorList(tableName);
+        }
     }
 }

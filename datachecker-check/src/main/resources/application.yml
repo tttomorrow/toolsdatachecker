@@ -2,7 +2,7 @@ server:
   port: 9000
   shutdown: graceful
 
-debug: false
+debug: true
 
 spring:
   application:
@@ -18,7 +18,9 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       fetch-min-size: 1
-      max-poll-records: 10000
+      max-poll-records: 20000
+      request-timeout-ms: 300000
+      fetch-max-bytes: 536870912  # 512M
 
   datasource:
     druid:

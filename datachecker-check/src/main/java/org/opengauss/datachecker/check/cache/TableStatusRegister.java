@@ -54,7 +54,10 @@ public class TableStatusRegister implements Cache<String, Integer> {
      * Task status: if both the source and destination tasks have completed data verification, the setting status is 7
      */
     public static final int TASK_STATUS_CONSUMER_VALUE = 7;
-
+    /**
+     * Task status cache. the table of data extract has error.
+     */
+    public static final int TASK_STATUS_ERROR = -1;
     /**
      * Task status cache. The initial default value of status is 0
      */
@@ -241,7 +244,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      * @return Updated cache value
      */
     @Override
-    public Integer update(String key, Integer value) {
+    public synchronized Integer update(String key, Integer value) {
         if (!TABLE_STATUS_CACHE.containsKey(key)) {
             log.error("current key={} does not exist", key);
             return 0;
@@ -379,10 +382,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
         if (keys.size() <= 0) {
             return;
         }
-        final Pair<Integer, Integer> extractProgress = extractProgress();
-        final Pair<Integer, Integer> checkProgress = checkProgress();
-        log.info("There are [{}] tables in total, [{}] tables are extracted and [{}] table is verified",
-            checkProgress.getSink(), extractProgress.getSource(), checkProgress.getSource());
+        List<String> extractErrorList = new ArrayList<>();
         List<String> notExtractCompleteList = new ArrayList<>();
         List<String> notCheckCompleteList = new ArrayList<>();
         List<String> checkCompleteList = new ArrayList<>();
@@ -395,10 +395,11 @@ public class TableStatusRegister implements Cache<String, Integer> {
             } else if (status == TASK_STATUS_CONSUMER_VALUE) {
                 checkCompleteList.add(tableName);
             } else {
+                extractErrorList.add(tableName);
                 log.error("table={} status={} error ", tableName, status);
             }
         });
-        log.debug("progress information: {} is being extracted, {} is being verified, and {} is completed",
-            notExtractCompleteList, notCheckCompleteList, checkCompleteList);
+        log.debug("progress information: {} is being extracted, {} is being verified, {} is completed,and {} is error",
+            notExtractCompleteList, notCheckCompleteList, checkCompleteList, extractErrorList);
     }
 }

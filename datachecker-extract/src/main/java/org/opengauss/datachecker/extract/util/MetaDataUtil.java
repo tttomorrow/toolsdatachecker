@@ -54,9 +54,7 @@ public class MetaDataUtil {
         if (Objects.isNull(columnsMetas)) {
             return emptyList();
         }
-        return columnsMetas.stream()
-                .sorted(Comparator.comparing(ColumnsMetaData::getOrdinalPosition))
-                .map(ColumnsMetaData::getColumnName)
-                .collect(Collectors.toList());
+        return columnsMetas.stream().sorted(Comparator.comparing(ColumnsMetaData::getOrdinalPosition))
+                           .map(ColumnsMetaData::getColumnName).collect(Collectors.toUnmodifiableList());
     }
 }

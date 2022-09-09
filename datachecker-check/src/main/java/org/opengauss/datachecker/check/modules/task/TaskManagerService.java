@@ -20,6 +20,8 @@ import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import java.util.List;
 
 /**
+ * TaskManagerService
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/25
  * @since ：11
@@ -30,8 +32,9 @@ public interface TaskManagerService {
      *
      * @param tableName tableName
      * @param endpoint  endpoint {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param status    status
      */
-    void refreshTableExtractStatus(String tableName, Endpoint endpoint);
+    void refreshTableExtractStatus(String tableName, Endpoint endpoint, int status);
 
     /**
      * Initialize task status
@@ -44,4 +47,12 @@ public interface TaskManagerService {
      * Clean up task status information
      */
     void cleanTaskStatus();
+
+    /**
+     * query check status of current table
+     *
+     * @param tableName tableName
+     * @return status
+     */
+    int queryTableCheckStatus(String tableName);
 }

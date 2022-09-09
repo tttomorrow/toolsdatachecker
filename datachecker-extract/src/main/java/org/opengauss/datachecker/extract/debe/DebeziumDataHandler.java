@@ -17,10 +17,9 @@ package org.opengauss.datachecker.extract.debe;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.common.entry.debezium.DebePayload;
 import org.opengauss.datachecker.common.entry.debezium.DebeziumData;
+import org.opengauss.datachecker.common.entry.debezium.DebeziumPayload;
 import org.opengauss.datachecker.common.entry.debezium.PayloadSource;
-import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotNull;
 import java.util.Map;
@@ -33,7 +32,6 @@ import java.util.Map;
  * @since ：11
  */
 @Slf4j
-@Service
 public class DebeziumDataHandler {
     /**
      * Debezium message parsing and adding the parsing result to the {@code DebeziumDataLogs.class} result set
@@ -43,7 +41,7 @@ public class DebeziumDataHandler {
      */
     public void handler(String message, @NotNull DebeziumDataLogs debeziumDataLogs) {
         final DebeziumData debeziumData = JSONObject.parseObject(message, DebeziumData.class);
-        final DebePayload payload = debeziumData.getPayload();
+        final DebeziumPayload payload = debeziumData.getPayload();
         final Map<String, String> before = payload.getBefore();
         final Map<String, String> after = payload.getAfter();
         final PayloadSource source = payload.getSource();

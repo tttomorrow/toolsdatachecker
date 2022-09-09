@@ -25,7 +25,6 @@ import org.springframework.lang.NonNull;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotEmpty;
@@ -49,14 +48,12 @@ public class TaskStatusController {
      *
      * @param tableName tableName
      * @param endpoint  endpoint {@link org.opengauss.datachecker.common.entry.enums.Endpoint}
+     * @param status    status
      */
     @Operation(summary = "Refresh the execution status of the data extraction table of the specified task")
     @PostMapping("/table/extract/status")
-    public void refushTableExtractStatus(
-        @Parameter(description = "tableName") @RequestParam(value = "tableName") @NotEmpty String tableName,
-        @Parameter(description = Endpoint.API_DESCRIPTION) @RequestParam(value = "endpoint") @NonNull
-            Endpoint endpoint) {
-        taskManagerService.refreshTableExtractStatus(tableName, endpoint);
+    public void refreshTableExtractStatus(@NotEmpty String tableName, @NonNull Endpoint endpoint, int status) {
+        taskManagerService.refreshTableExtractStatus(tableName, endpoint, status);
     }
 
     /**

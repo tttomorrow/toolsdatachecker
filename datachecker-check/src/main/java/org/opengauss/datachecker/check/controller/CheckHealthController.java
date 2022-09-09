@@ -13,38 +13,28 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.common.entry.debezium;
+package org.opengauss.datachecker.check.controller;
 
-import lombok.Data;
-
-import java.util.List;
+import org.opengauss.datachecker.common.web.Result;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
- * DebeziumData
+ * health check of the data check service
  *
  * @author ：wangchao
- * @date ：Created in 2022/6/24
+ * @date ：Created in 2022/6/23
  * @since ：11
  */
-@Data
-public class DebeziumData {
-    private DebeziumSchema schema;
-    private DebeziumPayload payload;
-}
-
-@Data
-class DebeziumSchema {
-    private String name;
-    private String type;
-    private List<Field> fields;
-    private boolean optional;
-}
-
-@Data
-class Field {
-    private String name;
-    private String field;
-    private String type;
-    private List<Field> fields;
-    private boolean optional;
+@RestController
+public class CheckHealthController {
+    /**
+     * health check of the data check service
+     *
+     * @return void
+     */
+    @GetMapping("/check/health")
+    public Result<Void> health() {
+        return Result.success();
+    }
 }

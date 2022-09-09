@@ -59,6 +59,6 @@ class TaskStatusControllerTest {
         // Verify the results
         assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
         assertThat(response.getContentAsString()).isEqualTo("");
-        verify(taskManagerService).refreshTableExtractStatus("tableName", Endpoint.SOURCE);
+        verify(taskManagerService).refreshTableExtractStatus("tableName", Endpoint.SOURCE, 1);
     }
 }

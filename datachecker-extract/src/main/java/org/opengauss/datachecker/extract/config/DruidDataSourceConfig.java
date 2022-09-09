@@ -60,7 +60,9 @@ public class DruidDataSourceConfig {
      */
     @Bean("jdbcTemplateOne")
     public JdbcTemplate jdbcTemplateOne(@Qualifier("dataSourceOne") DataSource dataSourceOne) {
-        return new JdbcTemplate(dataSourceOne);
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSourceOne);
+        jdbcTemplate.setFetchSize(50000);
+        return jdbcTemplate;
     }
 
     /**

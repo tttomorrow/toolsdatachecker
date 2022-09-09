@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.debe;
 
+import com.alibaba.fastjson.JSONException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -24,11 +25,11 @@ import org.opengauss.datachecker.common.entry.check.IncrementCheckTopic;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.DebeziumConfigException;
-import org.opengauss.datachecker.common.util.IdGenerator;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.opengauss.datachecker.extract.config.KafkaConsumerConfig;
 import org.opengauss.datachecker.extract.kafka.KafkaAdminService;
+import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -57,23 +58,26 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     private static final IncrementCheckConfig INCREMENT_CHECK_CONIFG = new IncrementCheckConfig();
 
     private final Object lock = new Object();
+    private final DebeziumDataHandler debeziumDataHandler = new DebeziumDataHandler();
 
     private KafkaConsumer<String, String> debeziumTopicOffSetConsumer = null;
-    @Autowired
-    private DebeziumDataHandler debeziumDataHandler;
+
     @Autowired
     private KafkaConsumerConfig consumerConfig;
     @Autowired
     private KafkaAdminService kafkaAdminService;
     @Autowired
     private ExtractProperties extractProperties;
+    @Autowired
+    private MetaDataService metaDataService;
 
     /**
      * initIncrementConfig
      */
     @PostConstruct
     public void initIncrementConfig() {
-        if (extractProperties.getDebeziumEnable()) {
+        if (extractProperties.isDebeziumEnable()) {
+            metaDataService.init();
             INCREMENT_CHECK_CONIFG.setDebeziumTopic(extractProperties.getDebeziumTopic())
                                   .setDebeziumTables(extractProperties.getDebeziumTables())
                                   .setPartitions(extractProperties.getDebeziumTopicPartitions())
@@ -92,17 +96,19 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     public List<SourceDataLog> getDebeziumTopicRecords(String topicName) {
         checkIncrementCheckEnvironment();
         IncrementCheckTopic topic = getDebeziumTopic();
-        topic.setTopic(topicName).setGroupId(IdGenerator.nextId36());
-        KafkaConsumer<String, String> kafkaConsumer = consumerConfig.getDebeziumConsumer(topic);
+        // if test service reset the group id is  IdGenerator.nextId36()
+        topic.setTopic(topicName);
+        KafkaConsumer<String, String> kafkaConsumer = consumerConfig.getDebeziumConsumer(topic.getGroupId());
+        kafkaConsumer.subscribe(List.of(topicName));
         log.info("kafka debezium topic consumer topic=[{}]", topicName);
         // Consume a partition data of a topic
         List<SourceDataLog> dataList = new ArrayList<>();
-        comsumerAllRecords(kafkaConsumer, dataList);
+        consumerAllRecords(kafkaConsumer, dataList);
         log.info("kafka consumer topic=[{}] dataList=[{}]", topicName, dataList.size());
         return dataList;
     }
 
-    private void comsumerAllRecords(KafkaConsumer<String, String> kafkaConsumer, List<SourceDataLog> dataList) {
+    private void consumerAllRecords(KafkaConsumer<String, String> kafkaConsumer, List<SourceDataLog> dataList) {
         log.debug("kafka Consumer poll");
         DebeziumDataLogs debeziumDataLogs = new DebeziumDataLogs();
         int consumerRecords = getConsumerRecords(kafkaConsumer, debeziumDataLogs);
@@ -110,7 +116,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
             consumerRecords = getConsumerRecords(kafkaConsumer, debeziumDataLogs);
         }
         dataList.addAll(debeziumDataLogs.values());
-        log.debug("Consumer data debezium DataHandler");
+        log.debug("Consumer data debezium data handler");
     }
 
     /**
@@ -125,7 +131,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
         consumerRecords.forEach(record -> {
             try {
                 debeziumDataHandler.handler(record.value(), debeziumDataLogs);
-            } catch (DebeziumConfigException ex) {
+            } catch (DebeziumConfigException | JSONException ex) {
                 // Abnormal message structure, ignoring the current message
                 log.error("Abnormal message structure, ignoring the current message,{},{}", record.value(),
                     ex.getMessage());
@@ -160,16 +166,15 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     private KafkaConsumer<String, String> getDebeziumTopicOffSetConsumer() {
         if (Objects.nonNull(debeziumTopicOffSetConsumer)) {
             return debeziumTopicOffSetConsumer;
-        }
-        if (Objects.isNull(debeziumTopicOffSetConsumer)) {
+        } else {
             synchronized (lock) {
                 if (Objects.isNull(debeziumTopicOffSetConsumer)) {
                     IncrementCheckTopic topic = getDebeziumTopic();
                     final TopicPartition topicPartition = new TopicPartition(topic.getTopic(), 0);
-                    KafkaConsumer<String, String> kafkaConsumer = consumerConfig.getDebeziumConsumer(topic);
+                    debeziumTopicOffSetConsumer = consumerConfig.getDebeziumConsumer(topic.getGroupId());
                     List<TopicPartition> partitionList = List.of(topicPartition);
                     // Set consumption mode as partition
-                    kafkaConsumer.assign(partitionList);
+                    debeziumTopicOffSetConsumer.assign(partitionList);
                 }
             }
         }
@@ -210,7 +215,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
      * Check the configuration of the debezium environment for incremental verification
      */
     private void checkIncrementCheckEnvironment() {
-        final Set<String> allKeys = MetaDataCache.getAllKeys();
+        final Set<String> allKeys = metaDataService.queryMetaDataOfSchema().keySet();
         // Debezium environmental inspection
         checkDebeziumEnvironment(INCREMENT_CHECK_CONIFG.getDebeziumTopic(), INCREMENT_CHECK_CONIFG.getDebeziumTables(),
             allKeys);
