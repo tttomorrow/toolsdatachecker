@@ -73,6 +73,7 @@ public class SelectSqlBuilder {
     private long start = 0L;
     private long offset = 0L;
     private DataBaseType dataBaseType;
+    private boolean isDivisions;
 
     /**
      * Table fragment query SQL Statement Builder
@@ -99,6 +100,17 @@ public class SelectSqlBuilder {
     }
 
     /**
+     * current table query sql is divisions
+     *
+     * @param isDivisions isDivisions
+     * @return builder
+     */
+    public SelectSqlBuilder isDivisions(boolean isDivisions) {
+        this.isDivisions = isDivisions;
+        return this;
+    }
+
+    /**
      * set param dataBaseType
      *
      * @param dataBaseType dataBaseType
@@ -118,7 +130,7 @@ public class SelectSqlBuilder {
         Assert.isTrue(Objects.nonNull(tableMetadata), Message.TABLE_METADATA_NULL_NOT_TO_BUILD_SQL);
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
         Assert.notEmpty(columnsMetas, Message.COLUMN_METADATA_EMPTY_NOT_TO_BUILD_SQL);
-        if (offset == OFF_SET_ZERO) {
+        if (offset == OFF_SET_ZERO || !isDivisions) {
             return buildSelectSqlOffsetZero(columnsMetas, tableMetadata.getTableName());
         } else {
             return buildSelectSqlOffset(tableMetadata, start, offset);

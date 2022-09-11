@@ -81,7 +81,8 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         TableMetadata tableMetadata = task.getTableMetadata();
         // Construct query SQL according to the metadata information of the table in the current task
         final SelectSqlBuilder sqlBuilder = new SelectSqlBuilder(tableMetadata, schema);
-        String sql = sqlBuilder.dataBaseType(databaseType).offset(task.getStart(), task.getOffset()).builder();
+        String sql = sqlBuilder.dataBaseType(databaseType).isDivisions(task.isDivisions())
+                               .offset(task.getStart(), task.getOffset()).builder();
         log.debug("selectSql {}", sql);
         // Query data through JDBC SQL and Hash the queried data results ,
         // then package data into RowDataHash type Objects
