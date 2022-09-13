@@ -34,11 +34,11 @@ import java.util.List;
 @Accessors(chain = true)
 @ToString
 public class TableMetadata {
-
     /**
      * tableName
      */
     private String tableName;
+
     /**
      * Total table data
      */
@@ -53,6 +53,4 @@ public class TableMetadata {
      * Table column properties
      */
     private List<ColumnsMetaData> columnsMetas;
-
 }
-

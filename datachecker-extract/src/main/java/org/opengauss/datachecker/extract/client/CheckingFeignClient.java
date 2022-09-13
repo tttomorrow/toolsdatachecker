@@ -76,4 +76,13 @@ public interface CheckingFeignClient {
      */
     @GetMapping("/check/health")
     void health();
+
+    /**
+     * query check status of current table
+     *
+     * @param tableName tableName
+     * @return table status
+     */
+    @GetMapping("/query/table/status")
+    int queryTableCheckStatus(@RequestParam("tableName") String tableName);
 }

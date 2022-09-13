@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -51,16 +52,13 @@ import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
 import javax.validation.constraints.NotEmpty;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
@@ -81,7 +79,7 @@ public class DataExtractServiceImpl implements DataExtractService {
     /**
      * Maximum number of sleeps of threads executing data extraction tasks
      */
-    private static final int MAX_SLEEP_COUNT = 30;
+    private static final int MAX_SLEEP_COUNT = 5;
     /**
      * The sleep time of the thread executing the data extraction task each time, in milliseconds
      */
@@ -151,7 +149,7 @@ public class DataExtractServiceImpl implements DataExtractService {
         // If the calling end point is not the source end, it directly returns null
         if (!Objects.equals(extractProperties.getEndpoint(), Endpoint.SOURCE)) {
             log.info("The current endpoint is not the source endpoint, and the task cannot be built");
-            return Collections.EMPTY_LIST;
+            return new ArrayList<>(0);
         }
         if (atomicProcessNo.compareAndSet(PROCESS_NO_RESET, processNo)) {
             Set<String> tableNames = MetaDataCache.getAllKeys();
@@ -163,8 +161,6 @@ public class DataExtractServiceImpl implements DataExtractService {
             log.info("build extract task process={} count={}", processNo, taskList.size());
             atomicProcessNo.set(processNo);
 
-            List<String> taskNameList =
-                taskList.stream().map(ExtractTask::getTaskName).map(String::toUpperCase).collect(Collectors.toList());
             initTableExtractStatus(new ArrayList<>(tableNames));
             return taskList;
         } else {
@@ -199,8 +195,9 @@ public class DataExtractServiceImpl implements DataExtractService {
             }
             final List<ExtractTask> extractTasks =
                 taskList.stream().filter(task -> tableNames.contains(task.getTableName())).collect(Collectors.toList());
+            extractTasks.forEach(this::updateSinkMetadata);
             taskReference.set(extractTasks);
-            log.info("build extract task process={} count={}", processNo, extractTasks.size());
+            log.info("build extract task process={} count={},", processNo, extractTasks.size());
             atomicProcessNo.set(processNo);
 
             // taskCountMap is used to count the number of tasks in table fragment query
@@ -213,16 +210,31 @@ public class DataExtractServiceImpl implements DataExtractService {
             // Initialization data extraction task execution status
             TableExtractStatusCache.init(taskCountMap);
 
-            final List<String> filterTaskTables =
-                taskList.stream().filter(task -> !tableNames.contains(task.getTableName()))
-                        .map(ExtractTask::getTableName).distinct().collect(Collectors.toList());
-            if (!CollectionUtils.isEmpty(filterTaskTables)) {
-                log.info("process={} ,source endpoint database have some tables ,not in the sink tables[{}]", processNo,
-                    filterTaskTables);
-            }
+            // Check the sink tables whether there are differences between the source tables
+            checkDifferencesTables(processNo, taskList, tableNames);
+
         } else {
             log.error("process={} is running extract task , {} please wait ... ", atomicProcessNo.get(), processNo);
             throw new ProcessMultipleException("process {" + atomicProcessNo.get() + "} is running extract task");
+        }
+    }
+
+    private void updateSinkMetadata(ExtractTask extractTask) {
+        final String tableName = extractTask.getTableName();
+        extractTask.setTableMetadata(MetaDataCache.get(tableName));
+    }
+
+    private void checkDifferencesTables(String processNo, List<ExtractTask> sourceTaskList,
+        Set<String> sinkTableNames) {
+        final List<String> sinkDiffList =
+            sourceTaskList.stream().filter(task -> !sinkTableNames.contains(task.getTableName()))
+                          .map(ExtractTask::getTableName).distinct().collect(Collectors.toList());
+        if (CollectionUtils.isNotEmpty(sinkDiffList)) {
+            log.info("process={} ,the sink tables have differences between the source tables: [{}]", processNo,
+                sinkDiffList);
+            for (String tableName : sinkDiffList) {
+                checkingFeignClient.refreshTableExtractStatus(tableName, Endpoint.SINK, -1);
+            }
         }
     }
 
@@ -251,20 +263,21 @@ public class DataExtractServiceImpl implements DataExtractService {
      */
     @Override
     public ExtractTask queryTableInfo(String tableName) {
+        ExtractTask extractTask = null;
         List<ExtractTask> taskList = taskReference.get();
-        Optional<ExtractTask> taskEntry = Optional.empty();
-        if (!CollectionUtils.isEmpty(taskList)) {
-            for (ExtractTask task : taskList) {
-                if (Objects.equals(task.getTableName(), tableName)) {
-                    taskEntry = Optional.of(task);
-                    break;
-                }
-            }
-        }
-        if (taskEntry.isEmpty()) {
+        if (CollectionUtils.isEmpty(taskList)) {
             throw new TaskNotFoundException(tableName);
         }
-        return taskEntry.get();
+        for (ExtractTask task : taskList) {
+            if (Objects.equals(task.getTableName(), tableName)) {
+                extractTask = task;
+                break;
+            }
+        }
+        if (Objects.isNull(extractTask)) {
+            throw new TaskNotFoundException(tableName);
+        }
+        return extractTask;
     }
 
     /**
@@ -303,9 +316,14 @@ public class DataExtractServiceImpl implements DataExtractService {
             }
             List<Future<?>> taskFutureList = new ArrayList<>();
             taskList.forEach(task -> {
-                log.debug("Perform data extraction tasks {}", task.getTaskName());
-                Topic topic =
-                    kafkaCommonService.getTopicInfo(processNo, task.getTableName(), task.getDivisionsTotalNumber());
+                log.info("Perform data extraction tasks {}", task.getTaskName());
+                final String tableName = task.getTableName();
+                final int tableCheckStatus = checkingFeignClient.queryTableCheckStatus(tableName);
+                if (tableCheckStatus == -1) {
+                    log.info("Abnormal table[{}] status, ignoring the current table data extraction task", tableName);
+                    return;
+                }
+                Topic topic = kafkaCommonService.getTopicInfo(processNo, tableName, task.getDivisionsTotalNumber());
                 kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
                 final ExtractTaskRunnable extractRunnable = new ExtractTaskRunnable(task, topic, extractThreadSupport);
                 taskFutureList.add(extractThreadExecutor.submit(extractRunnable));
@@ -408,8 +426,14 @@ public class DataExtractServiceImpl implements DataExtractService {
         }
         taskList.forEach(task -> {
             log.info("Perform data extraction increment tasks:{}", task.getTaskName());
+            final String tableName = task.getTableName();
+            final int tableCheckStatus = checkingFeignClient.queryTableCheckStatus(tableName);
+            if (tableCheckStatus == -1) {
+                log.info("Abnormal table[{}] status, ignoring the current table increment data extraction", tableName);
+                return;
+            }
             ThreadUtil.sleep(100);
-            Topic topic = kafkaCommonService.getIncrementTopicInfo(task.getTableName());
+            Topic topic = kafkaCommonService.getIncrementTopicInfo(tableName);
             kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
             final IncrementExtractTaskRunnable extractRunnable =
                 new IncrementExtractTaskRunnable(task, topic, incrementExtractThreadSupport);

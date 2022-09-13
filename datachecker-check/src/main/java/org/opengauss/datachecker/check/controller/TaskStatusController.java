@@ -23,8 +23,10 @@ import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotEmpty;
@@ -68,4 +70,14 @@ public class TaskStatusController {
         taskManagerService.initTableExtractStatus(tableNameList);
     }
 
+    /**
+     * query check status of current table
+     *
+     * @param tableName tableName
+     * @return status
+     */
+    @GetMapping("/query/table/status")
+    public int queryTableCheckStatus(@RequestParam("tableName") String tableName) {
+        return taskManagerService.queryTableCheckStatus(tableName);
+    }
 }

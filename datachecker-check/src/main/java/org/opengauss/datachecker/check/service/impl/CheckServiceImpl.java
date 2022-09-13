@@ -25,6 +25,7 @@ import org.opengauss.datachecker.check.config.DataCheckProperties;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.check.service.CheckService;
+import org.opengauss.datachecker.check.service.CheckTableStructureService;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
 import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.check.Pair;
@@ -101,6 +102,8 @@ public class CheckServiceImpl implements CheckService {
     private DataCheckProperties properties;
     @Autowired
     private EndpointMetaDataManager endpointMetaDataManager;
+    @Autowired
+    private CheckTableStructureService checkTableStructureService;
     @Value("${data.check.auto-clean-environment}")
     private boolean isAutoCleanEnvironment = true;
     @Value("${data.check.check-with-sync-extracting}")
@@ -171,6 +174,7 @@ public class CheckServiceImpl implements CheckService {
         // Sink endpoint task construction
         feignClientService.buildExtractTaskAllTables(Endpoint.SINK, processNo, extractTasks);
         log.info("check full mode : build extract task sink {}", processNo);
+        checkTableStructureService.check();
         // Perform all tasks
         feignClientService.execExtractTaskAllTables(Endpoint.SOURCE, processNo);
         feignClientService.execExtractTaskAllTables(Endpoint.SINK, processNo);
@@ -187,7 +191,6 @@ public class CheckServiceImpl implements CheckService {
     public void startCheckPollingThread() {
         if (Objects.nonNull(PROCESS_SIGNATURE.get()) && Objects.equals(CHECK_MODE_REF.getAcquire(), CheckMode.FULL)) {
             ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
-            endpointMetaDataManager.load();
             scheduledExecutor.scheduleWithFixedDelay(() -> {
                 Thread.currentThread().setName(SELF_CHECK_POLL_THREAD_NAME);
                 log.debug("check polling processNo={}", PROCESS_SIGNATURE.get());
@@ -246,7 +249,6 @@ public class CheckServiceImpl implements CheckService {
         if (tableStatusRegister.isExtractCompleted() && CHECKING.get()) {
             log.info("check polling processNo={}, extract task complete. start checking....", PROCESS_SIGNATURE.get());
             CHECKING.set(false);
-            endpointMetaDataManager.load();
             final List<String> checkTableList = endpointMetaDataManager.getCheckTableList();
             if (CollectionUtils.isEmpty(checkTableList)) {
                 log.info("");

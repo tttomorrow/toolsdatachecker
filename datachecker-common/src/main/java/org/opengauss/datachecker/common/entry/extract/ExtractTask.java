@@ -34,6 +34,7 @@ public class ExtractTask {
      * taskName
      */
     private String taskName;
+
     /**
      * tableName
      */
@@ -44,18 +45,22 @@ public class ExtractTask {
      * and greater than 1 means divided into divisionsTotalNumber tasks
      */
     private int divisionsTotalNumber = 1;
+
     /**
      * Current table, split task sequence
      */
     private int divisionsOrdinal = 1;
+
     /**
      * Start position of task execution
      */
     private long start = 0L;
+
     /**
      * Task execution offset
      */
     private long offset;
+
     /**
      * Table metadata information
      */

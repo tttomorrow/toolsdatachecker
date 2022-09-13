@@ -116,6 +116,15 @@ public class DataCheckRunnable implements Runnable {
     @Override
     public void run() {
         paramInit();
+        checkTableData();
+        // Verification result verification repair report
+        checkResult();
+        cleanCheckThreadEnvironment();
+        statisticalService.statistics(getStatisticsName(tableName, partitions), start);
+        refreshCheckStatus();
+    }
+
+    private void checkTableData() {
         // Initialize bucket list
         initBucketList();
         // No Merkel tree verification algorithm scenario
@@ -137,12 +146,6 @@ public class DataCheckRunnable implements Runnable {
             // Recursively compare two Merkel trees and return the difference record.
             compareMerkleTree(sourceTree, sinkTree);
         }
-
-        // Verification result verification repair report
-        checkResult();
-        cleanCheckThreadEnvironment();
-        statisticalService.statistics(getStatisticsName(tableName, partitions), start);
-        refreshCheckStatus();
     }
 
     private void paramInit() {
@@ -393,7 +396,7 @@ public class DataCheckRunnable implements Runnable {
     private void checkResult() {
         CheckDiffResult result =
             AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
-                                          .schema(sinkSchema).partitions(partitions)
+                                          .schema(sinkSchema).partitions(partitions).isTableStructureEquals(true)
                                           .keyUpdateSet(difference.getDiffering().keySet())
                                           .keyInsertSet(difference.getOnlyOnLeft().keySet())
                                           .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();

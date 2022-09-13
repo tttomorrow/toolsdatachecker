@@ -40,20 +40,20 @@ import java.util.concurrent.Future;
 public class DataCheckService {
     @Autowired
     private KafkaProperties kafkaProperties;
-
     @Autowired
     private DataCheckRunnableSupport dataCheckRunnableSupport;
-
     @Autowired
     private DataCheckConfig dataCheckConfig;
-
     @Autowired
     @Qualifier("asyncCheckExecutor")
     private ThreadPoolTaskExecutor checkAsyncExecutor;
 
     /**
-     * @param topic
-     * @param partitions
+     * submit check table data runnable
+     *
+     * @param topic      topic
+     * @param partitions partitions
+     * @return future
      */
     public Future<?> checkTableData(@NonNull Topic topic, int partitions) {
         DataCheckParam checkParam = buildCheckParam(topic, partitions, dataCheckConfig);
@@ -68,8 +68,12 @@ public class DataCheckService {
                                    .setProperties(kafkaProperties).setPath(checkResultPath);
     }
 
+    /**
+     * incrementCheckTableData
+     *
+     * @param topic topic
+     */
     public void incrementCheckTableData(Topic topic) {
-
         DataCheckParam checkParam = buildIncrementCheckParam(topic, dataCheckConfig);
         final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
         incrementCheck.setUncaughtExceptionHandler(new DataCheckThreadExceptionHandler());

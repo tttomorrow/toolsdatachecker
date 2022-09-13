@@ -116,7 +116,8 @@ public class TableStatusRegister implements Cache<String, Integer> {
      * @return boolean
      */
     public boolean isCheckCompleted() {
-        return TABLE_STATUS_CACHE.values().stream().allMatch(status -> status == TASK_STATUS_CONSUMER_VALUE);
+        return TABLE_STATUS_CACHE.values().stream().filter(status -> status > TASK_STATUS_DEFAULT_VALUE)
+                                 .allMatch(status -> status == TASK_STATUS_CONSUMER_VALUE);
     }
 
     /**
@@ -133,6 +134,8 @@ public class TableStatusRegister implements Cache<String, Integer> {
      */
     public void rest() {
         init(TABLE_STATUS_CACHE.keySet());
+        TABLE_PARTITIONS_STATUS_CACHE.clear();
+        COMPLETED_TABLE_QUEUE.clear();
     }
 
     /**
@@ -158,7 +161,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      *
      * @return task has extract completed count
      */
-    public int extractCompletedCount() {
+    private int extractCompletedCount() {
         return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_COMPLETED_VALUE)
                                        .count();
     }
@@ -168,7 +171,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      *
      * @return table has check completed count
      */
-    public int checkCompletedCount() {
+    private int checkCompletedCount() {
         return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_CONSUMER_VALUE)
                                        .count();
     }
@@ -388,15 +391,16 @@ public class TableStatusRegister implements Cache<String, Integer> {
         List<String> checkCompleteList = new ArrayList<>();
         keys.forEach(tableName -> {
             Integer status = get(tableName);
-            if (status < TASK_STATUS_COMPLETED_VALUE) {
+            if (status <= TASK_STATUS_ERROR) {
+                extractErrorList.add(tableName);
+            } else if (status < TASK_STATUS_COMPLETED_VALUE) {
                 notExtractCompleteList.add(tableName);
             } else if (status == TASK_STATUS_COMPLETED_VALUE) {
                 notCheckCompleteList.add(tableName);
             } else if (status == TASK_STATUS_CONSUMER_VALUE) {
                 checkCompleteList.add(tableName);
             } else {
-                extractErrorList.add(tableName);
-                log.error("table={} status={} error ", tableName, status);
+                log.debug("process check status running");
             }
         });
         log.debug("progress information: {} is being extracted, {} is being verified, {} is completed,and {} is error",
