@@ -30,7 +30,6 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 @Data
 @Accessors(chain = true)
 public class DataCheckParam {
-
     /**
      * Build bucket capacity parameters
      */
@@ -48,8 +47,6 @@ public class DataCheckParam {
      * Verification result output path
      */
     private String path;
-
     private String schema;
-
     private KafkaProperties properties;
 }

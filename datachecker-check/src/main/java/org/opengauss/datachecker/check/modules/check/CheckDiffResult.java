@@ -17,10 +17,14 @@ package org.opengauss.datachecker.check.modules.check;
 
 import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -41,11 +45,9 @@ public class CheckDiffResult {
     private LocalDateTime createTime;
     private String result;
     private String message;
-
     private Set<String> keyInsertSet;
     private Set<String> keyUpdateSet;
     private Set<String> keyDeleteSet;
-
     private List<String> repairInsert;
     private List<String> repairUpdate;
     private List<String> repairDelete;
@@ -62,18 +64,33 @@ public class CheckDiffResult {
      * @param builder builder
      */
     public CheckDiffResult(final AbstractCheckDiffResultBuilder<?, ?> builder) {
-        table = builder.getTable();
+        table = Objects.isNull(builder.getTable()) ? "" : builder.getTable();
         partitions = builder.getPartitions();
-        topic = builder.getTopic();
-        schema = builder.getSchema();
+        topic = Objects.isNull(builder.getTopic()) ? "" : builder.getTopic();
+        schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
         createTime = builder.getCreateTime();
-        keyUpdateSet = builder.getKeyUpdateSet();
-        keyInsertSet = builder.getKeyInsertSet();
-        keyDeleteSet = builder.getKeyDeleteSet();
-        repairUpdate = builder.getRepairUpdate();
-        repairInsert = builder.getRepairInsert();
-        repairDelete = builder.getRepairDelete();
-        resultAnalysis();
+        if (builder.isTableStructureEquals()) {
+            keyUpdateSet = builder.getKeyUpdateSet();
+            keyInsertSet = builder.getKeyInsertSet();
+            keyDeleteSet = builder.getKeyDeleteSet();
+            repairUpdate = builder.getRepairUpdate();
+            repairInsert = builder.getRepairInsert();
+            repairDelete = builder.getRepairDelete();
+            resultAnalysis();
+        } else {
+            keyUpdateSet = new HashSet<>(InitialCapacity.EMPTY);
+            keyInsertSet = new HashSet<>(InitialCapacity.EMPTY);
+            keyDeleteSet = new HashSet<>(InitialCapacity.EMPTY);
+            repairUpdate = new ArrayList<>(InitialCapacity.EMPTY);
+            repairInsert = new ArrayList<>(InitialCapacity.EMPTY);
+            repairDelete = new ArrayList<>(InitialCapacity.EMPTY);
+            resultTableStructureNotEquals();
+        }
+    }
+
+    private void resultTableStructureNotEquals() {
+        result = "failed";
+        message = "table structure is not equals , please check the database sync !";
     }
 
     private void resultAnalysis() {

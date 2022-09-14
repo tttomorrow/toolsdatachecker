@@ -26,8 +26,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +44,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EndpointMetaDataManager {
     private static final List<String> CHECK_TABLE_LIST = new ArrayList<>();
+    private static final Map<String, TableMetadata> SOURCE_METADATA = new HashMap<>();
+    private static final Map<String, TableMetadata> SINK_METADATA = new HashMap<>();
 
     private final EndpointStatusManager endpointStatusManager;
     private final FeignClientService feignClientService;
@@ -50,25 +54,54 @@ public class EndpointMetaDataManager {
      * Reload metadata information
      */
     public void load() {
-        CHECK_TABLE_LIST.clear();
-        final Map<String, TableMetadata> sourceMetadataMap = feignClientService.queryMetaDataOfSchema(Endpoint.SOURCE);
-        final Map<String, TableMetadata> sinkMetadataMap = feignClientService.queryMetaDataOfSchema(Endpoint.SINK);
-        if (MapUtils.isNotEmpty(sourceMetadataMap) && MapUtils.isNotEmpty(sinkMetadataMap)) {
-            final List<String> sourceTables = getEndpointTableNamesSortByTableRows(sourceMetadataMap);
-            final List<String> sinkTables = getEndpointTableNamesSortByTableRows(sinkMetadataMap);
+        clearCache();
+        final Map<String, TableMetadata> source = feignClientService.queryMetaDataOfSchema(Endpoint.SOURCE);
+        final Map<String, TableMetadata> sink = feignClientService.queryMetaDataOfSchema(Endpoint.SINK);
+        SOURCE_METADATA.putAll(source);
+        SINK_METADATA.putAll(sink);
+        if (MapUtils.isNotEmpty(SOURCE_METADATA) && MapUtils.isNotEmpty(SINK_METADATA)) {
+            final List<String> sourceTables = getEndpointTableNamesSortByTableRows(SOURCE_METADATA);
+            final List<String> sinkTables = getEndpointTableNamesSortByTableRows(SINK_METADATA);
             final List<String> checkTables = compareAndFilterEndpointTables(sourceTables, sinkTables);
             CHECK_TABLE_LIST.addAll(checkTables);
             log.info("Load endpoint metadata information");
         } else {
             log.error("The metadata information is empty, and the verification is terminated abnormally,"
-                + "sourceMetadata={},sinkMetadata={}", sourceMetadataMap.size(), sinkMetadataMap.size());
+                + "sourceMetadata={},sinkMetadata={}", SOURCE_METADATA.size(), SINK_METADATA.size());
             throw new CheckMetaDataException(
                 "The metadata information is empty, and the verification is terminated abnormally");
         }
     }
 
+    /**
+     * Get the table metadata information of the specified endpoint
+     *
+     * @param endpoint  endpoint
+     * @param tableName tableName
+     * @return metadata
+     */
+    public TableMetadata getTableMetadata(Endpoint endpoint, String tableName) {
+        TableMetadata metadata = null;
+        if (Objects.equals(Endpoint.SINK, endpoint)) {
+            if (SINK_METADATA.containsKey(tableName)) {
+                metadata = SINK_METADATA.get(tableName);
+            }
+        } else {
+            if (SOURCE_METADATA.containsKey(tableName)) {
+                metadata = SOURCE_METADATA.get(tableName);
+            }
+        }
+        return metadata;
+    }
+
+    private void clearCache() {
+        CHECK_TABLE_LIST.clear();
+        SOURCE_METADATA.clear();
+        SINK_METADATA.clear();
+    }
+
     private List<String> compareAndFilterEndpointTables(List<String> sourceTables, List<String> sinkTables) {
-        return sourceTables.stream().filter(table -> sinkTables.contains(table)).collect(Collectors.toList());
+        return sourceTables.stream().filter(sinkTables::contains).collect(Collectors.toList());
     }
 
     private List<String> getEndpointTableNamesSortByTableRows(Map<String, TableMetadata> metadataMap) {

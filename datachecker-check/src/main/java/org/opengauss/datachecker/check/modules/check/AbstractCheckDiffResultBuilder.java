@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
+ * AbstractCheckDiffResultBuilder
+ *
  * @author ：wangchao
  * @date ：Created in 2022/6/18
  * @since ：11
@@ -36,21 +38,26 @@ import java.util.Set;
 @Slf4j
 @Getter
 public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, B extends AbstractCheckDiffResultBuilder<C, B>> {
-
     private final FeignClientService feignClient;
+
     private String table;
     private int partitions;
     private String topic;
     private String schema;
+    private boolean isTableStructureEquals;
     private LocalDateTime createTime;
     private Set<String> keyUpdateSet;
     private Set<String> keyInsertSet;
     private Set<String> keyDeleteSet;
-
     private List<String> repairUpdate;
     private List<String> repairInsert;
     private List<String> repairDelete;
 
+    /**
+     * construct
+     *
+     * @param feignClient feignClient
+     */
     public AbstractCheckDiffResultBuilder(FeignClientService feignClient) {
         this.feignClient = feignClient;
     }
@@ -77,6 +84,17 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public B table(String table) {
         this.table = table;
+        return self();
+    }
+
+    /**
+     * Set the table is TableStructureEquals
+     *
+     * @param isTableStructureEquals table is TableStructureEquals
+     * @return CheckDiffResultBuilder
+     */
+    public B isTableStructureEquals(boolean isTableStructureEquals) {
+        this.isTableStructureEquals = isTableStructureEquals;
         return self();
     }
 
@@ -156,17 +174,20 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      * @return CheckDiffResultBuilder
      */
     public static AbstractCheckDiffResultBuilder<?, ?> builder(FeignClientService feignClient) {
-        return new AbstractCheckDiffResultBuilderImpl(feignClient);
+        return new CheckDiffResultBuilder(feignClient);
     }
 
-    private static final class AbstractCheckDiffResultBuilderImpl
-        extends AbstractCheckDiffResultBuilder<CheckDiffResult, AbstractCheckDiffResultBuilderImpl> {
-        private AbstractCheckDiffResultBuilderImpl(FeignClientService feignClient) {
+    /**
+     * CheckDiffResultBuilder
+     */
+    public static final class CheckDiffResultBuilder
+        extends AbstractCheckDiffResultBuilder<CheckDiffResult, CheckDiffResultBuilder> {
+        private CheckDiffResultBuilder(FeignClientService feignClient) {
             super(feignClient);
         }
 
         @Override
-        protected AbstractCheckDiffResultBuilderImpl self() {
+        protected CheckDiffResultBuilder self() {
             return this;
         }
 

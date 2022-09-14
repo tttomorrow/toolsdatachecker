@@ -71,7 +71,7 @@ public class IncrementDataAnalysisService {
      */
     @PostConstruct
     public void startIncrDataAnalysis() {
-        if (extractProperties.getDebeziumEnable() && consolidationService.isSourceEndpoint()) {
+        if (extractProperties.isDebeziumEnable() && consolidationService.isSourceEndpoint()) {
             log.info("Start incremental verification analysis");
             verificationConfiguration();
             IncrementCheckTopic topicRecordOffSet = consolidationService.getDebeziumTopicRecordOffSet();
