@@ -17,23 +17,29 @@ package org.opengauss.datachecker.check.modules.merkle;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
+import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.modules.bucket.Bucket;
 import org.opengauss.datachecker.common.util.ByteUtil;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Queue;
 import java.util.zip.Adler32;
 
 /**
+ * MerkleTree
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/23
  * @since ：11
  */
+@Slf4j
 @Data
 public class MerkleTree {
-
     public static final int MAGIC_HDR = 0Xcdaace99;
-    private static final int INT_BYTE = 4;
     public static final int LONG_BYTE = 8;
     /**
      * Merkel tree node type leaf node
@@ -43,6 +49,8 @@ public class MerkleTree {
      * Merkel tree node type internal node
      */
     public static final byte INTERNAL_SIG_TYPE = 0x01;
+
+    private static final int INT_BYTE = 4;
     /**
      * Serialization format ：(magic header:int)(num nodes:int)(tree depth:int)(leaf length:int)
      * [(node type:byte)(signature length:int)(signature:byte)]
@@ -79,7 +87,9 @@ public class MerkleTree {
      * @param bucketList bucketList
      */
     public MerkleTree(List<Bucket> bucketList) {
+        log.info("MerkleTree init bucket size={}", bucketList.size());
         constructTree(bucketList);
+        log.info("MerkleTree root node depth={},nnodes={}", depth, nnodes);
     }
 
     /**

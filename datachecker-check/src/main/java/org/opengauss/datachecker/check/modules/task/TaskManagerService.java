@@ -18,6 +18,7 @@ package org.opengauss.datachecker.check.modules.task;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * TaskManagerService
@@ -51,8 +52,7 @@ public interface TaskManagerService {
     /**
      * query check status of current table
      *
-     * @param tableName tableName
      * @return status
      */
-    int queryTableCheckStatus(String tableName);
+    Map<String, Integer> queryTableCheckStatus();
 }

@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * @author ：wangchao
@@ -46,7 +45,7 @@ public class KafkaProducerConfig {
     private KafkaProperties properties;
 
     /**
-     *Obtaining a specified producer client based on topic.
+     * Obtaining a specified producer client based on topic.
      *
      * @param topic topic name
      * @return the topic corresponds to the producer client.
@@ -69,7 +68,7 @@ public class KafkaProducerConfig {
         // configuration information
         Properties props = new Properties();
         // kafka server address
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, properties.getBootstrapServers().stream().collect(Collectors.joining(",")));
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, String.join(",", properties.getBootstrapServers()));
         props.put(ProducerConfig.ACKS_CONFIG, properties.getProducer().getAcks());
         // sets the serialization processing class for data keys and values.
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, properties.getProducer().getKeySerializer());

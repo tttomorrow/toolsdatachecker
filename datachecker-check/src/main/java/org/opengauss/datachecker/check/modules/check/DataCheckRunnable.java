@@ -32,6 +32,7 @@ import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.Topic;
+import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.exception.MerkleTreeDepthException;
 import org.springframework.lang.NonNull;
@@ -47,6 +48,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -115,13 +117,17 @@ public class DataCheckRunnable implements Runnable {
      */
     @Override
     public void run() {
-        paramInit();
-        checkTableData();
-        // Verification result verification repair report
-        checkResult();
-        cleanCheckThreadEnvironment();
-        statisticalService.statistics(getStatisticsName(tableName, partitions), start);
-        refreshCheckStatus();
+        try {
+            paramInit();
+            checkTableData();
+        } catch (CheckingException ex) {
+            log.error("happen before some error,", ex);
+        } finally {
+            checkResult();
+            statisticalService.statistics(getStatisticsName(tableName, partitions), start);
+            cleanCheckThreadEnvironment();
+            refreshCheckStatus();
+        }
     }
 
     private void checkTableData() {
@@ -299,8 +305,11 @@ public class DataCheckRunnable implements Runnable {
      * @param sink         Sink Merkel tree node
      * @param diffNodeList Difference node record
      */
-    private void compareMerkleTree(@NonNull Node source, @NonNull Node sink, List<Pair<Node, Node>> diffNodeList) {
+    private void compareMerkleTree(Node source, Node sink, List<Pair<Node, Node>> diffNodeList) {
         // If the nodes are the same, exit
+        if (Objects.isNull(source) || Objects.isNull(sink)) {
+            return;
+        }
         if (Arrays.equals(source.getSignature(), sink.getSignature())) {
             return;
         }
@@ -397,6 +406,7 @@ public class DataCheckRunnable implements Runnable {
         CheckDiffResult result =
             AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
                                           .schema(sinkSchema).partitions(partitions).isTableStructureEquals(true)
+                                          .isExistTableMiss(false, null)
                                           .keyUpdateSet(difference.getDiffering().keySet())
                                           .keyInsertSet(difference.getOnlyOnLeft().keySet())
                                           .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();

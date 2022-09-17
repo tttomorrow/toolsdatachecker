@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * TaskManagerServiceImpl
@@ -83,11 +84,10 @@ public class TaskManagerServiceImpl implements TaskManagerService {
     /**
      * query check status of current table
      *
-     * @param tableName tableName
      * @return status
      */
     @Override
-    public int queryTableCheckStatus(String tableName) {
-        return tableStatusRegister.get(tableName);
+    public Map<String, Integer> queryTableCheckStatus() {
+        return tableStatusRegister.get();
     }
 }

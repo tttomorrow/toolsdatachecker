@@ -76,7 +76,6 @@ public class DataCheckService {
     public void incrementCheckTableData(Topic topic) {
         DataCheckParam checkParam = buildIncrementCheckParam(topic, dataCheckConfig);
         final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
-        incrementCheck.setUncaughtExceptionHandler(new DataCheckThreadExceptionHandler());
         checkAsyncExecutor.submit(incrementCheck);
     }
 
@@ -85,22 +84,5 @@ public class DataCheckService {
         final String checkResultPath = dataCheckConfig.getCheckResultPath();
         return new DataCheckParam().setBucketCapacity(bucketCapacity).setTopic(topic).setPartitions(0)
                                    .setPath(checkResultPath);
-    }
-
-    static class DataCheckThreadExceptionHandler implements Thread.UncaughtExceptionHandler {
-
-        /**
-         * Method invoked when the given thread terminates due to the
-         * given uncaught exception.
-         * <p>Any exception thrown by this method will be ignored by the
-         * Java Virtual Machine.
-         *
-         * @param thread    the thread
-         * @param throwable the exception
-         */
-        @Override
-        public void uncaughtException(Thread thread, Throwable throwable) {
-            log.error(thread.getName() + " exception: " + throwable);
-        }
     }
 }

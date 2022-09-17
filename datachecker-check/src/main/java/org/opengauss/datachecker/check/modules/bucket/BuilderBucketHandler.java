@@ -119,7 +119,7 @@ public class BuilderBucketHandler {
      */
     private int calculateMaxBucketCount(int totalCount) {
         int bucketCount = totalCount / bucketCapacity;
-        int asInt = IntStream.range(0, 15).filter(idx -> BUCKET_COUNT_LIMITS[idx] > bucketCount).findFirst().orElse(15);
+        int asInt = IntStream.range(0, 15).filter(idx -> BUCKET_COUNT_LIMITS[idx] > bucketCount).findFirst().orElse(14);
         return BUCKET_COUNT_LIMITS[asInt];
     }
 
