@@ -15,11 +15,6 @@
 
 package org.opengauss.datachecker.extract.task;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
@@ -32,14 +27,13 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
 /**
@@ -51,116 +45,117 @@ import java.util.stream.IntStream;
  **/
 @Slf4j
 public class ResultSetHandler {
-    private static final List<Integer> SQL_TIME_TYPES =
-        List.of(Types.DATE, Types.TIME, Types.TIMESTAMP, Types.TIME_WITH_TIMEZONE, Types.TIMESTAMP_WITH_TIMEZONE);
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-    private static final ObjectMapper MAPPER = ObjectMapperWapper.getObjectMapper();
+    private static final String EMPTY = "";
+
+    private Map<Integer, TypeHandler> typeHandlers = new ConcurrentHashMap<>();
+
+    {
+        TypeHandler binaryByteToString = (resultSet, columnLabel) -> byteToString(resultSet.getBytes(columnLabel));
+
+        // byte binary blob
+        typeHandlers.put(Types.BINARY, binaryByteToString);
+        typeHandlers.put(Types.VARBINARY, binaryByteToString);
+        typeHandlers.put(Types.LONGVARBINARY, binaryByteToString);
+        typeHandlers.put(Types.BLOB, binaryByteToString);
+
+        // date time timestamp
+        typeHandlers.put(Types.DATE, this::getDateFormat);
+        typeHandlers.put(Types.TIME, this::getTimeFormat);
+        typeHandlers.put(Types.TIME_WITH_TIMEZONE, this::getTimeFormat);
+        typeHandlers.put(Types.TIMESTAMP, this::getTimestampFormat);
+        typeHandlers.put(Types.TIMESTAMP_WITH_TIMEZONE, this::getTimestampFormat);
+    }
 
     /**
      * Convert the current query result set into map according to the metadata information of the result set
      *
      * @param resultSet JDBC Data query result set
      * @return JDBC Data encapsulation results
-     * @throws SQLException Return SQL exception
      */
-    public Map<String, String> putOneResultSetToMap(ResultSet resultSet) throws SQLException {
+    public Map<String, String> putOneResultSetToMap(ResultSet resultSet) {
         Map<String, String> values = new HashMap<>(InitialCapacity.CAPACITY_64);
-        final ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        IntStream.range(0, resultSetMetaData.getColumnCount()).forEach(idx -> {
-            try {
-                int columnIdx = idx + 1;
-                // Get the column and its corresponding column name
-                String columnLabel = resultSetMetaData.getColumnLabel(columnIdx);
-                // Get the corresponding value from the resultset result set according to the column name
-                Object columnValue;
-                final int columnType = resultSetMetaData.getColumnType(columnIdx);
-                if (SQL_TIME_TYPES.contains(columnType)) {
-                    columnValue = timeHandler(resultSet, columnIdx, columnType);
-                } else {
-                    columnValue = resultSet.getObject(columnLabel);
+        try {
+            final ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+            IntStream.rangeClosed(1, resultSetMetaData.getColumnCount()).forEach(columnIdx -> {
+                try {
+                    // Get the column and its corresponding column name
+                    String columnLabel = resultSetMetaData.getColumnLabel(columnIdx);
+                    // Get the corresponding value from the result set according to the column name
+                    final int columnType = resultSetMetaData.getColumnType(columnIdx);
+                    if (typeHandlers.containsKey(columnType)) {
+                        values.put(columnLabel, typeHandlers.get(columnType).convert(resultSet, columnLabel));
+                    } else {
+                        values.put(columnLabel, String.valueOf(resultSet.getObject(columnLabel)));
+                    }
+                } catch (SQLException ex) {
+                    log.error("putOneResultSetToMap Convert data according to result set metadata information.", ex);
                 }
-                values.put(columnLabel, MAPPER.convertValue(columnValue, String.class));
-            } catch (SQLException ex) {
-                log.error("putOneResultSetToMap Convert data according to result set metadata information.", ex);
-            }
-        });
+            });
+        } catch (SQLException ex) {
+            log.error("putOneResultSetToMap get data metadata information exception", ex);
+        }
         return values;
     }
 
-    private String timeHandler(ResultSet resultSet, int columnIdx, int columnType) throws SQLException {
-        String format = StringUtils.EMPTY;
-        switch (columnType) {
-            case Types.DATE:
-                format = getDateFormat(resultSet, columnIdx);
-                break;
-            case Types.TIME:
-            case Types.TIME_WITH_TIMEZONE:
-                format = getTimeFormat(resultSet, columnIdx);
-                break;
-            case Types.TIMESTAMP:
-            case Types.TIMESTAMP_WITH_TIMEZONE:
-                format = getTimestampFormat(resultSet, columnIdx);
-                break;
-            default:
-        }
-        return format;
-    }
-
-    private String getDateFormat(@NonNull ResultSet resultSet, int columnIdx) throws SQLException {
+    private String getDateFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         String formatTime = StringUtils.EMPTY;
-        final Date date = resultSet.getDate(columnIdx);
+        final Date date = resultSet.getDate(columnLabel);
         if (Objects.nonNull(date)) {
             formatTime = DATE.format(date.toLocalDate());
         }
         return formatTime;
     }
 
-    private String getTimeFormat(@NonNull ResultSet resultSet, int columnIdx) throws SQLException {
+    private String getTimeFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         String formatTime = StringUtils.EMPTY;
-        final Time time = resultSet.getTime(columnIdx);
+        final Time time = resultSet.getTime(columnLabel);
         if (Objects.nonNull(time)) {
             formatTime = TIME.format(time.toLocalTime());
         }
         return formatTime;
     }
 
-    private String getTimestampFormat(@NonNull ResultSet resultSet, int columnIdx) throws SQLException {
+    private String getTimestampFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         String formatTime = StringUtils.EMPTY;
         final Timestamp timestamp =
-            resultSet.getTimestamp(columnIdx, Calendar.getInstance(TimeZone.getTimeZone("GMT+8")));
+            resultSet.getTimestamp(columnLabel, Calendar.getInstance(TimeZone.getTimeZone("GMT+8")));
         if (Objects.nonNull(timestamp)) {
             formatTime = TIMESTAMP.format(timestamp.toLocalDateTime());
         }
         return formatTime;
     }
 
-    /**
-     * The result set object processor converts the result set data into JSON strings
-     */
-    static class ObjectMapperWapper {
-        private static final ObjectMapper MAPPER;
-
-        static {
-            MAPPER = new ObjectMapper();
-            MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-            MAPPER.setSerializationInclusion(JsonInclude.Include.ALWAYS);
-            MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            MAPPER.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-            MAPPER.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-            MAPPER.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
-            MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-            MAPPER.registerModule(new JavaTimeModule());
+    private String byteToString(byte[] bytes) {
+        if (bytes == null) {
+            return EMPTY;
         }
+        int iMax = bytes.length - 1;
+        if (iMax == -1) {
+            return EMPTY;
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; ; i++) {
+            builder.append(bytes[i]);
+            if (i == iMax) {
+                return builder.toString();
+            }
+            builder.append(",");
+        }
+    }
 
+    @FunctionalInterface
+    interface TypeHandler {
         /**
-         * ObjectMapper
+         * result convert to string
          *
-         * @return ObjectMapper
+         * @param resultSet   resultSet
+         * @param columnLabel columnLabel
+         * @return result
+         * @throws SQLException
          */
-        public static ObjectMapper getObjectMapper() {
-            return MAPPER;
-        }
+        String convert(ResultSet resultSet, String columnLabel) throws SQLException;
     }
 }
