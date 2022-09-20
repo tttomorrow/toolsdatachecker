@@ -55,6 +55,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
     private final String schema;
     private final JdbcTemplate jdbcTemplate;
     private final CheckingFeignClient checkingFeignClient;
+    private final ResultSetHandlerFactory resultSetFactory;
 
     /**
      * Thread Constructor
@@ -72,6 +73,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         endpoint = support.getExtractProperties().getEndpoint();
         jdbcTemplate = new JdbcTemplate(support.getDataSourceOne());
         checkingFeignClient = support.getCheckingFeignClient();
+        resultSetFactory = new ResultSetHandlerFactory();
     }
 
     /**
@@ -130,7 +132,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
         ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
-        ResultSetHandler resultSetHandler = new ResultSetHandler();
+        ResultSetHandler resultSetHandler = resultSetFactory.createHandler(databaseType);
         return jdbc.query(sql, new HashMap<>(InitialCapacity.EMPTY),
             (rs, rowNum) -> resultSetHashHandler.handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)));
     }

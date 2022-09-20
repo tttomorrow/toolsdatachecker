@@ -25,10 +25,8 @@ package org.opengauss.datachecker.common.exception;
 public class ExtractException extends RuntimeException {
     private static final long serialVersionUID = 414115892399622074L;
 
-    private String message = "Data extraction service exception";
-
     public ExtractException(String message) {
-        this.message = message;
+        super(message);
     }
 
     public ExtractException() {

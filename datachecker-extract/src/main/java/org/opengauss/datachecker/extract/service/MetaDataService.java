@@ -24,7 +24,6 @@ import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.dao.DataBaseMetaDataDAOImpl;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -46,9 +45,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MetaDataService {
     private final DataBaseMetaDataDAOImpl dataBaseMetadataDAOImpl;
-
-    @Value("${spring.extract.query-table-row-count}")
-    private boolean queryTableRowCount;
+    private boolean isQueryTableRowCount = true;
 
     /**
      * Metadata cache load
@@ -73,7 +70,7 @@ public class MetaDataService {
             List<ColumnsMetaData> columnsMetadata = dataBaseMetadataDAOImpl.queryColumnMetadata(tableNames);
             Map<String, List<ColumnsMetaData>> tableColumnMap =
                 columnsMetadata.stream().collect(Collectors.groupingBy(ColumnsMetaData::getTableName));
-            tableMetadata.stream().forEach(tableMeta -> {
+            tableMetadata.forEach(tableMeta -> {
                 tableMeta.setColumnsMetas(tableColumnMap.get(tableMeta.getTableName()))
                          .setPrimaryMetas(getTablePrimaryColumn(tableColumnMap.get(tableMeta.getTableName())));
             });
@@ -125,7 +122,7 @@ public class MetaDataService {
     }
 
     private List<TableMetadata> queryTableMetadata() {
-        if (queryTableRowCount) {
+        if (isQueryTableRowCount) {
             return dataBaseMetadataDAOImpl.queryTableMetadata();
         } else {
             return dataBaseMetadataDAOImpl.queryTableMetadataFast();

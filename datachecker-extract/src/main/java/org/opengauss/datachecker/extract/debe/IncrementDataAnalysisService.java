@@ -49,6 +49,7 @@ public class IncrementDataAnalysisService {
      * Single thread scheduled task - execute check polling thread
      */
     private static final ScheduledExecutorService SCHEDULED_EXECUTOR = ThreadUtil.newSingleThreadScheduledExecutor();
+    private static final int DEBEZIUM_TIME_PERIOD_UNIT = 60000;
 
     private final ExtractProperties extractProperties;
     private final DataConsolidationService consolidationService;
@@ -64,7 +65,7 @@ public class IncrementDataAnalysisService {
      * It is used to record the last execution time of the incremental verification topic data,
      * which is the starting point of the execution cycle of the next data consumption task
      */
-    private volatile AtomicLong lastTimestampAtomic = new AtomicLong(0L);
+    private volatile Long lastTimestamp = System.currentTimeMillis();
 
     /**
      * Start the initialization load to verify the topic offset
@@ -119,6 +120,8 @@ public class IncrementDataAnalysisService {
                 log.error("check service has an error occurred. {}", ex.getMessage());
             } catch (ExtractException ex) {
                 log.error("peek debezium topic record offset has an error occurred,", ex);
+            } catch (Exception ex) {
+                log.error("unkown error occurred,", ex);
             }
         };
     }
@@ -127,9 +130,12 @@ public class IncrementDataAnalysisService {
      * Incremental log data extraction and time latitude management
      */
     public void dataTimeAnalysis() {
-        log.info("Incremental log data extraction and time latitude management");
         long time = System.currentTimeMillis();
-        if ((time - lastTimestampAtomic.get()) >= extractProperties.getDebeziumTimePeriod()) {
+        final int debeziumTimePeriod = extractProperties.getDebeziumTimePeriod();
+        if ((time - lastTimestamp) >= debeziumTimePeriod * DEBEZIUM_TIME_PERIOD_UNIT) {
+            // Set the start calculation time point of the next time execution cycle
+            lastTimestamp = time;
+            log.info("Incremental log data , time latitude : {},{}", lastTimestamp, time);
             final List<SourceDataLog> debeziumTopicRecords =
                 consolidationService.getDebeziumTopicRecords(extractProperties.getDebeziumTopic());
             if (!CollectionUtils.isEmpty(debeziumTopicRecords)) {
@@ -137,18 +143,17 @@ public class IncrementDataAnalysisService {
                 lastOffSetAtomic.addAndGet(debeziumTopicRecords.size());
             }
         }
-        // Set the start calculation time point of the next time execution cycle
-        lastTimestampAtomic.set(time);
+
     }
 
     /**
      * Incremental log data extraction, quantity and latitude management
      */
     public void dataNumAnalysis() {
-        log.info("Incremental log data extraction, quantity and latitude management");
         final long offset = consolidationService.getDebeziumTopicRecordEndOffSet();
         // Verify whether the data volume threshold dimension scenario trigger conditions are met
         if ((offset - lastOffSetAtomic.get()) >= extractProperties.getDebeziumNumPeriod()) {
+            log.info("Incremental log data, quantity latitude :{},{}", lastOffSetAtomic.get(), offset);
             // When the data volume threshold is reached,
             // the data is extracted and pushed to the verification service.
             final List<SourceDataLog> debeziumTopicRecords =
@@ -164,7 +169,7 @@ public class IncrementDataAnalysisService {
     }
 
     private void setLastTimestampAtomicCurrentTime() {
-        lastTimestampAtomic.set(System.currentTimeMillis());
+        lastTimestamp = System.currentTimeMillis();
     }
 
     interface DataNumAnalysisThreadConstant {
@@ -181,6 +186,6 @@ public class IncrementDataAnalysisService {
         /**
          * Data analysis thread pool latency
          */
-        long DELAY = 1L;
+        long DELAY = 10L;
     }
 }
