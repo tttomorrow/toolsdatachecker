@@ -160,8 +160,6 @@ public class DataExtractServiceImpl implements DataExtractService {
             taskReference.set(taskList);
             log.info("build extract task process={} count={}", processNo, taskList.size());
             atomicProcessNo.set(processNo);
-
-            initTableExtractStatus(new ArrayList<>(tableNames));
             return taskList;
         } else {
             log.error("process={} is running extract task , {} please wait ... ", atomicProcessNo.get(), processNo);
@@ -209,10 +207,6 @@ public class DataExtractServiceImpl implements DataExtractService {
             });
             // Initialization data extraction task execution status
             TableExtractStatusCache.init(taskCountMap);
-
-            // Check the sink tables whether there are differences between the source tables
-            checkDifferencesTables(processNo, taskList, tableNames);
-
         } else {
             log.error("process={} is running extract task , {} please wait ... ", atomicProcessNo.get(), processNo);
             throw new ProcessMultipleException("process {" + atomicProcessNo.get() + "} is running extract task");
@@ -222,20 +216,6 @@ public class DataExtractServiceImpl implements DataExtractService {
     private void updateSinkMetadata(ExtractTask extractTask) {
         final String tableName = extractTask.getTableName();
         extractTask.setTableMetadata(MetaDataCache.get(tableName));
-    }
-
-    private void checkDifferencesTables(String processNo, List<ExtractTask> sourceTaskList,
-        Set<String> sinkTableNames) {
-        final List<String> sinkDiffList =
-            sourceTaskList.stream().filter(task -> !sinkTableNames.contains(task.getTableName()))
-                          .map(ExtractTask::getTableName).distinct().collect(Collectors.toList());
-        if (CollectionUtils.isNotEmpty(sinkDiffList)) {
-            log.info("process={} ,the sink tables have differences between the source tables: [{}]", processNo,
-                sinkDiffList);
-            for (String tableName : sinkDiffList) {
-                checkingFeignClient.refreshTableExtractStatus(tableName, Endpoint.SINK, -1);
-            }
-        }
     }
 
     /**
@@ -314,12 +294,12 @@ public class DataExtractServiceImpl implements DataExtractService {
             if (CollectionUtils.isEmpty(taskList)) {
                 return;
             }
+            Map<String, Integer> tableCheckStatus = checkingFeignClient.queryTableCheckStatus();
             List<Future<?>> taskFutureList = new ArrayList<>();
             taskList.forEach(task -> {
                 log.info("Perform data extraction tasks {}", task.getTaskName());
                 final String tableName = task.getTableName();
-                final int tableCheckStatus = checkingFeignClient.queryTableCheckStatus(tableName);
-                if (tableCheckStatus == -1) {
+                if (!tableCheckStatus.containsKey(tableName) || tableCheckStatus.get(tableName) == -1) {
                     log.info("Abnormal table[{}] status, ignoring the current table data extraction task", tableName);
                     return;
                 }
@@ -404,13 +384,10 @@ public class DataExtractServiceImpl implements DataExtractService {
         Map<String, Integer> taskCount = new HashMap<>(Constants.InitialCapacity.EMPTY);
         createTaskCountMapping(tableNameList, taskCount);
         TableExtractStatusCache.init(taskCount);
-        initTableExtractStatus(tableNameList);
     }
 
     private void createTaskCountMapping(List<String> tableNameList, Map<String, Integer> taskCount) {
-        tableNameList.forEach(table -> {
-            taskCount.put(table, 1);
-        });
+        tableNameList.forEach(table -> taskCount.put(table, 1));
     }
 
     /**
@@ -418,17 +395,16 @@ public class DataExtractServiceImpl implements DataExtractService {
      */
     @Override
     public void execExtractIncrementTaskByLogs() {
-
         List<ExtractIncrementTask> taskList = incrementTaskReference.get();
         if (CollectionUtils.isEmpty(taskList)) {
             log.info("endpoint [{}] task is empty!", extractProperties.getEndpoint().getDescription());
             return;
         }
+        Map<String, Integer> tableCheckStatus = checkingFeignClient.queryTableCheckStatus();
         taskList.forEach(task -> {
             log.info("Perform data extraction increment tasks:{}", task.getTaskName());
             final String tableName = task.getTableName();
-            final int tableCheckStatus = checkingFeignClient.queryTableCheckStatus(tableName);
-            if (tableCheckStatus == -1) {
+            if (!tableCheckStatus.containsKey(tableName) || tableCheckStatus.get(tableName) == -1) {
                 log.info("Abnormal table[{}] status, ignoring the current table increment data extraction", tableName);
                 return;
             }
@@ -472,12 +448,5 @@ public class DataExtractServiceImpl implements DataExtractService {
     @Override
     public String queryDatabaseSchema() {
         return extractProperties.getSchema();
-    }
-
-    private void initTableExtractStatus(List<String> tableNameList) {
-        if (Objects.equals(extractProperties.getEndpoint(), Endpoint.SOURCE)) {
-            checkingFeignClient.initTableExtractStatus(new ArrayList<>(tableNameList));
-            log.info("Notify the verification service to initialize the extraction task status:{}", tableNameList);
-        }
     }
 }

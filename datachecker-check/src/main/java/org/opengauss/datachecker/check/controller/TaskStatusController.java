@@ -16,7 +16,6 @@
 package org.opengauss.datachecker.check.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.check.modules.task.TaskManagerService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -25,12 +24,10 @@ import org.springframework.lang.NonNull;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotEmpty;
-import java.util.List;
+import java.util.Map;
 
 /**
  * @author ：wangchao
@@ -59,25 +56,12 @@ public class TaskStatusController {
     }
 
     /**
-     * Initialize task status
+     * query check status of all table
      *
-     * @param tableNameList tableNameList
-     */
-    @Operation(summary = "Initialize task status")
-    @PostMapping("/table/extract/status/init")
-    public void initTableExtractStatus(
-        @Parameter(description = "tableNameList") @RequestBody @NotEmpty List<String> tableNameList) {
-        taskManagerService.initTableExtractStatus(tableNameList);
-    }
-
-    /**
-     * query check status of current table
-     *
-     * @param tableName tableName
      * @return status
      */
-    @GetMapping("/query/table/status")
-    public int queryTableCheckStatus(@RequestParam("tableName") String tableName) {
-        return taskManagerService.queryTableCheckStatus(tableName);
+    @GetMapping("/query/all/table/status")
+    public Map<String, Integer> queryTableCheckStatus() {
+        return taskManagerService.queryTableCheckStatus();
     }
 }

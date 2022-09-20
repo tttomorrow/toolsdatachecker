@@ -27,8 +27,8 @@ import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.check.service.CheckService;
 import org.opengauss.datachecker.check.service.CheckTableStructureService;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
+import org.opengauss.datachecker.common.entry.check.CheckProgress;
 import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
-import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
@@ -80,6 +80,7 @@ public class CheckServiceImpl implements CheckService {
      * Process signature
      */
     private static final AtomicReference<String> PROCESS_SIGNATURE = new AtomicReference<>();
+    private static final AtomicReference<CheckProgress> CHECK_PROGRESS_REFERENCE = new AtomicReference<>();
 
     /**
      * Verify Mode
@@ -193,7 +194,6 @@ public class CheckServiceImpl implements CheckService {
             ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
             scheduledExecutor.scheduleWithFixedDelay(() -> {
                 Thread.currentThread().setName(SELF_CHECK_POLL_THREAD_NAME);
-                log.debug("check polling processNo={}", PROCESS_SIGNATURE.get());
                 if (Objects.isNull(PROCESS_SIGNATURE.get())) {
                     throw new CheckingPollingException("process is empty,stop check polling");
                 }
@@ -283,12 +283,17 @@ public class CheckServiceImpl implements CheckService {
     }
 
     private void completeProgressBar(ScheduledExecutorService scheduledExecutor) {
-        Pair<Integer, Integer> process = tableStatusRegister.extractProgress();
-        log.info("current check process has task total=[{}] , complete=[{}]", process.getSink(), process.getSource());
-
+        CheckProgress process = CHECK_PROGRESS_REFERENCE.get();
+        final CheckProgress newProcess = tableStatusRegister.extractProgress();
+        if (!Objects.equals(process, newProcess)) {
+            CHECK_PROGRESS_REFERENCE.set(newProcess);
+            log.info("The verification is completed, reset status :{}", CHECK_PROGRESS_REFERENCE.get());
+        }
         // The current task completes the verification and resets the task status
         if (tableStatusRegister.isCheckCompleted()) {
-            log.info("The current verification is completed, reset the task status!");
+            log.info("The verification is completed, reset status :{}", tableStatusRegister.get());
+            log.debug("The verification is completed, reset check partitions status: {}",
+                tableStatusRegister.getTablePartitionsStatusCache());
             if (isAutoCleanEnvironment) {
                 log.info("The current cycle task completes the verification and resets the check environment");
                 cleanCheck();

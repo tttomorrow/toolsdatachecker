@@ -45,6 +45,8 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     private String topic;
     private String schema;
     private boolean isTableStructureEquals;
+    private boolean isExistTableMiss;
+    private Endpoint onlyExistEndpoint;
     private LocalDateTime createTime;
     private Set<String> keyUpdateSet;
     private Set<String> keyInsertSet;
@@ -95,6 +97,19 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public B isTableStructureEquals(boolean isTableStructureEquals) {
         this.isTableStructureEquals = isTableStructureEquals;
+        return self();
+    }
+
+    /**
+     * isExistTableMiss
+     *
+     * @param isExistTableMiss  table is miss
+     * @param onlyExistEndpoint only exist endpoint
+     * @return builder
+     */
+    public B isExistTableMiss(boolean isExistTableMiss, Endpoint onlyExistEndpoint) {
+        this.isExistTableMiss = isExistTableMiss;
+        this.onlyExistEndpoint = onlyExistEndpoint;
         return self();
     }
 

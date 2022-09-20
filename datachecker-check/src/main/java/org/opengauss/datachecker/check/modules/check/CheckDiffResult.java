@@ -18,6 +18,7 @@ package org.opengauss.datachecker.check.modules.check;
 import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
@@ -69,7 +70,10 @@ public class CheckDiffResult {
         topic = Objects.isNull(builder.getTopic()) ? "" : builder.getTopic();
         schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
         createTime = builder.getCreateTime();
-        if (builder.isTableStructureEquals()) {
+        if (builder.isExistTableMiss()) {
+            initEmptyCollections();
+            resultTableNotExist(builder.getOnlyExistEndpoint());
+        } else if (builder.isTableStructureEquals()) {
             keyUpdateSet = builder.getKeyUpdateSet();
             keyInsertSet = builder.getKeyInsertSet();
             keyDeleteSet = builder.getKeyDeleteSet();
@@ -78,19 +82,30 @@ public class CheckDiffResult {
             repairDelete = builder.getRepairDelete();
             resultAnalysis();
         } else {
-            keyUpdateSet = new HashSet<>(InitialCapacity.EMPTY);
-            keyInsertSet = new HashSet<>(InitialCapacity.EMPTY);
-            keyDeleteSet = new HashSet<>(InitialCapacity.EMPTY);
-            repairUpdate = new ArrayList<>(InitialCapacity.EMPTY);
-            repairInsert = new ArrayList<>(InitialCapacity.EMPTY);
-            repairDelete = new ArrayList<>(InitialCapacity.EMPTY);
+            initEmptyCollections();
             resultTableStructureNotEquals();
         }
+    }
+
+    private void initEmptyCollections() {
+        keyUpdateSet = new HashSet<>(InitialCapacity.EMPTY);
+        keyInsertSet = new HashSet<>(InitialCapacity.EMPTY);
+        keyDeleteSet = new HashSet<>(InitialCapacity.EMPTY);
+        repairUpdate = new ArrayList<>(InitialCapacity.EMPTY);
+        repairInsert = new ArrayList<>(InitialCapacity.EMPTY);
+        repairDelete = new ArrayList<>(InitialCapacity.EMPTY);
     }
 
     private void resultTableStructureNotEquals() {
         result = "failed";
         message = "table structure is not equals , please check the database sync !";
+    }
+
+    private void resultTableNotExist(Endpoint onlyExistEndpoint) {
+        result = "failed";
+        message =
+            "table [".concat(table).concat("] , ").concat(" only exist in ").concat(onlyExistEndpoint.getDescription())
+                     .concat("!");
     }
 
     private void resultAnalysis() {

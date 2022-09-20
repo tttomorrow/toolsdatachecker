@@ -17,6 +17,7 @@ package org.opengauss.datachecker.check.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.entry.check.CheckProgress;
 import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.exception.ExtractException;
 import org.opengauss.datachecker.common.util.ThreadUtil;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 
 import javax.validation.constraints.NotEmpty;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 /**
@@ -61,12 +64,12 @@ public class TableStatusRegister implements Cache<String, Integer> {
     /**
      * Task status cache. The initial default value of status is 0
      */
-    private static final int TASK_STATUS_DEFAULT_VALUE = 0;
+    public static final int TASK_STATUS_DEFAULT_VALUE = 0;
     /**
      * Status self check thread name
      */
     private static final String SELF_CHECK_THREAD_NAME = "task-status-manager";
-
+    private static final AtomicInteger CHECK_COUNT = new AtomicInteger(0);
     /**
      * <pre>
      * Data extraction task execution state cache
@@ -116,7 +119,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      * @return boolean
      */
     public boolean isCheckCompleted() {
-        return TABLE_STATUS_CACHE.values().stream().filter(status -> status > TASK_STATUS_DEFAULT_VALUE)
+        return TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_DEFAULT_VALUE)
                                  .allMatch(status -> status == TASK_STATUS_CONSUMER_VALUE);
     }
 
@@ -181,8 +184,8 @@ public class TableStatusRegister implements Cache<String, Integer> {
      *
      * @return extract progress
      */
-    public Pair<Integer, Integer> extractProgress() {
-        return Pair.of(extractCompletedCount(), cacheSize());
+    public CheckProgress extractProgress() {
+        return new CheckProgress(errorCount(), extractingCount(), extractCount(), checkCount());
     }
 
     /**
@@ -305,6 +308,24 @@ public class TableStatusRegister implements Cache<String, Integer> {
     }
 
     /**
+     * query all table status
+     *
+     * @return table status
+     */
+    public Map<String, Integer> get() {
+        return Collections.unmodifiableMap(TABLE_STATUS_CACHE);
+    }
+
+    /**
+     * query all table partitions status
+     *
+     * @return table status
+     */
+    public Map<String, Map<Integer, Integer>> getTablePartitionsStatusCache() {
+        return Collections.unmodifiableMap(TABLE_PARTITIONS_STATUS_CACHE);
+    }
+
+    /**
      * Get cache key set
      *
      * @return Key set
@@ -349,7 +370,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      * @param scheduledExecutor scheduledExecutor
      */
     public void cleanAndShutdown(ScheduledExecutorService scheduledExecutor) {
-        if (isCheckCompleted()) {
+        if (doCheckingStatus() == cacheSize()) {
             removeAll();
             scheduledExecutor.shutdownNow();
             log.info("clean check status and shutdown {} thread", SELF_CHECK_THREAD_NAME);
@@ -379,11 +400,13 @@ public class TableStatusRegister implements Cache<String, Integer> {
     /**
      * Check whether there is a completed data extraction task. If yes, update completed_ Table table
      * Check whether there is a completed data verification task. If yes, update consumer_ COMPLETED_ Table table
+     *
+     * @return check table count
      */
-    private void doCheckingStatus() {
+    private int doCheckingStatus() {
         Set<String> keys = TABLE_STATUS_CACHE.keySet();
         if (keys.size() <= 0) {
-            return;
+            return 0;
         }
         List<String> extractErrorList = new ArrayList<>();
         List<String> notExtractCompleteList = new ArrayList<>();
@@ -403,7 +426,30 @@ public class TableStatusRegister implements Cache<String, Integer> {
                 log.debug("process check status running");
             }
         });
-        log.debug("progress information: {} is being extracted, {} is being verified, {} is completed,and {} is error",
-            notExtractCompleteList, notCheckCompleteList, checkCompleteList, extractErrorList);
+        final int lastCheckCount = CHECK_COUNT.getAndSet(extractErrorList.size() + checkCompleteList.size());
+        if (CHECK_COUNT.get() > lastCheckCount) {
+            log.debug("progress info: {} is being extracted, {} is being verified, {} is completed,and {} is error",
+                notExtractCompleteList, notCheckCompleteList, checkCompleteList, extractErrorList);
+        }
+        return CHECK_COUNT.get();
+    }
+
+    private int errorCount() {
+        return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status < TASK_STATUS_DEFAULT_VALUE).count();
+    }
+
+    private int extractingCount() {
+        return (int) TABLE_STATUS_CACHE.values().stream().filter(
+            status -> status >= TASK_STATUS_DEFAULT_VALUE && status < TASK_STATUS_COMPLETED_VALUE).count();
+    }
+
+    private int extractCount() {
+        return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status == TASK_STATUS_COMPLETED_VALUE)
+                                       .count();
+    }
+
+    private int checkCount() {
+        return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status == TASK_STATUS_CONSUMER_VALUE)
+                                       .count();
     }
 }

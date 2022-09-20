@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -65,26 +65,57 @@ public class CheckTableStructureService {
      * Table structure definition field name verification
      */
     public void check() {
-        final List<String> tableStructureChangeList = new ArrayList<>();
+        checkMissTable();
+        checkTableStructureChanged();
+    }
+
+    private void checkTableStructureChanged() {
         final List<String> checkTableList = endpointMetaDataManager.getCheckTableList();
+        taskManagerService.initTableExtractStatus(checkTableList);
         checkTableList.forEach(tableName -> {
             final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
             final TableMetadata sinkMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SINK, tableName);
-            final boolean isTableStructureEquals = isTableStructureEquals(sourceMeta, sinkMeta);
-            if (!isTableStructureEquals) {
-                tableStructureChangeList.add(tableName);
-                log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
-            }
+            checkTableStructureChanged(tableName, sourceMeta, sinkMeta);
         });
-        tableStructureChangeList.forEach(tableName -> {
+    }
+
+    private void checkMissTable() {
+        final List<String> missTableList = endpointMetaDataManager.getMissTableList();
+        missTableList.forEach(missTable -> {
+            final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, missTable);
+            checkMissTable(missTable, sourceMeta);
+        });
+    }
+
+    private void checkTableStructureChanged(String tableName, TableMetadata sourceMeta, TableMetadata sinkMeta) {
+        final boolean isTableStructureEquals = isTableStructureEquals(sourceMeta, sinkMeta);
+        if (!isTableStructureEquals) {
             taskManagerService.refreshTableExtractStatus(tableName, Endpoint.CHECK, -1);
             CheckDiffResult result =
                 CheckDiffResultBuilder.builder(null).table(tableName).isTableStructureEquals(false).build();
             ExportCheckResult.export(checkResultPath, result);
-        });
+            log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
+        }
+    }
+
+    private void checkMissTable(String tableName, TableMetadata sourceMeta) {
+        Endpoint onlyExistEndpoint = Objects.isNull(sourceMeta) ? Endpoint.SINK : Endpoint.SOURCE;
+        CheckDiffResult result =
+            CheckDiffResultBuilder.builder(null).table(tableName).isExistTableMiss(true, onlyExistEndpoint).build();
+        ExportCheckResult.export(checkResultPath, result);
+        log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
+    }
+
+    private boolean isTableNotExist(TableMetadata sourceMeta, TableMetadata sinkMeta) {
+        // one or double endpoint table have not exists, then return false
+        return Objects.isNull(sourceMeta) || Objects.isNull(sinkMeta);
     }
 
     private boolean isTableStructureEquals(TableMetadata sourceMeta, TableMetadata sinkMeta) {
+        // one or double endpoint table have not exists, then return false
+        if (isTableNotExist(sourceMeta, sinkMeta)) {
+            return false;
+        }
         return tableStructureCompare.compare(sourceMeta.getPrimaryMetas(), sinkMeta.getPrimaryMetas())
             && tableStructureCompare.compare(sourceMeta.getColumnsMetas(), sinkMeta.getColumnsMetas());
     }

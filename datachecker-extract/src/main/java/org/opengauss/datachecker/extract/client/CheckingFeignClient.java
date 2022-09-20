@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.validation.constraints.NotEmpty;
 import java.util.List;
+import java.util.Map;
 
 /**
  * <pre>
@@ -56,14 +57,6 @@ public interface CheckingFeignClient {
         @RequestParam(value = "endpoint") @NonNull Endpoint endpoint, @RequestParam(value = "status") int status);
 
     /**
-     * Initializing task status
-     *
-     * @param tableNameList table name list
-     */
-    @PostMapping("/table/extract/status/init")
-    void initTableExtractStatus(@RequestBody @NotEmpty List<String> tableNameList);
-
-    /**
      * Incremental verification log notification
      *
      * @param dataLogList Incremental verification log
@@ -78,11 +71,10 @@ public interface CheckingFeignClient {
     void health();
 
     /**
-     * query check status of current table
+     * query check status of all table
      *
-     * @param tableName tableName
      * @return table status
      */
-    @GetMapping("/query/table/status")
-    int queryTableCheckStatus(@RequestParam("tableName") String tableName);
+    @GetMapping("/query/all/table/status")
+    Map<String, Integer> queryTableCheckStatus();
 }

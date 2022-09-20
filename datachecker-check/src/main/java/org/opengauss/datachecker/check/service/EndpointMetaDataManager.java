@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EndpointMetaDataManager {
     private static final List<String> CHECK_TABLE_LIST = new ArrayList<>();
+    private static final List<String> MISS_TABLE_LIST = new ArrayList<>();
     private static final Map<String, TableMetadata> SOURCE_METADATA = new HashMap<>();
     private static final Map<String, TableMetadata> SINK_METADATA = new HashMap<>();
 
@@ -63,7 +64,9 @@ public class EndpointMetaDataManager {
             final List<String> sourceTables = getEndpointTableNamesSortByTableRows(SOURCE_METADATA);
             final List<String> sinkTables = getEndpointTableNamesSortByTableRows(SINK_METADATA);
             final List<String> checkTables = compareAndFilterEndpointTables(sourceTables, sinkTables);
+            final List<String> missTables = compareAndFilterMissTables(sourceTables, sinkTables);
             CHECK_TABLE_LIST.addAll(checkTables);
+            MISS_TABLE_LIST.addAll(missTables);
             log.info("Load endpoint metadata information");
         } else {
             log.error("The metadata information is empty, and the verification is terminated abnormally,"
@@ -71,6 +74,17 @@ public class EndpointMetaDataManager {
             throw new CheckMetaDataException(
                 "The metadata information is empty, and the verification is terminated abnormally");
         }
+    }
+
+    private List<String> compareAndFilterMissTables(List<String> sourceTables, List<String> sinkTables) {
+        List<String> missList = new ArrayList<>();
+        missList.addAll(diffList(sourceTables, sinkTables));
+        missList.addAll(diffList(sinkTables, sourceTables));
+        return missList;
+    }
+
+    private List<String> diffList(List<String> source, List<String> sink) {
+        return source.stream().filter(table -> !sink.contains(table)).collect(Collectors.toList());
     }
 
     /**
@@ -96,6 +110,7 @@ public class EndpointMetaDataManager {
 
     private void clearCache() {
         CHECK_TABLE_LIST.clear();
+        MISS_TABLE_LIST.clear();
         SOURCE_METADATA.clear();
         SINK_METADATA.clear();
     }
@@ -119,11 +134,20 @@ public class EndpointMetaDataManager {
     }
 
     /**
-     * Return to the verification black and white list
+     * check table list
      *
-     * @return black and white list
+     * @return check table list
      */
     public List<String> getCheckTableList() {
         return CHECK_TABLE_LIST;
+    }
+
+    /**
+     * miss table list
+     *
+     * @return miss table list
+     */
+    public List<String> getMissTableList() {
+        return MISS_TABLE_LIST;
     }
 }

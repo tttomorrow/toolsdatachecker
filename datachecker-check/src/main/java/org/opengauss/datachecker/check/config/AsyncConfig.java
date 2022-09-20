@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.check.config;
 
+import org.opengauss.datachecker.common.exception.CheckThreadFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -23,6 +24,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
+ * AsyncConfig
+ *
  * @author wang chao
  * @date 2022/5/8 19:17
  * @since 11
@@ -30,18 +33,17 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Configuration
 @EnableScheduling
 public class AsyncConfig {
-
     @Bean("asyncCheckExecutor")
     public ThreadPoolTaskExecutor asyncCheckExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(Runtime.getRuntime().availableProcessors() * 2);
         executor.setMaxPoolSize(Runtime.getRuntime().availableProcessors() * 4);
         executor.setQueueCapacity(Integer.MAX_VALUE);
+        executor.setThreadFactory(new CheckThreadFactory());
         executor.setKeepAliveSeconds(60);
         executor.setThreadNamePrefix("check-thread");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
         executor.initialize();
         return executor;
     }
-
 }
