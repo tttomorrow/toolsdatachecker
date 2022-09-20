@@ -287,7 +287,7 @@ public class CheckServiceImpl implements CheckService {
         final CheckProgress newProcess = tableStatusRegister.extractProgress();
         if (!Objects.equals(process, newProcess)) {
             CHECK_PROGRESS_REFERENCE.set(newProcess);
-            log.info("The verification is completed, reset status :{}", CHECK_PROGRESS_REFERENCE.get());
+            log.info("The verification status :{}", CHECK_PROGRESS_REFERENCE.get());
         }
         // The current task completes the verification and resets the task status
         if (tableStatusRegister.isCheckCompleted()) {
@@ -295,7 +295,7 @@ public class CheckServiceImpl implements CheckService {
             log.debug("The verification is completed, reset check partitions status: {}",
                 tableStatusRegister.getTablePartitionsStatusCache());
             if (isAutoCleanEnvironment) {
-                log.info("The current cycle task completes the verification and resets the check environment");
+                log.info("completes the verification and resets the check environment");
                 cleanCheck();
                 feignClientService.cleanTask(Endpoint.SOURCE);
                 feignClientService.cleanTask(Endpoint.SINK);

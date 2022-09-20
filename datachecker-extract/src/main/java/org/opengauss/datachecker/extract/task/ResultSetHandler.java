@@ -16,24 +16,22 @@
 package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.lang.NonNull;
 
+import java.sql.Blob;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.sql.Types;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 
 /**
@@ -44,30 +42,14 @@ import java.util.stream.IntStream;
  * @since 11
  **/
 @Slf4j
-public class ResultSetHandler {
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
-    private static final String EMPTY = "";
-
-    private Map<Integer, TypeHandler> typeHandlers = new ConcurrentHashMap<>();
-
-    {
-        TypeHandler binaryByteToString = (resultSet, columnLabel) -> byteToString(resultSet.getBytes(columnLabel));
-
-        // byte binary blob
-        typeHandlers.put(Types.BINARY, binaryByteToString);
-        typeHandlers.put(Types.VARBINARY, binaryByteToString);
-        typeHandlers.put(Types.LONGVARBINARY, binaryByteToString);
-        typeHandlers.put(Types.BLOB, binaryByteToString);
-
-        // date time timestamp
-        typeHandlers.put(Types.DATE, this::getDateFormat);
-        typeHandlers.put(Types.TIME, this::getTimeFormat);
-        typeHandlers.put(Types.TIME_WITH_TIMEZONE, this::getTimeFormat);
-        typeHandlers.put(Types.TIMESTAMP, this::getTimestampFormat);
-        typeHandlers.put(Types.TIMESTAMP_WITH_TIMEZONE, this::getTimestampFormat);
-    }
+public abstract class ResultSetHandler {
+    protected static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    protected static final DateTimeFormatter YEAR = DateTimeFormatter.ofPattern("yyyy");
+    protected static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
+    protected static final DateTimeFormatter TIMESTAMP_NANOS = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+    protected static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    protected static final String EMPTY = "";
+    protected static final String NULL = null;
 
     /**
      * Convert the current query result set into map according to the metadata information of the result set
@@ -84,12 +66,8 @@ public class ResultSetHandler {
                     // Get the column and its corresponding column name
                     String columnLabel = resultSetMetaData.getColumnLabel(columnIdx);
                     // Get the corresponding value from the result set according to the column name
-                    final int columnType = resultSetMetaData.getColumnType(columnIdx);
-                    if (typeHandlers.containsKey(columnType)) {
-                        values.put(columnLabel, typeHandlers.get(columnType).convert(resultSet, columnLabel));
-                    } else {
-                        values.put(columnLabel, String.valueOf(resultSet.getObject(columnLabel)));
-                    }
+                    final String columnTypeName = resultSetMetaData.getColumnTypeName(columnIdx);
+                    values.put(columnLabel, convert(resultSet, columnTypeName, columnLabel));
                 } catch (SQLException ex) {
                     log.error("putOneResultSetToMap Convert data according to result set metadata information.", ex);
                 }
@@ -100,37 +78,42 @@ public class ResultSetHandler {
         return values;
     }
 
-    private String getDateFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
-        String formatTime = StringUtils.EMPTY;
+    protected abstract String convert(ResultSet resultSet, String columnTypeName, String columnLabel)
+        throws SQLException;
+
+    protected String getDateFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Date date = resultSet.getDate(columnLabel);
-        if (Objects.nonNull(date)) {
-            formatTime = DATE.format(date.toLocalDate());
-        }
-        return formatTime;
+        return Objects.nonNull(date) ? DATE.format(date.toLocalDate()) : EMPTY;
     }
 
-    private String getTimeFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
-        String formatTime = StringUtils.EMPTY;
+    protected String getTimeFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Time time = resultSet.getTime(columnLabel);
-        if (Objects.nonNull(time)) {
-            formatTime = TIME.format(time.toLocalTime());
-        }
-        return formatTime;
+        return Objects.nonNull(time) ? TIME.format(time.toLocalTime()) : EMPTY;
     }
 
-    private String getTimestampFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
-        String formatTime = StringUtils.EMPTY;
+    protected String getTimestampFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Timestamp timestamp =
             resultSet.getTimestamp(columnLabel, Calendar.getInstance(TimeZone.getTimeZone("GMT+8")));
-        if (Objects.nonNull(timestamp)) {
-            formatTime = TIMESTAMP.format(timestamp.toLocalDateTime());
-        }
-        return formatTime;
+        return Objects.nonNull(timestamp) ? formatTimestamp(timestamp) : EMPTY;
     }
 
-    private String byteToString(byte[] bytes) {
+    private String formatTimestamp(@NonNull Timestamp timestamp) {
+        return timestamp.getNanos() > 0 ? TIMESTAMP_NANOS.format(timestamp.toLocalDateTime()) :
+            TIMESTAMP.format(timestamp.toLocalDateTime());
+    }
+
+    protected String getYearFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
+        final Date date = resultSet.getDate(columnLabel);
+        return Objects.nonNull(date) ? YEAR.format(date.toLocalDate()) : EMPTY;
+    }
+
+    protected String blobToString(Blob blob) throws SQLException {
+        return Objects.nonNull(blob) ? byteToString(blob.getBytes(1, (int) blob.length())) : NULL;
+    }
+
+    protected String byteToString(byte[] bytes) {
         if (bytes == null) {
-            return EMPTY;
+            return NULL;
         }
         int iMax = bytes.length - 1;
         if (iMax == -1) {
@@ -146,6 +129,11 @@ public class ResultSetHandler {
         }
     }
 
+    protected String trim(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
+        final String string = resultSet.getString(columnLabel);
+        return string == null ? EMPTY : string.stripTrailing();
+    }
+
     @FunctionalInterface
     interface TypeHandler {
         /**
@@ -154,7 +142,7 @@ public class ResultSetHandler {
          * @param resultSet   resultSet
          * @param columnLabel columnLabel
          * @return result
-         * @throws SQLException
+         * @throws SQLException SQLException
          */
         String convert(ResultSet resultSet, String columnLabel) throws SQLException;
     }

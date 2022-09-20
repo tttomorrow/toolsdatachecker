@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.ExtractIncrementTask;
@@ -55,10 +56,12 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
     private final String taskName;
     private final String tableName;
     private final Endpoint endpoint;
+    private final DataBaseType databaseType;
     private final SourceDataLog sourceDataLog;
     private final JdbcTemplate jdbcTemplate;
     private final CheckingFeignClient checkingFeignClient;
     private final MetaDataService metaDataService;
+    private final ResultSetHandlerFactory resultSetFactory;
 
     private boolean isSinglePrimaryKey;
 
@@ -74,12 +77,14 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
         this.topic = topic;
         schema = support.getExtractProperties().getSchema();
         endpoint = support.getExtractProperties().getEndpoint();
+        databaseType = support.getExtractProperties().getDatabaseType();
         tableName = task.getTableName();
         taskName = task.getTaskName();
         sourceDataLog = task.getSourceDataLog();
         jdbcTemplate = new JdbcTemplate(support.getDataSourceOne());
         checkingFeignClient = support.getCheckingFeignClient();
         metaDataService = support.getMetaDataService();
+        resultSetFactory = new ResultSetHandlerFactory();
     }
 
     @Override
@@ -184,7 +189,7 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
         List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);
         List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
         ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
-        ResultSetHandler resultSetHandler = new ResultSetHandler();
+        ResultSetHandler resultSetHandler = resultSetFactory.createHandler(databaseType);
         return jdbc.query(selectDml, paramMap,
             (rs, rowNum) -> resultSetHashHandler.handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)));
     }

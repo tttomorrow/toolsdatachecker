@@ -109,14 +109,12 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     }
 
     private void consumerAllRecords(KafkaConsumer<String, String> kafkaConsumer, List<SourceDataLog> dataList) {
-        log.debug("kafka Consumer poll");
         DebeziumDataLogs debeziumDataLogs = new DebeziumDataLogs();
         int consumerRecords = getConsumerRecords(kafkaConsumer, debeziumDataLogs);
         while (consumerRecords > 0) {
             consumerRecords = getConsumerRecords(kafkaConsumer, debeziumDataLogs);
         }
         dataList.addAll(debeziumDataLogs.values());
-        log.debug("Consumer data debezium data handler");
     }
 
     /**
@@ -250,7 +248,8 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
         checkSourceEndpoint();
         if (!kafkaAdminService.isTopicExists(debeziumTopic)) {
             // The configuration item debezium topic information does not exist
-            throw new DebeziumConfigException("The configuration item debezium topic information does not exist");
+            throw new DebeziumConfigException(
+                "The configuration item debezium topic " + debeziumTopic + " information does not exist");
         }
         final List<String> allTableList = allTableSet.stream().map(String::toUpperCase).collect(Collectors.toList());
         List<String> invalidTables =

@@ -79,7 +79,6 @@ public class KafkaAdminService {
         try {
             KafkaFuture<Set<String>> names = adminClient.listTopics().names();
             if (names.get().contains(topic)) {
-                log.info("topic={} has existed,no create", topic);
                 return topic;
             } else {
                 adminClient.createTopics(List.of(new NewTopic(topic, partitions, (short) 1)));
