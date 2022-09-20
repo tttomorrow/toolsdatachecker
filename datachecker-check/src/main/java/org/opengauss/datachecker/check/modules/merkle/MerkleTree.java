@@ -87,9 +87,9 @@ public class MerkleTree {
      * @param bucketList bucketList
      */
     public MerkleTree(List<Bucket> bucketList) {
-        log.info("MerkleTree init bucket size={}", bucketList.size());
+        log.debug("MerkleTree init bucket size={}", bucketList.size());
         constructTree(bucketList);
-        log.info("MerkleTree root node depth={},nnodes={}", depth, nnodes);
+        log.debug("MerkleTree root node depth={},nnodes={}", depth, nnodes);
     }
 
     /**

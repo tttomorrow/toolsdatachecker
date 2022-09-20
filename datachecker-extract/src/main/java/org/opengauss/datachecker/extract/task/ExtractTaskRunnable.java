@@ -30,6 +30,7 @@ import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.kafka.KafkaProducerWapper;
 import org.opengauss.datachecker.extract.task.sql.SelectSqlBuilder;
 import org.opengauss.datachecker.extract.util.MetaDataUtil;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
@@ -148,7 +149,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
                 return;
             }
             executeTask();
-        } catch (ExtractException exp) {
+        } catch (DataAccessException | ExtractException exp) {
             log.error("Data extraction task {} has some exception,{}", task.getTaskName(), exp.getMessage());
             TableExtractStatusCache.addErrorList(tableName);
         }

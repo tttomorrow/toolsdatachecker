@@ -94,17 +94,6 @@ public class KafkaManagerController {
     }
 
     /**
-     * Query the list of all topic names
-     *
-     * @return Topic name list
-     */
-    @Operation(summary = "Query the list of all topic names")
-    @GetMapping("/extract/query/topic")
-    public Result<List<String>> queryTopicData() {
-        return Result.success(kafkaManagerService.getAllTopic());
-    }
-
-    /**
      * Query topic information of the specified table name
      *
      * @param tableName tableName

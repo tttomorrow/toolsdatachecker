@@ -41,15 +41,6 @@ public class KafkaManagerService {
     private final KafkaProducerConfig kafkaProducerConfig;
 
     /**
-     * get kafka topic list
-     *
-     * @return topic list
-     */
-    public List<String> getAllTopic() {
-        return kafkaAdminService.getAllTopic(kafkaCommonService.getTopicPrefixEndpoint());
-    }
-
-    /**
      * Create a topic according to the table name
      *
      * @param process    process
@@ -74,7 +65,7 @@ public class KafkaManagerService {
         log.info("Extract service to clean up Kafka consumer information");
         kafkaProducerConfig.cleanKafkaProducer();
         log.info("Extract service cleanup Kafka producer mapping information");
-        List<String> topics = kafkaAdminService.getAllTopic(kafkaCommonService.getTopicPrefixProcess(processNo));
+        List<String> topics = kafkaAdminService.getAllTopic(processNo);
         kafkaAdminService.deleteTopic(topics);
         log.info("Extract service cleanup current process ({}) Kafka topics {}", processNo, topics);
         kafkaAdminService.deleteTopic(topics);
@@ -85,11 +76,11 @@ public class KafkaManagerService {
      * Clear Kafka information
      */
     public void cleanKafka() {
-        kafkaCommonService.cleanTopicMapping();
+        final List<String> topics = kafkaCommonService.getAllTopicName();
         kafkaConsumerConfig.cleanKafkaConsumer();
         kafkaProducerConfig.cleanKafkaProducer();
-        List<String> topics = kafkaAdminService.getAllTopic(kafkaCommonService.getTopicPrefix());
         kafkaAdminService.deleteTopic(topics);
+        kafkaCommonService.cleanTopicMapping();
     }
 
     /**
@@ -98,7 +89,7 @@ public class KafkaManagerService {
      * @param processNo process
      */
     public void deleteTopic(String processNo) {
-        List<String> topics = kafkaAdminService.getAllTopic(kafkaCommonService.getTopicPrefixProcess(processNo));
+        List<String> topics = kafkaAdminService.getAllTopic(processNo);
         kafkaAdminService.deleteTopic(topics);
     }
 

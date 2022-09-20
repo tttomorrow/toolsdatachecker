@@ -17,23 +17,18 @@ package org.opengauss.datachecker.check.modules.check;
 
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.opengauss.datachecker.common.util.ThreadUtil;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * KafkaConsumerHandler
@@ -44,11 +39,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 public class KafkaConsumerHandler {
-    private static final int RETRY_FETCH_RECORD_INTERVAL = 1000;
     private static final int KAFKA_CONSUMER_POLL_DURATION = 20;
 
     private final KafkaConsumer<String, String> kafkaConsumer;
-    private final int retryFetchRecordTimes;
 
     /**
      * Constructor
@@ -58,7 +51,6 @@ public class KafkaConsumerHandler {
      */
     public KafkaConsumerHandler(KafkaConsumer<String, String> consumer, int retryTimes) {
         kafkaConsumer = consumer;
-        retryFetchRecordTimes = retryTimes;
     }
 
     /**
@@ -81,25 +73,28 @@ public class KafkaConsumerHandler {
      * @return kafka partitions data
      */
     public List<RowDataHash> queryRowData(Topic topic, int partitions, boolean shouldChangeConsumerGroup) {
-        List<RowDataHash> data = Collections.synchronizedList(new LinkedList<>());
+        List<RowDataHash> data = new LinkedList<>();
         final TopicPartition topicPartition = new TopicPartition(topic.getTopicName(), partitions);
         kafkaConsumer.assign(List.of(topicPartition));
+        long endOfOffset = getEndOfOffset(topicPartition);
+        long beginOfOffset = beginningOffsets(topicPartition);
         if (shouldChangeConsumerGroup) {
             resetOffsetToBeginning(kafkaConsumer, topicPartition);
         }
-        consumerTopicRecords(data, kafkaConsumer);
-        AtomicInteger retryTimes = new AtomicInteger(0);
-        final String groupId = kafkaConsumer.groupMetadata().groupId();
-        while (CollectionUtils.isEmpty(data) && retryTimes.incrementAndGet() <= retryFetchRecordTimes) {
-            ThreadUtil.sleep(RETRY_FETCH_RECORD_INTERVAL);
-            resetOffsetToBeginning(kafkaConsumer, topicPartition);
-            log.debug("consumer group={} topic=[{}] partitions=[{}] empty ,retryTimes=[{}]", groupId,
-                topic.getTopicName(), partitions, retryTimes.get());
-            consumerTopicRecords(data, kafkaConsumer);
-        }
-        log.debug("consumer group={} topic=[{}] partitions=[{}] dataList=[{}]", groupId, topic.getTopicName(),
-            partitions, data.size());
+        consumerTopicRecords(data, kafkaConsumer, endOfOffset);
+        log.debug("consumer topic=[{}] partitions=[{}] dataList=[{}] ,beginOfOffset={},endOfOffset={}",
+            topic.getTopicName(), partitions, data.size(), beginOfOffset, endOfOffset);
         return data;
+    }
+
+    private long getEndOfOffset(TopicPartition topicPartition) {
+        final Map<TopicPartition, Long> topicPartitionLongMap = kafkaConsumer.endOffsets(List.of(topicPartition));
+        return topicPartitionLongMap.get(topicPartition);
+    }
+
+    private long beginningOffsets(TopicPartition topicPartition) {
+        final Map<TopicPartition, Long> topicPartitionLongMap = kafkaConsumer.beginningOffsets(List.of(topicPartition));
+        return topicPartitionLongMap.get(topicPartition);
     }
 
     private void resetOffsetToBeginning(KafkaConsumer<String, String> consumer, TopicPartition topicPartition) {
@@ -110,21 +105,21 @@ public class KafkaConsumerHandler {
         consumer.commitSync(offset);
     }
 
-    private void consumerTopicRecords(List<RowDataHash> data, KafkaConsumer<String, String> kafkaConsumer) {
-        List<RowDataHash> result = getTopicRecords(kafkaConsumer);
-        while (CollectionUtils.isNotEmpty(result)) {
-            data.addAll(result);
-            result = getTopicRecords(kafkaConsumer);
+    private void consumerTopicRecords(List<RowDataHash> data, KafkaConsumer<String, String> kafkaConsumer,
+        long endOfOffset) {
+        if (endOfOffset == 0) {
+            return;
+        }
+        while (endOfOffset > data.size()) {
+            getTopicRecords(data, kafkaConsumer);
         }
     }
 
-    private List<RowDataHash> getTopicRecords(KafkaConsumer<String, String> kafkaConsumer) {
-        List<RowDataHash> dataList = new ArrayList<>();
+    private void getTopicRecords(List<RowDataHash> dataList, KafkaConsumer<String, String> kafkaConsumer) {
         ConsumerRecords<String, String> consumerRecords =
             kafkaConsumer.poll(Duration.ofMillis(KAFKA_CONSUMER_POLL_DURATION));
         consumerRecords.forEach(record -> {
             dataList.add(JSON.parseObject(record.value(), RowDataHash.class));
         });
-        return dataList;
     }
 }
