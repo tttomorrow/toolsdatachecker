@@ -21,6 +21,7 @@ import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.enums.DataBaseMeta;
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.util.EnumUtil;
@@ -162,12 +163,23 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         final List<TableMetadata> tableMetadata = new ArrayList<>();
         String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
         final String schema = getSchema();
+        final Boolean isConvertTableName = isOpenGauss();
+
         tableNameList.forEach(tableName -> {
-            final Long rowCount =
-                JdbcTemplateOne.queryForObject(String.format(sqlQueryTableRowCount, schema, tableName), Long.class);
+            final Long rowCount = JdbcTemplateOne.queryForObject(
+                String.format(sqlQueryTableRowCount, schema, isConvertTableName ? convert(tableName) : tableName),
+                Long.class);
             tableMetadata.add(new TableMetadata().setTableName(tableName).setTableRows(rowCount));
         });
         return tableMetadata;
+    }
+
+    private Boolean isOpenGauss() {
+        return Objects.equals(extractProperties.getDatabaseType(), DataBaseType.OG);
+    }
+
+    private String convert(String tableName) {
+        return "\"" + tableName + "\"";
     }
 
     @Override

@@ -39,6 +39,7 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
         typeHandlers.put(OpenGaussType.BLOB, blobToString);
 
         // The openGauss jdbc driver obtains the character,character varying  type as varchar
+        typeHandlers.put(OpenGaussType.VARCHAR, this::trim);
         typeHandlers.put(OpenGaussType.BPCHAR, this::trim);
 
         // date time timestamp
@@ -59,6 +60,7 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
     interface OpenGaussType {
         String BYTEA = "bytea";
         String BLOB = "blob";
+        String VARCHAR = "varchar";
         String BPCHAR = "bpchar";
         String DATE = "date";
         String TIME = "time";

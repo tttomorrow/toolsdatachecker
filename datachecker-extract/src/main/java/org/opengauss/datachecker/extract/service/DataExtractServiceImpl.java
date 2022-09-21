@@ -408,7 +408,6 @@ public class DataExtractServiceImpl implements DataExtractService {
                 log.info("Abnormal table[{}] status, ignoring the current table increment data extraction", tableName);
                 return;
             }
-            ThreadUtil.sleep(100);
             Topic topic = kafkaCommonService.getIncrementTopicInfo(tableName);
             kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
             final IncrementExtractTaskRunnable extractRunnable =

@@ -39,7 +39,7 @@ public class ExportCheckResult {
     private static final String CHECK_RESULT_PATH = File.separator + "result" + File.separator;
 
     public static void export(String path, CheckDiffResult result) {
-        String fileName = getCheckResultFileName(path, result.getTable(), result.getPartitions());
+        String fileName = getCheckResultFileName(path, result.getTopic(), result.getPartitions());
         FileUtils.writeAppendFile(fileName, JsonObjectUtil.format(result));
     }
 

@@ -20,13 +20,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * KafkaCommonService
@@ -40,20 +43,14 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class KafkaCommonService {
     /**
-     * Full calibration extraction topic name template TOPIC_EXTRACT_%s_%s_ <p>
-     * The first % is the endpoint {@link Endpoint}
+     * Rules for generating topic names for full verification
+     * process_endpoint_tableName_code
      * The second  %  is the process verification process number
-     * Last splicing table name
-     */
-    private static final String TOPIC_PROCESS_PREFIX = "TOPIC_EXTRACT_%s_%s_";
-
-    /**
-     * Full calibration extraction topic name template TOPIC_EXTRACT_%s_ <p>
      * The first % is the endpoint {@link Endpoint}
-     * Used to batch query all topic names created by the verification process in Kafka
+     * table name
+     * Last splicing table name upper or lower code
      */
-    private static final String TOPIC_PREFIX_PR = "TOPIC_EXTRACT_%s_";
-    private static final String TOPIC_PREFIX = "TOPIC_EXTRACT_";
+    private static final String TOPIC_TEMPLATE = "%s_%s_%s_%s";
 
     /**
      * Incremental verification topic prefix
@@ -63,35 +60,8 @@ public class KafkaCommonService {
     private static final Map<String, Topic> TABLE_TOPIC_CACHE = new HashMap<>();
     private static final Map<String, Topic> DEBEZIUM_TOPIC_CACHE = new HashMap<>();
 
+    @Autowired
     private final ExtractProperties extractProperties;
-
-    /**
-     * Get data verification Kafka topic prefix
-     *
-     * @param process Verification process No
-     * @return topic prefix
-     */
-    public String getTopicPrefixProcess(String process) {
-        return String.format(TOPIC_PROCESS_PREFIX, extractProperties.getEndpoint().getCode(), process);
-    }
-
-    /**
-     * Get data verification Kafka topic prefix
-     *
-     * @return Data verification Kafka topic prefix
-     */
-    public String getTopicPrefixEndpoint() {
-        return String.format(TOPIC_PREFIX_PR, extractProperties.getEndpoint().getCode());
-    }
-
-    /**
-     * Get data verification Kafka topic prefix
-     *
-     * @return topic prefix
-     */
-    public String getTopicPrefix() {
-        return TOPIC_PREFIX;
-    }
 
     /**
      * Get the corresponding topic according to the table name
@@ -117,8 +87,7 @@ public class KafkaCommonService {
             synchronized (LOCK) {
                 topic = TABLE_TOPIC_CACHE.get(tableName);
                 if (Objects.isNull(topic)) {
-                    topic = new Topic().setTableName(tableName).setTopicName(
-                        getTopicPrefixProcess(process).concat(tableName.toUpperCase(Locale.ROOT)))
+                    topic = new Topic().setTableName(tableName).setTopicName(createTopicName(process, tableName))
                                        .setPartitions(calcPartitions(divisions));
                     TABLE_TOPIC_CACHE.put(tableName, topic);
                 }
@@ -126,6 +95,24 @@ public class KafkaCommonService {
         }
         log.debug("kafka topic info : [{}]  ", topic.toString());
         return topic;
+    }
+
+    private String createTopicName(String process, String tableName) {
+        final Endpoint endpoint = extractProperties.getEndpoint();
+        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName, letterCaseEncoding(tableName));
+    }
+
+    private String letterCaseEncoding(String tableName) {
+        final char[] chars = tableName.toCharArray();
+        StringBuilder builder = new StringBuilder();
+        for (char aChar : chars) {
+            if (aChar >= 'A' && aChar <= 'Z') {
+                builder.append("1");
+            } else if (aChar >= 'a' && aChar <= 'z') {
+                builder.append("0");
+            }
+        }
+        return builder.toString();
     }
 
     /**
@@ -142,6 +129,10 @@ public class KafkaCommonService {
     /**
      * Clean up table name and topic information
      */
+    public List<String> getAllTopicName() {
+        return TABLE_TOPIC_CACHE.values().stream().map(Topic::getTopicName).collect(Collectors.toList());
+    }
+
     public void cleanTopicMapping() {
         TABLE_TOPIC_CACHE.clear();
         log.info("clear table topic cache information");
