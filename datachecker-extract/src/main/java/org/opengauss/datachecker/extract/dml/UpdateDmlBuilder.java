@@ -15,13 +15,15 @@
 
 package org.opengauss.datachecker.extract.dml;
 
+import org.opengauss.datachecker.common.entry.enums.ColumnKey;
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 
 import javax.validation.constraints.NotNull;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 /**
  * UpdateDmlBuilder
@@ -31,12 +33,14 @@ import java.util.stream.Collectors;
  * @since ：11
  */
 public class UpdateDmlBuilder extends DmlBuilder {
+    private TableMetadata metadata;
+    private Map<String, String> columnsValues;
 
     /**
      * build Schema
      *
      * @param schema Schema
-     * @return InsertDMLBuilder
+     * @return UpdateDmlBuilder
      */
     public UpdateDmlBuilder schema(@NotNull String schema) {
         super.buildSchema(schema);
@@ -44,10 +48,21 @@ public class UpdateDmlBuilder extends DmlBuilder {
     }
 
     /**
+     * build dataBaseType
+     *
+     * @param dataBaseType dataBaseType
+     * @return UpdateDmlBuilder
+     */
+    public UpdateDmlBuilder dataBaseType(@NotNull DataBaseType dataBaseType) {
+        super.buildDataBaseType(dataBaseType);
+        return this;
+    }
+
+    /**
      * build tableName
      *
      * @param tableName tableName
-     * @return InsertDMLBuilder
+     * @return UpdateDmlBuilder
      */
     public UpdateDmlBuilder tableName(@NotNull String tableName) {
         super.buildTableName(tableName);
@@ -55,31 +70,61 @@ public class UpdateDmlBuilder extends DmlBuilder {
     }
 
     /**
-     * build SQL column statement fragment
+     * build SQL column value statement fragment
      *
-     * @param columnsMetas Field Metadata
-     * @return InsertDMLBuilder
+     * @param columnsValues Field values
+     * @return UpdateDmlBuilder
      */
-    public UpdateDmlBuilder columns(@NotNull List<ColumnsMetaData> columnsMetas) {
-        columns = columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
+    public UpdateDmlBuilder columnsValues(@NotNull Map<String, String> columnsValues) {
+        this.columnsValues = columnsValues;
         return this;
     }
 
-    /**
-     * build SQL column value statement fragment
-     *
-     * @param columnsMetaList Field Metadata
-     * @return InsertDMLBuilder
-     */
-    public UpdateDmlBuilder columnsValue(@NotNull Map<String, String> columnsValue,
-        @NotNull List<ColumnsMetaData> columnsMetaList) {
-        List<String> valueList = new ArrayList<>(columnsValueList(columnsValue, columnsMetaList));
-        this.columnsValue = String.join(DELIMITER, valueList);
+    public UpdateDmlBuilder metadata(@NotNull TableMetadata metadata) {
+        this.metadata = metadata;
         return this;
     }
 
     public String build() {
-        return Fragment.DML_REPLACE.replace(Fragment.SCHEMA, schema).replace(Fragment.TABLE_NAME, tableName)
-                                   .replace(Fragment.COLUMNS, columns).replace(Fragment.VALUE, columnsValue);
+        return Fragment.DML_UPDATE.replace(Fragment.SCHEMA, schema).replace(Fragment.TABLE_NAME, tableName)
+                                  .replace(Fragment.COLUMNS, buildColumnsValue())
+                                  .replace(Fragment.CONDITION, buildConditionCompositePrimary());
+    }
+
+    private String buildConditionCompositePrimary() {
+        StringBuilder builder = new StringBuilder();
+        final List<ColumnsMetaData> primaryMetaDatas = metadata.getPrimaryMetas();
+        for (ColumnsMetaData primaryMeta : primaryMetaDatas) {
+            builder.append(primaryMeta.getColumnName()).append(Fragment.EQUAL).append(
+                isDigital(primaryMeta.getDataType()) ? columnsValues.get(primaryMeta.getColumnName()) :
+                    convertValue(columnsValues.get(primaryMeta.getColumnName()))).append(Fragment.AND);
+        }
+        final int length = builder.length();
+        builder.delete(length - 4, length);
+        return builder.toString();
+    }
+
+    private String convertValue(String fieldValue) {
+        return Fragment.SINGLE_QUOTES + fieldValue + Fragment.SINGLE_QUOTES;
+    }
+
+    private boolean isDigital(String dataType) {
+        return DIGITAL.contains(dataType);
+    }
+
+    private String buildColumnsValue() {
+        StringBuilder builder = new StringBuilder();
+        final List<ColumnsMetaData> columnMetaDatas = metadata.getColumnsMetas();
+        for (ColumnsMetaData columnMeta : columnMetaDatas) {
+            if (Objects.equals(columnMeta.getColumnKey(), ColumnKey.PRI)) {
+                continue;
+            }
+            builder.append(columnMeta.getColumnName()).append(Fragment.EQUAL).append(
+                isDigital(columnMeta.getDataType()) ? columnsValues.get(columnMeta.getColumnName()) :
+                    convertValue(columnsValues.get(columnMeta.getColumnName()))).append(Fragment.COMMA);
+        }
+        final int length = builder.length();
+        builder.delete(length - 3, length);
+        return builder.toString();
     }
 }

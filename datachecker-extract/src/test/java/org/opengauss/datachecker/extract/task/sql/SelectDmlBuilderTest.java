@@ -22,47 +22,38 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
+import org.opengauss.datachecker.extract.dml.SelectDmlBuilder;
 
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
- * SelectSqlBuilderTest
+ * SelectDmlBuilderTest
  *
  * @author ：wangchao
- * @date ：Created in 2022/9/2
+ * @date ：Created in 2022/9/21
  * @since ：11
  */
 @ExtendWith(MockitoExtension.class)
-class SelectSqlBuilderTest extends MockTableMeta {
+public class SelectDmlBuilderTest extends MockTableMeta {
     private TableMetadata mockTableMetadata;
-    private SelectSqlBuilder selectSqlBuilder;
+    private SelectDmlBuilder selectDmlBuilder;
 
     @BeforeEach
     void setUp() {
         mockTableMetadata = mockSingleTablePrimaryMetadata();
-        selectSqlBuilder = new SelectSqlBuilder(mockTableMetadata, getSchema());
+        selectDmlBuilder = new SelectDmlBuilder();
     }
 
-    /**
-     * testBuilder
-     */
     @DisplayName("openGauss no divisions single primary select SQL build")
     @Test
     void testSelectNoDivisionsSqlBuilder() {
-        String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.OG).builder();
+        String result = selectDmlBuilder.columns(mockTableMetadata.getColumnsMetas())
+                                        .conditionPrimary(mockTableMetadata.getPrimaryMetas().get(0))
+                                        .schema(getSchema()).dataBaseType(DataBaseType.OG)
+                                        .tableName(mockTableMetadata.getTableName()).build();
         // Verify the results
         assertThat(result).isEqualTo(
-            "SELECT id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year FROM test.\"t_data_checker_time_0018_01\"");
-    }
-
-    @DisplayName("openGauss divisions single primary select SQL build")
-    @Test
-    void testSelectDivisionsSqlBuilder() {
-        String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.OG)
-                                        .buildSelectSqlOffset(mockTableMetadata, 0, 12);
-        // Verify the results
-        assertThat(result).isEqualTo(
-            "SELECT id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year FROM test.\"t_data_checker_time_0018_01\" LIMIT 0,12");
+            "select id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year from test.\"t_data_checker_time_0018_01\" where id in ( :primaryKeys );");
     }
 
 }
