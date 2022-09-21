@@ -74,7 +74,6 @@ public class MetaDataService {
                 tableMeta.setColumnsMetas(tableColumnMap.get(tableMeta.getTableName()))
                          .setPrimaryMetas(getTablePrimaryColumn(tableColumnMap.get(tableMeta.getTableName())));
             });
-            log.info("Query database metadata information completed total=" + columnsMetadata.size());
         }
         return tableMetadata.stream().collect(Collectors.toMap(TableMetadata::getTableName, Function.identity()));
     }
@@ -101,7 +100,7 @@ public class MetaDataService {
         TableMetadata tableMetadata = queryTableMetadataByTableName(tableName);
         List<ColumnsMetaData> columnsMetadata = dataBaseMetadataDAOImpl.queryColumnMetadata(List.of(tableName));
         tableMetadata.setColumnsMetas(columnsMetadata).setPrimaryMetas(getTablePrimaryColumn(columnsMetadata));
-        log.info("Query database metadata information completed total={}", columnsMetadata);
+        log.debug("Query database metadata information completed total={}", columnsMetadata);
         return tableMetadata;
     }
 

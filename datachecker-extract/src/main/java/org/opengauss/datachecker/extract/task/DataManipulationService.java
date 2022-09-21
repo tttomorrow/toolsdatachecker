@@ -29,8 +29,8 @@ import org.opengauss.datachecker.extract.dml.BatchDeleteDmlBuilder;
 import org.opengauss.datachecker.extract.dml.DeleteDmlBuilder;
 import org.opengauss.datachecker.extract.dml.DmlBuilder;
 import org.opengauss.datachecker.extract.dml.InsertDmlBuilder;
-import org.opengauss.datachecker.extract.dml.ReplaceDmlBuilder;
 import org.opengauss.datachecker.extract.dml.SelectDmlBuilder;
+import org.opengauss.datachecker.extract.dml.UpdateDmlBuilder;
 import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.opengauss.datachecker.extract.util.MetaDataUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -221,17 +221,16 @@ public class DataManipulationService {
         TableMetadata metadata) {
         List<String> resultList = new ArrayList<>();
         final String localSchema = getLocalSchema(schema);
-        ReplaceDmlBuilder builder =
-            new ReplaceDmlBuilder().schema(localSchema).tableName(tableName).columns(metadata.getColumnsMetas());
-
-        List<Map<String, String>> columnValues =
-            queryColumnValues(tableName, new ArrayList<>(compositeKeySet), metadata);
+        List<Map<String, String>> columnValues = queryColumnValues(tableName, List.copyOf(compositeKeySet), metadata);
         Map<String, Map<String, String>> compositeKeyValues =
             transtlateColumnValues(columnValues, metadata.getPrimaryMetas());
+        UpdateDmlBuilder builder = new UpdateDmlBuilder();
+        builder.metadata(metadata).tableName(tableName).dataBaseType(DataBaseType.OG).schema(localSchema);
         compositeKeySet.forEach(compositeKey -> {
             Map<String, String> columnValue = compositeKeyValues.get(compositeKey);
             if (Objects.nonNull(columnValue) && !columnValue.isEmpty()) {
-                resultList.add(builder.columnsValue(columnValue, metadata.getColumnsMetas()).build());
+                builder.columnsValues(columnValue);
+                resultList.add(builder.build());
             }
         });
         return resultList;

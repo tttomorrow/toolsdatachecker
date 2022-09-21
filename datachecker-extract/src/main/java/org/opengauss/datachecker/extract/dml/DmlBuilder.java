@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.dml;
 
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 
 import javax.validation.constraints.NotNull;
@@ -66,12 +67,13 @@ public class DmlBuilder {
      * mysql dataType
      */
     protected static final List<String> DIGITAL =
-        List.of("int", "tinyint", "smallint", "mediumint", "bit", "bigint", "double", "float", "decimal");
-
+        List.of("int", "integer", "tinyint", "smallint", "mediumint", "bit", "bigint", "double", "float", "decimal",
+            "year");
     /**
      * columns
      */
     protected String columns;
+
     /**
      * columnsValue
      */
@@ -92,6 +94,10 @@ public class DmlBuilder {
      * conditionValue
      */
     protected String conditionValue;
+    /**
+     * dataBaseType
+     */
+    protected DataBaseType dataBaseType;
 
     /**
      * Build SQL column statement fragment
@@ -100,6 +106,10 @@ public class DmlBuilder {
      */
     protected void buildColumns(@NotNull List<ColumnsMetaData> columnsMetas) {
         columns = columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
+    }
+
+    protected void buildDataBaseType(@NotNull DataBaseType dataBaseType) {
+        this.dataBaseType = dataBaseType;
     }
 
     /**
@@ -117,7 +127,7 @@ public class DmlBuilder {
      * @param tableName tableName
      */
     protected void buildTableName(@NotNull String tableName) {
-        this.tableName = tableName;
+        this.tableName = isConvertTable() ? convert(tableName) : tableName;
     }
 
     /**
@@ -129,6 +139,14 @@ public class DmlBuilder {
     protected String buildConditionCompositePrimary(List<ColumnsMetaData> primaryMetas) {
         return primaryMetas.stream().map(ColumnsMetaData::getColumnName)
                            .collect(Collectors.joining(DELIMITER, LEFT_BRACKET, RIGHT_BRACKET));
+    }
+
+    private boolean isConvertTable() {
+        return Objects.equals(dataBaseType, DataBaseType.OG);
+    }
+
+    private String convert(String tableName) {
+        return "\"" + tableName + "\"";
     }
 
     /**
@@ -160,11 +178,12 @@ public class DmlBuilder {
         /**
          * DML SQL statement insert fragment
          */
-        String DML_INSERT = "insert into #schema.#tablename (#columns) value (#value);";
+        String DML_INSERT = "insert into #schema.#tablename (#columns) values (#value);";
         /**
          * DML SQL statement replace fragment
          */
-        String DML_REPLACE = "replace into #schema.#tablename (#columns) value (#value);";
+        String DML_REPLACE = "replace into #schema.#tablename (#columns) values (#value);";
+        String DML_UPDATE = "update #schema.#tablename set #columns  where #condition;";
         /**
          * DML SQL statement select fragment
          */
@@ -185,10 +204,14 @@ public class DmlBuilder {
          * DML SQL statement space fragment
          */
         String SPACE = " ";
+        String SINGLE_QUOTES = "'";
+        String AND = " and ";
+        String EQUAL = "=";
         /**
          * DML SQL statement END fragment
          */
         String END = ";";
+        String COMMA = " , ";
         /**
          * DML SQL statement linker fragment
          */
@@ -209,5 +232,10 @@ public class DmlBuilder {
          * DML SQL statement value fragment
          */
         String VALUE = "#value";
+        /**
+         * DML SQL statement condition fragment
+         */
+        String CONDITION = "#condition";
+
     }
 }

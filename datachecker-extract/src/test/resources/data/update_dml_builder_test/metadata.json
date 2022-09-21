@@ -1,0 +1,61 @@
+{
+  "columnsMetas": [
+    {
+      "columnKey": "PRI",
+      "columnName": "id",
+      "columnType": "integer",
+      "dataType": "integer",
+      "ordinalPosition": 1,
+      "tableName": "t_data_checker_time_0018_01"
+    },
+    {
+      "columnName": "c_date_time",
+      "columnType": "timestamp without time zone",
+      "dataType": "timestamp without time zone",
+      "ordinalPosition": 5,
+      "tableName": "t_data_checker_time_0018_01"
+    },
+    {
+      "columnName": "c_date_time_3",
+      "columnType": "timestamp without time zone",
+      "dataType": "timestamp without time zone",
+      "ordinalPosition": 6,
+      "tableName": "t_data_checker_time_0018_01"
+    },
+    {
+      "columnName": "c_timestamp",
+      "columnType": "timestamp without time zone",
+      "dataType": "timestamp without time zone",
+      "ordinalPosition": 7,
+      "tableName": "t_data_checker_time_0018_01"
+    },
+    {
+      "columnName": "c_date",
+      "columnType": "date",
+      "dataType": "date",
+      "ordinalPosition": 2,
+      "tableName": "t_data_checker_time_0018_01"
+    },
+    {
+      "columnName": "c_time",
+      "columnType": "time without time zone",
+      "dataType": "time without time zone",
+      "ordinalPosition": 3,
+      "tableName": "t_data_checker_time_0018_01"
+    },
+    {
+      "columnName": "c_year",
+      "columnType": "year",
+      "dataType": "year",
+      "ordinalPosition": 4,
+      "tableName": "t_data_checker_time_0018_01"
+    }
+  ],
+  "primaryMetas": [
+    {
+      "$ref": "$.columnsMetas[0]"
+    }
+  ],
+  "tableName": "t_data_checker_time_0018_01",
+  "tableRows": 4
+}

@@ -22,47 +22,37 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
+import org.opengauss.datachecker.extract.dml.UpdateDmlBuilder;
 
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
- * SelectSqlBuilderTest
+ * SelectDmlBuilderTest
  *
  * @author ：wangchao
- * @date ：Created in 2022/9/2
+ * @date ：Created in 2022/9/21
  * @since ：11
  */
 @ExtendWith(MockitoExtension.class)
-class SelectSqlBuilderTest extends MockTableMeta {
+public class UpdateDmlBuilderTest extends MockTableMeta {
     private TableMetadata mockTableMetadata;
-    private SelectSqlBuilder selectSqlBuilder;
+    private UpdateDmlBuilder updateDmlBuilder;
 
     @BeforeEach
     void setUp() {
         mockTableMetadata = mockSingleTablePrimaryMetadata();
-        selectSqlBuilder = new SelectSqlBuilder(mockTableMetadata, getSchema());
+        updateDmlBuilder = new UpdateDmlBuilder();
     }
 
-    /**
-     * testBuilder
-     */
-    @DisplayName("openGauss no divisions single primary select SQL build")
+    @DisplayName("openGauss update SQL build")
     @Test
     void testSelectNoDivisionsSqlBuilder() {
-        String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.OG).builder();
+        String result =
+            updateDmlBuilder.metadata(mockTableMetadata).columnsValues(getValues()).dataBaseType(DataBaseType.OG)
+                            .schema(getSchema()).tableName(mockTableMetadata.getTableName()).build();
         // Verify the results
         assertThat(result).isEqualTo(
-            "SELECT id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year FROM test.\"t_data_checker_time_0018_01\"");
-    }
-
-    @DisplayName("openGauss divisions single primary select SQL build")
-    @Test
-    void testSelectDivisionsSqlBuilder() {
-        String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.OG)
-                                        .buildSelectSqlOffset(mockTableMetadata, 0, 12);
-        // Verify the results
-        assertThat(result).isEqualTo(
-            "SELECT id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year FROM test.\"t_data_checker_time_0018_01\" LIMIT 0,12");
+            "update test.\"t_data_checker_time_0018_01\" set c_date_time='2022-09-18 17:39:51' , c_date_time_3='2022-09-19 10:13:37.741' , c_timestamp='2022-09-18 17:39:51' , c_date='2022-09-18' , c_time='17:39:49' , c_year=2022  where id=15 ;");
     }
 
 }

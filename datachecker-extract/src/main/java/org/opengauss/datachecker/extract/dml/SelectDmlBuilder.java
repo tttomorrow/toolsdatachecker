@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.dml;
 
 import org.apache.commons.lang3.StringUtils;
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.extract.constants.ExtConstants;
 import org.springframework.lang.NonNull;
@@ -27,12 +28,13 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 /**
+ * SelectDmlBuilder
+ *
  * @author ：wangchao
  * @date ：Created in 2022/6/13
  * @since ：11
  */
 public class SelectDmlBuilder extends DmlBuilder {
-
     /**
      * build SQL column statement fragment
      *
@@ -41,6 +43,17 @@ public class SelectDmlBuilder extends DmlBuilder {
      */
     public SelectDmlBuilder columns(@NotNull List<ColumnsMetaData> columnsMetas) {
         super.buildColumns(columnsMetas);
+        return this;
+    }
+
+    /**
+     * build dataBaseType
+     *
+     * @param dataBaseType dataBaseType
+     * @return SelectDMLBuilder
+     */
+    public SelectDmlBuilder dataBaseType(@NotNull DataBaseType dataBaseType) {
+        super.buildDataBaseType(dataBaseType);
         return this;
     }
 
@@ -117,10 +130,7 @@ public class SelectDmlBuilder extends DmlBuilder {
     }
 
     public String build() {
-        StringBuffer sb = new StringBuffer();
-        sb.append(Fragment.SELECT).append(columns).append(Fragment.FROM).append(schema).append(Fragment.LINKER)
-          .append(tableName).append(Fragment.WHERE).append(condition).append(Fragment.END);
-        return sb.toString();
+        return Fragment.SELECT + columns + Fragment.FROM + schema + Fragment.LINKER + tableName + Fragment.WHERE
+            + condition + Fragment.END;
     }
-
 }
