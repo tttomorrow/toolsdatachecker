@@ -91,4 +91,6 @@ public class DataCheckProperties {
      * If set to true, the environment will be cleaned automatically after the full verification process is completed.
      */
     private boolean canAutoCleanEnvironment;
+
+    private int errorRate;
 }

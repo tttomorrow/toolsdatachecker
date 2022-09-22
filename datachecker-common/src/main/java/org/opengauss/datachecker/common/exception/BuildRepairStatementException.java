@@ -13,34 +13,22 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.check.service;
-
-import org.opengauss.datachecker.common.entry.enums.CheckMode;
+package org.opengauss.datachecker.common.exception;
 
 /**
+ * BuildRepairStatementException
+ *
  * @author ：wangchao
- * @date ：Created in 2022/5/29
+ * @date ：Created in 2022/5/23
  * @since ：11
  */
-public interface CheckService {
+public class BuildRepairStatementException extends ExtractException {
+    private static final long serialVersionUID = 414115892399622074L;
 
-    /**
-     * Enable verification service
-     *
-     * @param checkMode checkMode
-     * @return Process number
-     */
-    String start(CheckMode checkMode);
+    public BuildRepairStatementException(String message) {
+        super(message);
+    }
 
-    /**
-     * Query the currently executed process number
-     *
-     * @return Process number
-     */
-    String getCurrentCheckProcess();
-
-    /**
-     * Clean up the verification environment
-     */
-    void cleanCheck();
+    public BuildRepairStatementException() {
+    }
 }

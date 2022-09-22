@@ -30,6 +30,7 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 @Data
 @Accessors(chain = true)
 public class DataCheckParam {
+    private String tableName;
     /**
      * Build bucket capacity parameters
      */
@@ -43,6 +44,7 @@ public class DataCheckParam {
      * Verify topic partition
      */
     private int partitions;
+    private int errorRate;
     /**
      * Verification result output path
      */

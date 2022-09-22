@@ -20,8 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
-import org.opengauss.datachecker.common.exception.DispatchClientException;
-import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -38,10 +36,14 @@ import java.util.Set;
 @Slf4j
 @Getter
 public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, B extends AbstractCheckDiffResultBuilder<C, B>> {
+    private static final int MAX_DIFF_REPAIR_SIZE = 5000;
+
     private final FeignClientService feignClient;
 
     private String table;
     private int partitions;
+    private int rowCount;
+    private int errorRate;
     private String topic;
     private String schema;
     private boolean isTableStructureEquals;
@@ -146,6 +148,16 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         return self();
     }
 
+    public B errorRate(int errorRate) {
+        this.errorRate = errorRate;
+        return self();
+    }
+
+    public B rowCount(int rowCount) {
+        this.rowCount = rowCount;
+        return self();
+    }
+
     /**
      * Set the keyUpdateSet properties of the builder
      *
@@ -154,7 +166,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public B keyUpdateSet(Set<String> keyUpdateSet) {
         this.keyUpdateSet = keyUpdateSet;
-        repairUpdate = checkRepairSinkDiff(DML.REPLACE, schema, table, this.keyUpdateSet);
+        repairUpdate = checkRepairUpdateSinkDiff(schema, table, this.keyUpdateSet);
         return self();
     }
 
@@ -166,7 +178,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public B keyInsertSet(Set<String> keyInsertSet) {
         this.keyInsertSet = keyInsertSet;
-        repairInsert = checkRepairSinkDiff(DML.INSERT, schema, table, this.keyInsertSet);
+        repairInsert = checkRepairInsertSinkDiff(schema, table, this.keyInsertSet);
         return self();
     }
 
@@ -178,7 +190,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public B keyDeleteSet(Set<String> keyDeleteSet) {
         this.keyDeleteSet = keyDeleteSet;
-        repairDelete = checkRepairSinkDiff(DML.DELETE, schema, table, this.keyDeleteSet);
+        repairDelete = checkRepairDeleteSinkDiff(schema, table, this.keyDeleteSet);
         return self();
     }
 
@@ -213,16 +225,57 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         }
     }
 
-    private List<String> checkRepairSinkDiff(DML dml, String schema, String tableName, Set<String> sinkDiffSet) {
-        if (!CollectionUtils.isEmpty(sinkDiffSet)) {
-            try {
-                return feignClient.buildRepairDml(Endpoint.SOURCE, schema, tableName, dml, sinkDiffSet);
-            } catch (DispatchClientException exception) {
-                log.error("check table[{}] Repair [{}] Diff build Repair DML Error", tableName, dml, exception);
-                return new ArrayList<>();
-            }
+    protected boolean isNotLargeDiffKeys() {
+        int totalRepair = keyDeleteSet.size() + keyInsertSet.size() + keyUpdateSet.size();
+        int curErrorRate = (totalRepair * 100 / rowCount);
+        if (totalRepair <= MAX_DIFF_REPAIR_SIZE && curErrorRate <= errorRate) {
+            return true;
         } else {
-            return new ArrayList<>();
+            log.info("check table[{}] diff-count={},error-rate={}%, error is too large ,not to build repair dml", table,
+                keyUpdateSet.size(), curErrorRate);
+            return false;
         }
+    }
+
+    protected List<String> checkRepairUpdateSinkDiff(String schema, String table, Set<String> keyUpdateSet) {
+        try {
+            if (keyUpdateSet.size() > 0 && isNotLargeDiffKeys()) {
+                log.info("check table[{}] repair [{}] diff-count={} build repair dml", table,
+                    DML.REPLACE.getDescription(), keyUpdateSet.size());
+                return feignClient.buildRepairStatementUpdateDml(Endpoint.SOURCE, schema, table, keyUpdateSet);
+            }
+        } catch (Exception exception) {
+            log.error("check table[{}] repair [{}] diff-count={} build repair dml error", schema,
+                DML.REPLACE.getDescription(), keyUpdateSet.size(), exception);
+        }
+        return new ArrayList<>();
+    }
+
+    protected List<String> checkRepairInsertSinkDiff(String schema, String table, Set<String> keyInsertSet) {
+        try {
+            if (keyInsertSet.size() > 0 && isNotLargeDiffKeys()) {
+                log.info("check table[{}] repair [{}] diff-count={} build repair dml", table,
+                    DML.INSERT.getDescription(), keyInsertSet.size());
+                return feignClient.buildRepairStatementInsertDml(Endpoint.SOURCE, schema, table, keyInsertSet);
+            }
+        } catch (Exception exception) {
+            log.error("check table[{}] repair [{}] diff-count={} build repair dml error", schema,
+                DML.INSERT.getDescription(), keyInsertSet.size(), exception);
+        }
+        return new ArrayList<>();
+    }
+
+    protected List<String> checkRepairDeleteSinkDiff(String schema, String table, Set<String> keyDeleteSet) {
+        try {
+            if (keyDeleteSet.size() > 0 && isNotLargeDiffKeys()) {
+                log.info("check table[{}] repair [{}] diff-count={} build repair dml", table,
+                    DML.DELETE.getDescription(), keyDeleteSet.size());
+                return feignClient.buildRepairStatementDeleteDml(Endpoint.SOURCE, schema, table, keyDeleteSet);
+            }
+        } catch (Exception exception) {
+            log.error("check table[{}] repair [{}] diff-count={} build repair dml error", schema,
+                DML.DELETE.getDescription(), keyDeleteSet.size(), exception);
+        }
+        return new ArrayList<>();
     }
 }

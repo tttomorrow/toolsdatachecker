@@ -15,20 +15,18 @@
 
 package org.opengauss.datachecker.check.client;
 
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
-import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.DispatchClientException;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -200,17 +198,54 @@ public class FeignClientService {
      * @param endpoint  endpoint type
      * @param schema    The corresponding schema of the end DB to be repaired
      * @param tableName table Name
-     * @param dml       Repair type {@link DML}
      * @param diffSet   Differential primary key set
      * @return Return to repair statement collection
      */
-    public List<String> buildRepairDml(Endpoint endpoint, String schema, String tableName, DML dml,
+    public List<String> buildRepairStatementInsertDml(Endpoint endpoint, String schema, String tableName,
         Set<String> diffSet) {
-        Result<List<String>> result = getClient(endpoint).buildRepairDml(schema, tableName, dml, diffSet);
+        Result<List<String>> result = getClient(endpoint).buildRepairStatementInsertDml(schema, tableName, diffSet);
         if (result.isSuccess()) {
             return result.getData();
         } else {
-            return null;
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Build repair statements based on parameters
+     *
+     * @param endpoint  endpoint type
+     * @param schema    The corresponding schema of the end DB to be repaired
+     * @param tableName table Name
+     * @param diffSet   Differential primary key set
+     * @return Return to repair statement collection
+     */
+    public List<String> buildRepairStatementDeleteDml(Endpoint endpoint, String schema, String tableName,
+        Set<String> diffSet) {
+        Result<List<String>> result = getClient(endpoint).buildRepairStatementDeleteDml(schema, tableName, diffSet);
+        if (result.isSuccess()) {
+            return result.getData();
+        } else {
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Build repair statements based on parameters
+     *
+     * @param endpoint  endpoint type
+     * @param schema    The corresponding schema of the end DB to be repaired
+     * @param tableName table Name
+     * @param diffSet   Differential primary key set
+     * @return Return to repair statement collection
+     */
+    public List<String> buildRepairStatementUpdateDml(Endpoint endpoint, String schema, String tableName,
+        Set<String> diffSet) {
+        Result<List<String>> result = getClient(endpoint).buildRepairStatementUpdateDml(schema, tableName, diffSet);
+        if (result.isSuccess()) {
+            return result.getData();
+        } else {
+            return new ArrayList<>();
         }
     }
 
@@ -236,19 +271,6 @@ public class FeignClientService {
             return result.getData();
         } else {
             return null;
-        }
-    }
-
-    /**
-     * Configure the configuration information related to debezium in the incremental verification scenario
-     *
-     * @param endpoint endpoint type
-     * @param conifg   Debezium related configurations
-     */
-    public void configIncrementCheckEnvironment(Endpoint endpoint, IncrementCheckConfig conifg) {
-        Result<Void> result = getClient(endpoint).configIncrementCheckEnvironment(conifg);
-        if (!result.isSuccess()) {
-            throw new CheckingException(result.getMessage());
         }
     }
 }

@@ -27,8 +27,16 @@ spring:
       fetch-min-size: 1
       max-poll-records: 20000
       fetch-max-bytes: 536870912  # 512M
+  mvc:
+    async:
+      request-timeout: 60000
 
 feign:
+  client:
+    config:
+      default:
+      connectTimeout: 50000
+      readTimeout: 50000
   okhttp:
     enabled: true
 

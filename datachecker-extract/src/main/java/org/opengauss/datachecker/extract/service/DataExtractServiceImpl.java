@@ -28,6 +28,7 @@ import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
 import org.opengauss.datachecker.common.entry.extract.Topic;
+import org.opengauss.datachecker.common.exception.BuildRepairStatementException;
 import org.opengauss.datachecker.common.exception.ProcessMultipleException;
 import org.opengauss.datachecker.common.exception.TableNotExistException;
 import org.opengauss.datachecker.common.exception.TaskNotFoundException;
@@ -53,7 +54,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import javax.validation.constraints.NotEmpty;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -320,32 +320,39 @@ public class DataExtractServiceImpl implements DataExtractService {
         }
     }
 
-    /**
-     * DML statement generating repair report
-     *
-     * @param tableName tableName
-     * @param dml       dml
-     * @param diffSet   Primary key set to be generated
-     * @return DML statement
-     */
     @Override
-    public List<String> buildRepairDml(String schema, @NotEmpty String tableName, @NonNull DML dml,
-        @NotEmpty Set<String> diffSet) {
+    public List<String> buildRepairStatementUpdateDml(String schema, String tableName, Set<String> diffSet) {
+        log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.REPLACE.getDescription(),
+            diffSet.size());
         if (CollectionUtils.isEmpty(diffSet)) {
             return new ArrayList<>();
         }
-        List<String> resultList = new ArrayList<>();
         final TableMetadata metadata = MetaDataCache.get(tableName);
-        final List<ColumnsMetaData> primaryMetas = metadata.getPrimaryMetas();
+        return dataManipulationService.buildReplace(schema, tableName, diffSet, metadata);
+    }
 
-        if (Objects.equals(dml, DML.DELETE)) {
-            resultList.addAll(dataManipulationService.buildDelete(schema, tableName, diffSet, primaryMetas));
-        } else if (Objects.equals(dml, DML.INSERT)) {
-            resultList.addAll(dataManipulationService.buildInsert(schema, tableName, diffSet, metadata));
-        } else if (Objects.equals(dml, DML.REPLACE)) {
-            resultList.addAll(dataManipulationService.buildReplace(schema, tableName, diffSet, metadata));
+    @Override
+    public List<String> buildRepairStatementInsertDml(String schema, String tableName, Set<String> diffSet) {
+        log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.INSERT.getDescription(),
+            diffSet.size());
+        if (CollectionUtils.isEmpty(diffSet)) {
+            return new ArrayList<>();
         }
-        return resultList;
+        final TableMetadata metadata = MetaDataCache.get(tableName);
+        return dataManipulationService.buildInsert(schema, tableName, diffSet, metadata);
+    }
+
+    @Override
+    public List<String> buildRepairStatementDeleteDml(String schema, String tableName, Set<String> diffSet) {
+        log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.DELETE.getDescription(),
+            diffSet.size());
+        final TableMetadata metadata = MetaDataCache.get(tableName);
+        if (Objects.nonNull(metadata)) {
+            final List<ColumnsMetaData> primaryMetas = metadata.getPrimaryMetas();
+            return dataManipulationService.buildDelete(schema, tableName, diffSet, primaryMetas);
+        } else {
+            throw new BuildRepairStatementException(tableName);
+        }
     }
 
     /**
