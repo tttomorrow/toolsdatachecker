@@ -19,7 +19,6 @@ import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.opengauss.datachecker.common.entry.check.IncrementCheckTopic;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.ExtractException;
 import org.opengauss.datachecker.common.util.ThreadUtil;
@@ -75,9 +74,7 @@ public class IncrementDataAnalysisService {
         if (extractProperties.isDebeziumEnable() && consolidationService.isSourceEndpoint()) {
             log.info("Start incremental verification analysis");
             verificationConfiguration();
-            IncrementCheckTopic topicRecordOffSet = consolidationService.getDebeziumTopicRecordOffSet();
             // Start the initialization load to verify the topic offset
-            lastOffSetAtomic.set(topicRecordOffSet.getBegin());
             setLastTimestampAtomicCurrentTime();
             dataAnalysis();
         }
@@ -135,10 +132,10 @@ public class IncrementDataAnalysisService {
         if ((time - lastTimestamp) >= debeziumTimePeriod * DEBEZIUM_TIME_PERIOD_UNIT) {
             // Set the start calculation time point of the next time execution cycle
             lastTimestamp = time;
-            log.info("Incremental log data , time latitude : {},{}", lastTimestamp, time);
-            final List<SourceDataLog> debeziumTopicRecords =
-                consolidationService.getDebeziumTopicRecords(extractProperties.getDebeziumTopic());
-            if (!CollectionUtils.isEmpty(debeziumTopicRecords)) {
+            final int defaultSize = extractProperties.getDebeziumNumDefaultPeriod();
+            final List<SourceDataLog> debeziumTopicRecords = consolidationService.getDebeziumTopicRecords(defaultSize);
+            if (CollectionUtils.isNotEmpty(debeziumTopicRecords)) {
+                log.info("Incremental log data , time latitude debeziumTopicRecords={}", debeziumTopicRecords.size());
                 checkingFeignClient.notifySourceIncrementDataLogs(debeziumTopicRecords);
                 lastOffSetAtomic.addAndGet(debeziumTopicRecords.size());
             }
@@ -150,19 +147,18 @@ public class IncrementDataAnalysisService {
      * Incremental log data extraction, quantity and latitude management
      */
     public void dataNumAnalysis() {
-        final long offset = consolidationService.getDebeziumTopicRecordEndOffSet();
+        final int offset = consolidationService.getDebeziumTopicRecordEndOffSet();
         // Verify whether the data volume threshold dimension scenario trigger conditions are met
         if ((offset - lastOffSetAtomic.get()) >= extractProperties.getDebeziumNumPeriod()) {
-            log.info("Incremental log data, quantity latitude :{},{}", lastOffSetAtomic.get(), offset);
             // When the data volume threshold is reached,
             // the data is extracted and pushed to the verification service.
-            final List<SourceDataLog> debeziumTopicRecords =
-                consolidationService.getDebeziumTopicRecords(extractProperties.getDebeziumTopic());
+            final List<SourceDataLog> debeziumTopicRecords = consolidationService.getDebeziumTopicRecords(offset);
             if (CollectionUtils.isNotEmpty(debeziumTopicRecords)) {
+                log.info("Incremental log data, quantity latitude :start={},end={},count={}", lastOffSetAtomic.get(),
+                    offset, debeziumTopicRecords.size());
                 checkingFeignClient.notifySourceIncrementDataLogs(debeziumTopicRecords);
                 lastOffSetAtomic.addAndGet(debeziumTopicRecords.size());
             }
-
             // Trigger data volume threshold dimension scenario - update time threshold
             setLastTimestampAtomicCurrentTime();
         }

@@ -18,6 +18,7 @@ package org.opengauss.datachecker.check.modules.check;
 import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.springframework.util.CollectionUtils;
 
@@ -36,8 +37,9 @@ import java.util.Set;
  * @since ：11
  */
 @Data
-@JSONType(orders = {"schema", "table", "topic", "partitions", "result", "message", "createTime", "keyInsertSet",
-    "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
+@JSONType(
+    orders = {"schema", "table", "topic", "partitions", "checkMode", "result", "message", "createTime", "keyInsertSet",
+        "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
     ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml"})
 public class CheckDiffResult {
     private String schema;
@@ -45,6 +47,7 @@ public class CheckDiffResult {
     private String topic;
     private int partitions;
     private int totalRepair;
+    private CheckMode checkMode;
     private LocalDateTime createTime;
     private String result;
     private String message;
@@ -72,6 +75,7 @@ public class CheckDiffResult {
         topic = Objects.isNull(builder.getTopic()) ? "" : builder.getTopic();
         schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
         createTime = builder.getCreateTime();
+        checkMode = builder.getCheckMode();
         if (builder.isExistTableMiss()) {
             initEmptyCollections();
             resultTableNotExist(builder.getOnlyExistEndpoint());

@@ -155,6 +155,7 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
             dmlBuilder.schema(schema).columns(tableMetadata.getColumnsMetas()).tableName(tableMetadata.getTableName())
                       .conditionCompositePrimary(primaryMetas);
         }
+        dmlBuilder.dataBaseType(databaseType);
         return dmlBuilder;
     }
 

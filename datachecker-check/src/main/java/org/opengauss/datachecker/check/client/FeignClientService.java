@@ -17,7 +17,6 @@ package org.opengauss.datachecker.check.client;
 
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
-import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.common.exception.DispatchClientException;
@@ -247,16 +246,6 @@ public class FeignClientService {
         } else {
             return new ArrayList<>();
         }
-    }
-
-    /**
-     * Issue incremental log data
-     *
-     * @param endpoint    endpoint type
-     * @param dataLogList incremental log data
-     */
-    public void notifyIncrementDataLogs(Endpoint endpoint, List<SourceDataLog> dataLogList) {
-        getClient(endpoint).notifyIncrementDataLogs(dataLogList);
     }
 
     /**

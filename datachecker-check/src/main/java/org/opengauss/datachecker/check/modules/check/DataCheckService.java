@@ -18,6 +18,8 @@ package org.opengauss.datachecker.check.modules.check;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.config.DataCheckConfig;
 import org.opengauss.datachecker.common.entry.check.DataCheckParam;
+import org.opengauss.datachecker.common.entry.check.IncrementDataCheckParam;
+import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -66,26 +68,27 @@ public class DataCheckService {
         final int errorRate = dataCheckConfig.getDataCheckProperties().getErrorRate();
         final String checkResultPath = dataCheckConfig.getCheckResultPath();
         return new DataCheckParam().setBucketCapacity(bucketCapacity).setTopic(topic).setPartitions(partitions)
-                .setProperties(kafkaProperties).setPath(checkResultPath).setErrorRate(errorRate);
+                                   .setProperties(kafkaProperties).setPath(checkResultPath).setErrorRate(errorRate);
     }
 
     /**
      * incrementCheckTableData
      *
-     * @param tableName      tableName
-     * @param checkDataCount
+     * @param tableName tableName
+     * @param process   process
+     * @param dataLog   dataLog
      */
-    public void incrementCheckTableData(String tableName, int checkDataCount) {
-        DataCheckParam checkParam = buildIncrementCheckParam(tableName, dataCheckConfig);
-        final IncrementCheckThread incrementCheck =
-            new IncrementCheckThread(checkParam, checkDataCount, dataCheckRunnableSupport);
+    public void incrementCheckTableData(String tableName, String process, SourceDataLog dataLog) {
+        IncrementDataCheckParam checkParam = buildIncrementCheckParam(tableName, dataCheckConfig);
+        checkParam.setDataLog(dataLog).setProcess(process);
+        final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
         checkAsyncExecutor.submit(incrementCheck);
     }
 
-    private DataCheckParam buildIncrementCheckParam(String tableName, DataCheckConfig dataCheckConfig) {
+    private IncrementDataCheckParam buildIncrementCheckParam(String tableName, DataCheckConfig dataCheckConfig) {
         final int bucketCapacity = dataCheckConfig.getBucketCapacity();
         final String checkResultPath = dataCheckConfig.getCheckResultPath();
-        return new DataCheckParam().setTableName(tableName).setBucketCapacity(bucketCapacity).setPartitions(0)
-                .setPath(checkResultPath);
+        return new IncrementDataCheckParam().setTableName(tableName).setBucketCapacity(bucketCapacity)
+                                            .setPath(checkResultPath);
     }
 }

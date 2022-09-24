@@ -149,7 +149,6 @@ public class KafkaAdminService {
      */
     public boolean isTopicExists(String topicName) {
         try {
-            log.info("topic name :{}", topicName);
             return adminClient.listTopics().listings().get().stream().map(TopicListing::name)
                               .anyMatch(name -> name.equalsIgnoreCase(topicName));
         } catch (InterruptedException | ExecutionException e) {

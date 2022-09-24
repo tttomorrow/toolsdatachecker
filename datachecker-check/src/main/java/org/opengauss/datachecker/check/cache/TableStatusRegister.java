@@ -361,6 +361,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
     public void removeAll() {
         TABLE_STATUS_CACHE.clear();
         COMPLETED_TABLE_QUEUE.clear();
+        TABLE_PARTITIONS_STATUS_CACHE.clear();
         log.info("table status register cache information clearing");
     }
 

@@ -26,7 +26,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -51,14 +50,15 @@ public class KafkaCommonService {
      * Last splicing table name upper or lower code
      */
     private static final String TOPIC_TEMPLATE = "%s_%s_%s_%s";
+    private static final String UPPER_CODE = "1";
+    private static final String LOWER_CODE = "0";
 
     /**
      * Incremental verification topic prefix
      */
-    private static final String INCREMENT_TOPIC_PREFIX = "TOPIC_EXTRACT_INCREMENT_";
+    private static final String INCREMENT_TOPIC_PREFIX = "increment_";
     private static final Object LOCK = new Object();
     private static final Map<String, Topic> TABLE_TOPIC_CACHE = new HashMap<>();
-    private static final Map<String, Topic> DEBEZIUM_TOPIC_CACHE = new HashMap<>();
 
     @Autowired
     private final ExtractProperties extractProperties;
@@ -107,12 +107,16 @@ public class KafkaCommonService {
         StringBuilder builder = new StringBuilder();
         for (char aChar : chars) {
             if (aChar >= 'A' && aChar <= 'Z') {
-                builder.append("1");
+                builder.append(UPPER_CODE);
             } else if (aChar >= 'a' && aChar <= 'z') {
-                builder.append("0");
+                builder.append(LOWER_CODE);
             }
         }
-        return builder.toString();
+        final String encoding = builder.toString();
+        if (encoding.contains(UPPER_CODE) && encoding.contains(LOWER_CODE)) {
+            return encoding;
+        }
+        return "";
     }
 
     /**
@@ -145,23 +149,14 @@ public class KafkaCommonService {
      * @return Topic
      */
     public Topic getIncrementTopicInfo(String tableName) {
-        Topic topic = TABLE_TOPIC_CACHE.get(tableName);
-        if (Objects.isNull(topic)) {
-            synchronized (LOCK) {
-                topic = TABLE_TOPIC_CACHE.get(tableName);
-                if (Objects.isNull(topic)) {
-                    topic = new Topic().setTableName(tableName).setTopicName(getIncrementTopicName(tableName))
-                                       .setPartitions(1);
-                    TABLE_TOPIC_CACHE.put(tableName, topic);
-                }
-            }
-        }
+        Topic topic = new Topic();
+        topic.setTableName(tableName).setTopicName(getIncrementTopicName(tableName)).setPartitions(1);
         log.debug("kafka topic info : [{}]  ", topic.toString());
         return topic;
     }
 
     private String getIncrementTopicName(String tableName) {
         return INCREMENT_TOPIC_PREFIX.concat(Integer.toString(extractProperties.getEndpoint().getCode())).concat("_")
-                                     .concat(tableName.toUpperCase(Locale.ROOT));
+                                     .concat(tableName).toLowerCase();
     }
 }
