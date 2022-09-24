@@ -15,9 +15,7 @@
 
 package org.opengauss.datachecker.check.client;
 
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
-import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -109,8 +107,45 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
             return Result.error("Remote call, clear the task cache exception at the extraction end");
         }
 
+        /**
+         * Build repair statements based on parameters
+         *
+         * @param schema    The corresponding schema of the end DB to be repaired
+         * @param tableName table Name
+         * @param diffSet   Differential primary key set
+         * @return Return to repair statement collection
+         */
         @Override
-        public Result<List<String>> buildRepairDml(String schema, String tableName, DML dml, Set<String> diffSet) {
+        public Result<List<String>> buildRepairStatementUpdateDml(String schema, String tableName,
+            Set<String> diffSet) {
+            return Result.error("Remote call, build and repair statement exceptions according to parameters");
+        }
+
+        /**
+         * Build repair statements based on parameters
+         *
+         * @param schema    The corresponding schema of the end DB to be repaired
+         * @param tableName table Name
+         * @param diffSet   Differential primary key set
+         * @return Return to repair statement collection
+         */
+        @Override
+        public Result<List<String>> buildRepairStatementInsertDml(String schema, String tableName,
+            Set<String> diffSet) {
+            return Result.error("Remote call, build and repair statement exceptions according to parameters");
+        }
+
+        /**
+         * Build repair statements based on parameters
+         *
+         * @param schema    The corresponding schema of the end DB to be repaired
+         * @param tableName table Name
+         * @param diffSet   Differential primary key set
+         * @return Return to repair statement collection
+         */
+        @Override
+        public Result<List<String>> buildRepairStatementDeleteDml(String schema, String tableName,
+            Set<String> diffSet) {
             return Result.error("Remote call, build and repair statement exceptions according to parameters");
         }
 
@@ -137,12 +172,6 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
         @Override
         public void refreshBlackWhiteList(CheckBlackWhiteMode mode, List<String> tableList) {
 
-        }
-
-        @Override
-        public Result<Void> configIncrementCheckEnvironment(IncrementCheckConfig config) {
-            return Result.error("Remote call, configuration incremental verification scenario, "
-                + "configuration information related to debezium is abnormal");
         }
     }
 }

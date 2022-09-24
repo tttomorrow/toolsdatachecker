@@ -15,9 +15,7 @@
 
 package org.opengauss.datachecker.check.client;
 
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
-import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -145,14 +143,36 @@ public interface ExtractFeignClient {
      *
      * @param schema    The corresponding schema of the end DB to be repaired
      * @param tableName table Name
-     * @param dml       Repair type {@link DML}
      * @param diffSet   Differential primary key set
      * @return Return to repair statement collection
      */
-    @PostMapping("/extract/build/repairDML")
-    Result<List<String>> buildRepairDml(@RequestParam(name = "schema") String schema,
-        @RequestParam(name = "tableName") String tableName, @RequestParam(name = "dml") DML dml,
-        @RequestBody Set<String> diffSet);
+    @PostMapping("/extract/build/repair/statement/update")
+    Result<List<String>> buildRepairStatementUpdateDml(@RequestParam(name = "schema") String schema,
+        @RequestParam(name = "tableName") String tableName, @RequestBody Set<String> diffSet);
+
+    /**
+     * Build repair statements based on parameters
+     *
+     * @param schema    The corresponding schema of the end DB to be repaired
+     * @param tableName table Name
+     * @param diffSet   Differential primary key set
+     * @return Return to repair statement collection
+     */
+    @PostMapping("/extract/build/repair/statement/insert")
+    Result<List<String>> buildRepairStatementInsertDml(@RequestParam(name = "schema") String schema,
+        @RequestParam(name = "tableName") String tableName, @RequestBody Set<String> diffSet);
+
+    /**
+     * Build repair statements based on parameters
+     *
+     * @param schema    The corresponding schema of the end DB to be repaired
+     * @param tableName table Name
+     * @param diffSet   Differential primary key set
+     * @return Return to repair statement collection
+     */
+    @PostMapping("/extract/build/repair/statement/delete")
+    Result<List<String>> buildRepairStatementDeleteDml(@RequestParam(name = "schema") String schema,
+        @RequestParam(name = "tableName") String tableName, @RequestBody Set<String> diffSet);
 
     /**
      * Issue incremental log data
@@ -196,13 +216,4 @@ public interface ExtractFeignClient {
      */
     @PostMapping("/extract/refresh/black/white/list")
     void refreshBlackWhiteList(@RequestParam CheckBlackWhiteMode mode, @RequestBody List<String> tableList);
-
-    /**
-     * Configure the configuration information related to debezium in the incremental verification scenario
-     *
-     * @param config Debezium related configurations
-     * @return Request results
-     */
-    @PostMapping("/extract/debezium/topic/config")
-    Result<Void> configIncrementCheckEnvironment(IncrementCheckConfig config);
 }

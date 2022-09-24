@@ -65,6 +65,8 @@ data:
     auto-clean-environment: true
     check-with-sync-extracting: true
     retry-fetch-record-times: 5
+    error-rate: 30
+
 
 
 

@@ -37,12 +37,14 @@ import java.util.Set;
  */
 @Data
 @JSONType(orders = {"schema", "table", "topic", "partitions", "result", "message", "createTime", "keyInsertSet",
-    "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"})
+    "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
+    ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml"})
 public class CheckDiffResult {
     private String schema;
     private String table;
     private String topic;
     private int partitions;
+    private int totalRepair;
     private LocalDateTime createTime;
     private String result;
     private String message;
@@ -77,10 +79,12 @@ public class CheckDiffResult {
             keyUpdateSet = builder.getKeyUpdateSet();
             keyInsertSet = builder.getKeyInsertSet();
             keyDeleteSet = builder.getKeyDeleteSet();
-            repairUpdate = builder.getRepairUpdate();
-            repairInsert = builder.getRepairInsert();
-            repairDelete = builder.getRepairDelete();
-            resultAnalysis();
+            if (builder.isNotLargeDiffKeys()) {
+                repairUpdate = builder.getRepairUpdate();
+                repairInsert = builder.getRepairInsert();
+                repairDelete = builder.getRepairDelete();
+            }
+            resultAnalysis(builder.isNotLargeDiffKeys());
         } else {
             initEmptyCollections();
             resultTableStructureNotEquals();
@@ -108,18 +112,21 @@ public class CheckDiffResult {
                      .concat("!");
     }
 
-    private void resultAnalysis() {
+    private void resultAnalysis(boolean isNotLargeDiffKeys) {
+        message = schema + "." + table + "_[" + partitions + "] check ";
         if (CollectionUtils.isEmpty(keyInsertSet) && CollectionUtils.isEmpty(keyUpdateSet) && CollectionUtils
             .isEmpty(keyDeleteSet)) {
             result = "success";
-            message = schema.concat(".").concat(table).concat("_[").concat(String.valueOf(partitions))
-                            .concat("] check success");
+            message += result;
         } else {
             result = "failed";
-            message =
-                schema.concat(".").concat(table).concat("_[").concat(String.valueOf(partitions)).concat("] check : ")
-                      .concat(" insert=" + keyInsertSet.size()).concat(" update=" + keyUpdateSet.size())
-                      .concat(" delete=" + keyDeleteSet.size());
+            message += result;
+            message +=
+                "( insert=" + keyInsertSet.size() + " update=" + keyUpdateSet.size() + " delete=" + keyDeleteSet.size()
+                    + " )";
+            if (totalRepair > 0 && !isNotLargeDiffKeys) {
+                message += " data error is too large , please check the database sync !";
+            }
         }
     }
 }

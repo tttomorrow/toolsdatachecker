@@ -19,14 +19,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.check.service.CheckService;
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -57,20 +55,7 @@ public class CheckStartController {
             CheckMode checkMode) {
         return Result.success(checkService.start(checkMode));
     }
-
-    /**
-     * Incremental verification configuration initialization
-     *
-     * @param config Debezium incremental migration verification initialization configuration
-     * @return request result
-     */
-    @Operation(summary = "Incremental verification configuration initialization")
-    @PostMapping("/increment/check/config")
-    public Result<Void> incrementCheckConfig(@RequestBody IncrementCheckConfig config) {
-        checkService.incrementCheckConfig(config);
-        return Result.success();
-    }
-
+    
     /**
      * <pre>
      * Stop the verification service and clean up the verification service.

@@ -63,26 +63,29 @@ public class DataCheckService {
 
     private DataCheckParam buildCheckParam(Topic topic, int partitions, DataCheckConfig dataCheckConfig) {
         final int bucketCapacity = dataCheckConfig.getBucketCapacity();
+        final int errorRate = dataCheckConfig.getDataCheckProperties().getErrorRate();
         final String checkResultPath = dataCheckConfig.getCheckResultPath();
         return new DataCheckParam().setBucketCapacity(bucketCapacity).setTopic(topic).setPartitions(partitions)
-                                   .setProperties(kafkaProperties).setPath(checkResultPath);
+                .setProperties(kafkaProperties).setPath(checkResultPath).setErrorRate(errorRate);
     }
 
     /**
      * incrementCheckTableData
      *
-     * @param topic topic
+     * @param tableName      tableName
+     * @param checkDataCount
      */
-    public void incrementCheckTableData(Topic topic) {
-        DataCheckParam checkParam = buildIncrementCheckParam(topic, dataCheckConfig);
-        final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
+    public void incrementCheckTableData(String tableName, int checkDataCount) {
+        DataCheckParam checkParam = buildIncrementCheckParam(tableName, dataCheckConfig);
+        final IncrementCheckThread incrementCheck =
+            new IncrementCheckThread(checkParam, checkDataCount, dataCheckRunnableSupport);
         checkAsyncExecutor.submit(incrementCheck);
     }
 
-    private DataCheckParam buildIncrementCheckParam(Topic topic, DataCheckConfig dataCheckConfig) {
+    private DataCheckParam buildIncrementCheckParam(String tableName, DataCheckConfig dataCheckConfig) {
         final int bucketCapacity = dataCheckConfig.getBucketCapacity();
         final String checkResultPath = dataCheckConfig.getCheckResultPath();
-        return new DataCheckParam().setBucketCapacity(bucketCapacity).setTopic(topic).setPartitions(0)
-                                   .setPath(checkResultPath);
+        return new DataCheckParam().setTableName(tableName).setBucketCapacity(bucketCapacity).setPartitions(0)
+                .setPath(checkResultPath);
     }
 }

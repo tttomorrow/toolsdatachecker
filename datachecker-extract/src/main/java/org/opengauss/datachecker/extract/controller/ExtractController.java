@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
-import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -172,21 +171,39 @@ public class ExtractController {
      * DML statements required to generate a repair report
      *
      * @param tableName table name
-     * @param dml       dml type
      * @param diffSet   primary key set
      * @return DML statement
      */
-    @Operation(summary = "DML statements required to generate a repair report")
-    @PostMapping("/extract/build/repairDML")
-    Result<List<String>> buildRepairDml(
-        @NotEmpty(message = "the schema to which the table to be repaired belongs cannot be empty")
-        @RequestParam(name = "schema") String schema,
-        @NotEmpty(message = "the name of the table to be repaired belongs cannot be empty")
-        @RequestParam(name = "tableName") String tableName,
-        @NotNull(message = "the DML type to be repaired belongs cannot be empty") @RequestParam(name = "dml") DML dml,
-        @NotEmpty(message = "the primary key set to be repaired belongs cannot be empty") @RequestBody
-            Set<String> diffSet) {
-        return Result.success(dataExtractService.buildRepairDml(schema, tableName, dml, diffSet));
+    @PostMapping("/extract/build/repair/statement/update")
+    Result<List<String>> buildRepairStatementUpdateDml(@NotEmpty @RequestParam(name = "schema") String schema,
+        @NotEmpty @RequestParam(name = "tableName") String tableName, @NotEmpty @RequestBody Set<String> diffSet) {
+        return Result.success(dataExtractService.buildRepairStatementUpdateDml(schema, tableName, diffSet));
+    }
+
+    /**
+     * DML statements required to generate a repair report
+     *
+     * @param tableName table name
+     * @param diffSet   primary key set
+     * @return DML statement
+     */
+    @PostMapping("/extract/build/repair/statement/insert")
+    Result<List<String>> buildRepairStatementInsertDml(@NotEmpty @RequestParam(name = "schema") String schema,
+        @NotEmpty @RequestParam(name = "tableName") String tableName, @NotEmpty @RequestBody Set<String> diffSet) {
+        return Result.success(dataExtractService.buildRepairStatementInsertDml(schema, tableName, diffSet));
+    }
+
+    /**
+     * DML statements required to generate a repair report
+     *
+     * @param tableName table name
+     * @param diffSet   primary key set
+     * @return DML statement
+     */
+    @PostMapping("/extract/build/repair/statement/delete")
+    Result<List<String>> buildRepairStatementDeleteDml(@NotEmpty @RequestParam(name = "schema") String schema,
+        @NotEmpty @RequestParam(name = "tableName") String tableName, @NotEmpty @RequestBody Set<String> diffSet) {
+        return Result.success(dataExtractService.buildRepairStatementDeleteDml(schema, tableName, diffSet));
     }
 
     /**

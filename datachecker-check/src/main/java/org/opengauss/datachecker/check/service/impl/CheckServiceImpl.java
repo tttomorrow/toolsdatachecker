@@ -28,7 +28,6 @@ import org.opengauss.datachecker.check.service.CheckService;
 import org.opengauss.datachecker.check.service.CheckTableStructureService;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
 import org.opengauss.datachecker.common.entry.check.CheckProgress;
-import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
@@ -136,8 +135,6 @@ public class CheckServiceImpl implements CheckService {
                     startCheckFullMode();
                     // Wait for the task construction to complete, and start the task polling thread
                     startCheckPollingThread();
-                } else {
-                    startCheckIncrementMode();
                 }
             } catch (CheckingException ex) {
                 cleanCheck();
@@ -204,43 +201,6 @@ public class CheckServiceImpl implements CheckService {
                     checkTableWithExtractEnd();
                 }
                 completeProgressBar(scheduledExecutor);
-            }, 5, 2, TimeUnit.SECONDS);
-        }
-    }
-
-    /**
-     * Enable incremental verification mode
-     */
-    private void startCheckIncrementMode() {
-        //  Enable incremental verification mode - polling thread start
-        if (Objects.equals(CHECK_MODE_REF.getAcquire(), CheckMode.INCREMENT)) {
-            ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
-            scheduledExecutor.scheduleWithFixedDelay(() -> {
-                Thread.currentThread().setName(SELF_CHECK_POLL_THREAD_NAME);
-                log.debug("check polling check mode=[{}]", CHECK_MODE_REF.get());
-                //  Check whether there is a table to complete data extraction
-                if (tableStatusRegister.hasExtractCompleted()) {
-                    // Get the table name that completes data extraction
-                    String tableName = tableStatusRegister.completedTablePoll();
-                    if (Objects.isNull(tableName)) {
-                        return;
-                    }
-                    Topic topic = feignClientService.getIncrementTopicInfo(Endpoint.SOURCE, tableName);
-
-                    if (Objects.nonNull(topic)) {
-                        log.info("kafka consumer topic=[{}]", topic.toString());
-                        // Verify the data according to the table name and Kafka partition
-                        dataCheckService.incrementCheckTableData(topic);
-                    }
-                    completeProgressBar(scheduledExecutor);
-                }
-                // The current cycle task completes the verification and resets the task status
-                if (tableStatusRegister.isCheckCompleted()) {
-                    log.info("The current cycle verification is completed, reset the task status!");
-                    tableStatusRegister.rest();
-                    feignClientService.cleanTask(Endpoint.SOURCE);
-                    feignClientService.cleanTask(Endpoint.SINK);
-                }
             }, 5, 2, TimeUnit.SECONDS);
         }
     }
@@ -329,16 +289,6 @@ public class CheckServiceImpl implements CheckService {
         STARTED.set(false);
         CHECKING.set(true);
         log.info("clear and reset the current verification service!");
-    }
-
-    /**
-     * Increment Check Initialize configuration
-     *
-     * @param config Initialize configuration
-     */
-    @Override
-    public void incrementCheckConfig(IncrementCheckConfig config) {
-        feignClientService.configIncrementCheckEnvironment(Endpoint.SOURCE, config);
     }
 
     private void cleanBuildTask(String processNo) {
