@@ -18,16 +18,18 @@ package org.opengauss.datachecker.check.service;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.check.client.FeignClientService;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
-import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.check.modules.check.DataCheckService;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.util.FileUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.opengauss.datachecker.common.util.IdGenerator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * IncrementManagerService
@@ -47,10 +50,11 @@ import java.util.Set;
 @Slf4j
 @Service
 public class IncrementManagerService {
+    private static final AtomicReference<String> PROCESS_SIGNATURE = new AtomicReference<>();
     @Value("${data.check.data-path}")
     private String path;
-    @Autowired
-    private FeignClientService feignClientService;
+    @Resource
+    private DataCheckService dataCheckService;
 
     /**
      * Incremental verification log notification
@@ -58,10 +62,23 @@ public class IncrementManagerService {
      * @param dataLogList Incremental verification log
      */
     public void notifySourceIncrementDataLogs(List<SourceDataLog> dataLogList) {
+        if (CollectionUtils.isEmpty(dataLogList)) {
+            return;
+        }
+        PROCESS_SIGNATURE.set(IdGenerator.nextId36());
         // Collect the last verification results and build an incremental verification log
         dataLogList.addAll(collectLastResults());
-        feignClientService.notifyIncrementDataLogs(Endpoint.SOURCE, dataLogList);
-        feignClientService.notifyIncrementDataLogs(Endpoint.SINK, dataLogList);
+        incrementDataLogsChecking(dataLogList);
+    }
+
+    private void incrementDataLogsChecking(List<SourceDataLog> dataLogList) {
+        String processNo = PROCESS_SIGNATURE.get();
+        dataLogList.forEach(dataLog -> {
+            log.debug("increment data checking {} mode=[{}],{}", processNo, CheckMode.INCREMENT,
+                dataLog.getTableName());
+            // Verify the data according to the table name and Kafka partition
+            dataCheckService.incrementCheckTableData(dataLog.getTableName(), processNo, dataLog);
+        });
     }
 
     /**

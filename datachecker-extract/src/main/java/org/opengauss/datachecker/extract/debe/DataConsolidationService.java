@@ -16,7 +16,6 @@
 package org.opengauss.datachecker.extract.debe;
 
 import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
-import org.opengauss.datachecker.common.entry.check.IncrementCheckTopic;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 
 import java.util.List;
@@ -32,24 +31,17 @@ public interface DataConsolidationService {
     /**
      * Get the topic records of debezium, and analyze and merge the topic records
      *
-     * @param topicName topic name
+     * @param fetchOffset fetchOffset
      * @return topic records
      */
-    List<SourceDataLog> getDebeziumTopicRecords(String topicName);
-
-    /**
-     * Get the message record information of the topic corresponding to the debrizum listening table
-     *
-     * @return Return message consumption record
-     */
-    IncrementCheckTopic getDebeziumTopicRecordOffSet();
-
+    List<SourceDataLog> getDebeziumTopicRecords(int fetchOffset);
+    
     /**
      * Get the debezium listening table and record the offset information of the message corresponding to the topic
      *
      * @return return offset
      */
-    long getDebeziumTopicRecordEndOffSet();
+    int getDebeziumTopicRecordEndOffSet();
 
     /**
      * Check whether the current extraction end is the source end

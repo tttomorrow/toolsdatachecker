@@ -16,7 +16,6 @@
 package org.opengauss.datachecker.check.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.check.service.IncrementManagerService;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -30,6 +29,8 @@ import javax.validation.constraints.NotEmpty;
 import java.util.List;
 
 /**
+ * IncrementManagerController
+ *
  * @author ：wangchao
  * @date ：Created in 2022/5/25
  * @since ：11
@@ -49,8 +50,7 @@ public class IncrementManagerController {
      */
     @Operation(summary = "Incremental verification log notification")
     @PostMapping("/notify/source/increment/data/logs")
-    public void notifySourceIncrementDataLogs(@Parameter(description = "Incremental verification log") @RequestBody
-    @NotEmpty List<SourceDataLog> dataLogList) {
+    public void notifySourceIncrementDataLogs(@RequestBody @NotEmpty List<SourceDataLog> dataLogList) {
         incrementManagerService.notifySourceIncrementDataLogs(dataLogList);
     }
 

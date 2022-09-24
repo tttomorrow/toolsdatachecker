@@ -32,11 +32,6 @@ spring:
       request-timeout: 60000
 
 feign:
-  client:
-    config:
-      default:
-      connectTimeout: 50000
-      readTimeout: 50000
   okhttp:
     enabled: true
 

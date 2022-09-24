@@ -21,7 +21,6 @@ import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
-import org.opengauss.datachecker.common.entry.extract.ExtractIncrementTask;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -43,8 +42,6 @@ import org.opengauss.datachecker.extract.task.DataManipulationService;
 import org.opengauss.datachecker.extract.task.ExtractTaskBuilder;
 import org.opengauss.datachecker.extract.task.ExtractTaskRunnable;
 import org.opengauss.datachecker.extract.task.ExtractThreadSupport;
-import org.opengauss.datachecker.extract.task.IncrementExtractTaskRunnable;
-import org.opengauss.datachecker.extract.task.IncrementExtractThreadSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -94,7 +91,6 @@ public class DataExtractServiceImpl implements DataExtractService {
     private final AtomicReference<String> atomicProcessNo = new AtomicReference<>(PROCESS_NO_RESET);
 
     private final AtomicReference<List<ExtractTask>> taskReference = new AtomicReference<>();
-    private final AtomicReference<List<ExtractIncrementTask>> incrementTaskReference = new AtomicReference<>();
 
     @Autowired
     @Qualifier("extractThreadExecutor")
@@ -105,9 +101,6 @@ public class DataExtractServiceImpl implements DataExtractService {
 
     @Autowired
     private ExtractThreadSupport extractThreadSupport;
-
-    @Autowired
-    private IncrementExtractThreadSupport incrementExtractThreadSupport;
 
     @Autowired
     private CheckingFeignClient checkingFeignClient;
@@ -225,9 +218,6 @@ public class DataExtractServiceImpl implements DataExtractService {
     public void cleanBuildTask() {
         if (Objects.nonNull(taskReference.getAcquire())) {
             taskReference.getAcquire().clear();
-        }
-        if (Objects.nonNull(incrementTaskReference.getAcquire())) {
-            incrementTaskReference.getAcquire().clear();
         }
         TableExtractStatusCache.removeAll();
         atomicProcessNo.set(PROCESS_NO_RESET);
@@ -369,58 +359,6 @@ public class DataExtractServiceImpl implements DataExtractService {
             throw new TableNotExistException(tableName);
         }
         return dataManipulationService.queryColumnValues(tableName, new ArrayList<>(compositeKeys), metadata);
-    }
-
-    /**
-     * Build an incremental extraction task according to the data change log
-     *
-     * @param sourceDataLogs data change log
-     */
-    @Override
-    public void buildExtractIncrementTaskByLogs(List<SourceDataLog> sourceDataLogs) {
-        final String schema = extractProperties.getSchema();
-        List<ExtractIncrementTask> taskList = extractTaskBuilder.buildIncrementTask(schema, sourceDataLogs);
-        log.info("Build incremental extraction task completed {}", taskList.size());
-        if (CollectionUtils.isEmpty(taskList)) {
-            return;
-        }
-        incrementTaskReference.set(taskList);
-
-        List<String> tableNameList =
-            sourceDataLogs.stream().map(SourceDataLog::getTableName).collect(Collectors.toList());
-        Map<String, Integer> taskCount = new HashMap<>(Constants.InitialCapacity.EMPTY);
-        createTaskCountMapping(tableNameList, taskCount);
-        TableExtractStatusCache.init(taskCount);
-    }
-
-    private void createTaskCountMapping(List<String> tableNameList, Map<String, Integer> taskCount) {
-        tableNameList.forEach(table -> taskCount.put(table, 1));
-    }
-
-    /**
-     * Perform incremental check data extraction
-     */
-    @Override
-    public void execExtractIncrementTaskByLogs() {
-        List<ExtractIncrementTask> taskList = incrementTaskReference.get();
-        if (CollectionUtils.isEmpty(taskList)) {
-            log.info("endpoint [{}] task is empty!", extractProperties.getEndpoint().getDescription());
-            return;
-        }
-        Map<String, Integer> tableCheckStatus = checkingFeignClient.queryTableCheckStatus();
-        taskList.forEach(task -> {
-            log.info("Perform data extraction increment tasks:{}", task.getTaskName());
-            final String tableName = task.getTableName();
-            if (!tableCheckStatus.containsKey(tableName) || tableCheckStatus.get(tableName) == -1) {
-                log.info("Abnormal table[{}] status, ignoring the current table increment data extraction", tableName);
-                return;
-            }
-            Topic topic = kafkaCommonService.getIncrementTopicInfo(tableName);
-            kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
-            final IncrementExtractTaskRunnable extractRunnable =
-                new IncrementExtractTaskRunnable(task, topic, incrementExtractThreadSupport);
-            extractThreadExecutor.submit(extractRunnable);
-        });
     }
 
     /**

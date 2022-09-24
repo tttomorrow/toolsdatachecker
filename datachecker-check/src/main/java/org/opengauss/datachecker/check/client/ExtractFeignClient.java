@@ -175,14 +175,6 @@ public interface ExtractFeignClient {
         @RequestParam(name = "tableName") String tableName, @RequestBody Set<String> diffSet);
 
     /**
-     * Issue incremental log data
-     *
-     * @param dataLogList incremental log data
-     */
-    @PostMapping("/extract/increment/logs/data")
-    void notifyIncrementDataLogs(List<SourceDataLog> dataLogList);
-
-    /**
      * Query table metadata hash information
      *
      * @param tableName tableName

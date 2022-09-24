@@ -29,6 +29,7 @@ import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.check.DataCheckParam;
 import org.opengauss.datachecker.common.entry.check.DifferencePair;
 import org.opengauss.datachecker.common.entry.check.Pair;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.Topic;
@@ -68,7 +69,7 @@ public class DataCheckRunnable implements Runnable {
     private final List<Bucket> sourceBucketList = Collections.synchronizedList(new ArrayList<>());
     private final List<Bucket> sinkBucketList = Collections.synchronizedList(new ArrayList<>());
     private final DifferencePair<Map<String, RowDataHash>, Map<String, RowDataHash>, Map<String, Pair<Node, Node>>>
-            difference = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
+        difference = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
     private final Map<Integer, Pair<Integer, Integer>> bucketNumberDiffMap = new HashMap<>();
     private final FeignClientService feignClient;
     private final StatisticalService statisticalService;
@@ -103,7 +104,7 @@ public class DataCheckRunnable implements Runnable {
     private KafkaConsumerHandler buildKafkaHandler(DataCheckRunnableSupport support) {
         KafkaConsumerService kafkaConsumerService = support.getKafkaConsumerService();
         return new KafkaConsumerHandler(kafkaConsumerService.buildKafkaConsumer(false),
-                kafkaConsumerService.getRetryFetchRecordTimes());
+            kafkaConsumerService.getRetryFetchRecordTimes());
     }
 
     /**
@@ -147,9 +148,9 @@ public class DataCheckRunnable implements Runnable {
             if (sourceTree.getDepth() != sinkTree.getDepth()) {
                 refreshCheckStatus();
                 throw new MerkleTreeDepthException(String.format(Locale.ROOT,
-                        "source & sink data have large different, Please synchronize data again! "
-                                + "merkel tree depth different,source depth=[%d],sink depth=[%d]", sourceTree.getDepth(),
-                        sinkTree.getDepth()));
+                    "source & sink data have large different, Please synchronize data again! "
+                        + "merkel tree depth different,source depth=[%d],sink depth=[%d]", sourceTree.getDepth(),
+                    sinkTree.getDepth()));
             }
             // Recursively compare two Merkel trees and return the difference record.
             compareMerkleTree(sourceTree, sinkTree);
@@ -199,7 +200,7 @@ public class DataCheckRunnable implements Runnable {
         sortBuckets(sourceBucketList);
         sortBuckets(sinkBucketList);
         log.info("Initialize the verification data and the bucket construction is currently completed of table [{}-{}]",
-                tableName, partitions);
+            tableName, partitions);
     }
 
     /**
@@ -240,7 +241,7 @@ public class DataCheckRunnable implements Runnable {
             return;
         }
         log.info("Initialize the verification thread data, and pull the total number of [{}-{}-{}] data records to {}",
-                endpoint.getDescription(), tableName, partitions, dataList.size());
+            endpoint.getDescription(), tableName, partitions, dataList.size());
         BuilderBucketHandler bucketBuilder = new BuilderBucketHandler(bucketCapacity);
 
         // Use the pulled data to build the bucket list
@@ -393,7 +394,7 @@ public class DataCheckRunnable implements Runnable {
             } else {
                 // sourceSize is less than thresholdMinBucketSize, that is, there is only one bucket. Compare
                 DifferencePair<Map, Map, Map> subDifference =
-                        compareBucket(sourceBucketList.get(0), sinkBucketList.get(0));
+                    compareBucket(sourceBucketList.get(0), sinkBucketList.get(0));
                 difference.getDiffering().putAll(subDifference.getDiffering());
                 difference.getOnlyOnLeft().putAll(subDifference.getOnlyOnLeft());
                 difference.getOnlyOnRight().putAll(subDifference.getOnlyOnRight());
@@ -402,20 +403,19 @@ public class DataCheckRunnable implements Runnable {
         } else {
             refreshCheckStatus();
             throw new LargeDataDiffException(String.format(
-                    "table[%s] source & sink data have large different," + "source-bucket-count=[%s] sink-bucket-count=[%s]"
-                            + " Please synchronize data again! ", tableName, sourceBucketCount, sinkBucketCount));
+                "table[%s] source & sink data have large different," + "source-bucket-count=[%s] sink-bucket-count=[%s]"
+                    + " Please synchronize data again! ", tableName, sourceBucketCount, sinkBucketCount));
         }
     }
 
     private void checkResult() {
         CheckDiffResult result =
-                AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
-                        .schema(sinkSchema).partitions(partitions).isTableStructureEquals(true)
-                        .isExistTableMiss(false, null)
-                        .rowCount(rowCount).errorRate(20)
-                        .keyUpdateSet(difference.getDiffering().keySet())
-                        .keyInsertSet(difference.getOnlyOnLeft().keySet())
-                        .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
+            AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
+                                          .schema(sinkSchema).partitions(partitions).isTableStructureEquals(true)
+                                          .isExistTableMiss(false, null).rowCount(rowCount).errorRate(20)
+                                          .checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
+                                          .keyInsertSet(difference.getOnlyOnLeft().keySet())
+                                          .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
         ExportCheckResult.export(path, result);
         log.info("Complete the output of data verification results of table [{}-{}]", tableName, partitions);
     }

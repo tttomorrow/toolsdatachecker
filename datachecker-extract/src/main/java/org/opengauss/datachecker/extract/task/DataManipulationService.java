@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.task;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
@@ -39,7 +40,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -360,14 +360,15 @@ public class DataManipulationService {
         final TableMetadataHash tableMetadataHash = new TableMetadataHash().setTableName(tableName);
         final List<ColumnsMetaData> columnsMetaData = metaDataService.queryTableColumnMetaDataOfSchema(tableName);
         StringBuffer buffer = new StringBuffer();
-        if (!CollectionUtils.isEmpty(columnsMetaData)) {
-            columnsMetaData.sort(Comparator.comparing(ColumnsMetaData::getColumnName));
+        if (CollectionUtils.isNotEmpty(columnsMetaData)) {
+            columnsMetaData.sort(Comparator.comparing(ColumnsMetaData::getOrdinalPosition));
             columnsMetaData.forEach(column -> {
-                buffer.append(column.getColumnName()).append(column.getColumnType()).append(column.getDataType())
-                      .append(column.getOrdinalPosition());
+                buffer.append(column.getColumnName()).append(column.getOrdinalPosition());
             });
+            tableMetadataHash.setTableHash(HASH_UTIL.hashBytes(buffer.toString()));
+        } else {
+            tableMetadataHash.setTableHash(-1L);
         }
-        tableMetadataHash.setTableHash(HASH_UTIL.hashBytes(buffer.toString()));
         return tableMetadataHash;
     }
 }

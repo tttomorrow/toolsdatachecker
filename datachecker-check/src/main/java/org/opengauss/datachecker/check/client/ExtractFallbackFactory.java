@@ -150,10 +150,6 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
         }
 
         @Override
-        public void notifyIncrementDataLogs(List<SourceDataLog> dataLogList) {
-        }
-
-        @Override
         public Result<TableMetadataHash> queryTableMetadataHash(String tableName) {
             return Result.error("Remote call, query table metadata hash information exception");
         }

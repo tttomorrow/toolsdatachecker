@@ -18,12 +18,14 @@ package org.opengauss.datachecker.check.modules.check;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -49,6 +51,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     private boolean isTableStructureEquals;
     private boolean isExistTableMiss;
     private Endpoint onlyExistEndpoint;
+    private CheckMode checkMode;
     private LocalDateTime createTime;
     private Set<String> keyUpdateSet;
     private Set<String> keyInsertSet;
@@ -158,6 +161,11 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         return self();
     }
 
+    public B checkMode(CheckMode checkMode) {
+        this.checkMode = checkMode;
+        return self();
+    }
+
     /**
      * Set the keyUpdateSet properties of the builder
      *
@@ -226,6 +234,9 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     }
 
     protected boolean isNotLargeDiffKeys() {
+        if (Objects.equals(CheckMode.INCREMENT, checkMode)) {
+            return true;
+        }
         int totalRepair = keyDeleteSet.size() + keyInsertSet.size() + keyUpdateSet.size();
         int curErrorRate = (totalRepair * 100 / rowCount);
         if (totalRepair <= MAX_DIFF_REPAIR_SIZE && curErrorRate <= errorRate) {

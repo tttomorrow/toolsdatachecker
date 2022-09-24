@@ -113,19 +113,7 @@ public interface DataExtractService {
      * @return Primary key corresponds to table data
      */
     List<Map<String, String>> queryTableColumnValues(String tableName, List<String> compositeKeySet);
-
-    /**
-     * Build an incremental extraction task according to the data change log
-     *
-     * @param sourceDataLogs source data logs
-     */
-    void buildExtractIncrementTaskByLogs(List<SourceDataLog> sourceDataLogs);
-
-    /**
-     * Perform incremental check data extraction
-     */
-    void execExtractIncrementTaskByLogs();
-
+    
     /**
      * Query the metadata information of the current table structure and hash
      *

@@ -23,6 +23,7 @@ import org.opengauss.datachecker.common.entry.debezium.PayloadSource;
 
 import javax.validation.constraints.NotNull;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * DebeziumDataHandler
@@ -36,21 +37,17 @@ public class DebeziumDataHandler {
     /**
      * Debezium message parsing and adding the parsing result to the {@code DebeziumDataLogs.class} result set
      *
-     * @param message          message
-     * @param debeziumDataLogs debeziumDataLogs
+     * @param message message
+     * @param queue   debeziumDataLogs
      */
-    public void handler(String message, @NotNull DebeziumDataLogs debeziumDataLogs) {
+    public void handler(String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue)
+        throws InterruptedException {
         final DebeziumData debeziumData = JSONObject.parseObject(message, DebeziumData.class);
         final DebeziumPayload payload = debeziumData.getPayload();
         final Map<String, String> before = payload.getBefore();
         final Map<String, String> after = payload.getAfter();
         final PayloadSource source = payload.getSource();
         // Extract the data and add it to the debezium incremental log object
-        if (!debeziumDataLogs.addDebeziumDataKey(source.getTable(), after != null ? after : before)) {
-            // The format of the debezium message is abnormal.
-            // The corresponding table [{}] of the current message does not exist or is illegal
-            log.error("The debezium message format is abnormal. The current message corresponding table [{}] "
-                + "does not exist or is illegal", source.getTable());
-        }
+        queue.put(new DebeziumDataBean(source.getTable(), after != null ? after : before));
     }
 }

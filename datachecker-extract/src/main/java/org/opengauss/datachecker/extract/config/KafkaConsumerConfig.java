@@ -21,10 +21,12 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opengauss.datachecker.extract.constants.ExtConstants;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
@@ -44,6 +46,10 @@ public class KafkaConsumerConfig {
     private static final Object LOCK = new Object();
     private static final Map<String, KafkaConsumer<String, String>> CONSUMER_MAP = new ConcurrentHashMap<>();
 
+    @Value("${spring.extract.debezium-groupId}")
+    private String debeziumGroupId;
+    @Value("${spring.extract.debezium-topic}")
+    private String debeziumTopic;
     @Autowired
     private KafkaProperties properties;
 
@@ -72,18 +78,19 @@ public class KafkaConsumerConfig {
     /**
      * Obtaining a specified consumer client based on topic.
      *
-     * @param groupId groupId
      * @return consumer client.
      */
-    public KafkaConsumer<String, String> getDebeziumConsumer(String groupId) {
+    public KafkaConsumer<String, String> getDebeziumConsumer() {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
             String.join(ExtConstants.DELIMITER, properties.getBootstrapServers()));
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, debeziumGroupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, properties.getConsumer().getAutoOffsetReset());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        return new KafkaConsumer<>(props);
+        final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        consumer.subscribe(List.of(debeziumTopic));
+        return consumer;
     }
 
     private KafkaConsumer<String, String> buildKafkaConsumer() {

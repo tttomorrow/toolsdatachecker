@@ -38,7 +38,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -221,21 +220,6 @@ public class ExtractController {
         @NotEmpty(message = "the primary key set to be repaired belongs cannot be empty") @RequestBody
             Set<String> compositeKeySet) {
         return Result.success(dataExtractService.queryTableColumnValues(tableName, new ArrayList<>(compositeKeySet)));
-    }
-
-    /**
-     * creating an incremental extraction task based on data change logs
-     *
-     * @param sourceDataLogList data change logs list
-     * @return interface invoking result
-     */
-    @Operation(summary = "creating an incremental extraction task based on data change logs")
-    @PostMapping("/extract/increment/logs/data")
-    Result<Void> notifyIncrementDataLogs(
-        @RequestBody @NotNull(message = "Data change log cannot be empty") List<SourceDataLog> sourceDataLogList) {
-        dataExtractService.buildExtractIncrementTaskByLogs(sourceDataLogList);
-        dataExtractService.execExtractIncrementTaskByLogs();
-        return Result.success();
     }
 
     @Operation(summary = "query the metadata of the current table structure and perform hash calculation.")
