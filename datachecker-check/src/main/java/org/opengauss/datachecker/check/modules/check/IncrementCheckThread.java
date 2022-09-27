@@ -123,11 +123,11 @@ public class IncrementCheckThread extends Thread {
                 // Conduct secondary verification according to the initial verification results
                 secondaryCheckCompare(diffIdList);
             } else {
-                log.error("check table metadata error");
+                log.error("check table {} metadata error", tableName);
             }
             // Verification result verification repair report
             checkResult();
-            log.info("increment process {} check end", process);
+            log.info("increment process {} check table {} end", process, tableName);
         } catch (Exception ex) {
             log.error("check error", ex);
         }

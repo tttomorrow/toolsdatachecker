@@ -95,28 +95,22 @@ public class DataExtractServiceImpl implements DataExtractService {
     @Autowired
     @Qualifier("extractThreadExecutor")
     private ThreadPoolTaskExecutor extractThreadExecutor;
-
     @Autowired
     private ExtractTaskBuilder extractTaskBuilder;
-
     @Autowired
     private ExtractThreadSupport extractThreadSupport;
-
     @Autowired
     private CheckingFeignClient checkingFeignClient;
-
     @Autowired
     private ExtractProperties extractProperties;
-
     @Autowired
     private KafkaCommonService kafkaCommonService;
-
     @Autowired
     private KafkaAdminService kafkaAdminService;
-
+    @Autowired
+    private MetaDataService metaDataService;
     @Autowired
     private DataManipulationService dataManipulationService;
-
     @Value("${spring.extract.sync-extract}")
     private boolean isSyncExtract = true;
 
@@ -208,7 +202,7 @@ public class DataExtractServiceImpl implements DataExtractService {
 
     private void updateSinkMetadata(ExtractTask extractTask) {
         final String tableName = extractTask.getTableName();
-        extractTask.setTableMetadata(MetaDataCache.get(tableName));
+        extractTask.setTableMetadata(metaDataService.getMetaDataOfSchemaByCache(tableName));
     }
 
     /**
@@ -317,7 +311,7 @@ public class DataExtractServiceImpl implements DataExtractService {
         if (CollectionUtils.isEmpty(diffSet)) {
             return new ArrayList<>();
         }
-        final TableMetadata metadata = MetaDataCache.get(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         return dataManipulationService.buildReplace(schema, tableName, diffSet, metadata);
     }
 
@@ -328,7 +322,7 @@ public class DataExtractServiceImpl implements DataExtractService {
         if (CollectionUtils.isEmpty(diffSet)) {
             return new ArrayList<>();
         }
-        final TableMetadata metadata = MetaDataCache.get(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         return dataManipulationService.buildInsert(schema, tableName, diffSet, metadata);
     }
 
@@ -336,7 +330,7 @@ public class DataExtractServiceImpl implements DataExtractService {
     public List<String> buildRepairStatementDeleteDml(String schema, String tableName, Set<String> diffSet) {
         log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.DELETE.getDescription(),
             diffSet.size());
-        final TableMetadata metadata = MetaDataCache.get(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         if (Objects.nonNull(metadata)) {
             final List<ColumnsMetaData> primaryMetas = metadata.getPrimaryMetas();
             return dataManipulationService.buildDelete(schema, tableName, diffSet, primaryMetas);
@@ -354,7 +348,7 @@ public class DataExtractServiceImpl implements DataExtractService {
      */
     @Override
     public List<Map<String, String>> queryTableColumnValues(String tableName, List<String> compositeKeys) {
-        final TableMetadata metadata = MetaDataCache.get(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         if (Objects.isNull(metadata)) {
             throw new TableNotExistException(tableName);
         }
@@ -382,7 +376,7 @@ public class DataExtractServiceImpl implements DataExtractService {
     public List<RowDataHash> querySecondaryCheckRowData(SourceDataLog dataLog) {
         final String tableName = dataLog.getTableName();
         final List<String> compositeKeys = dataLog.getCompositePrimaryValues();
-        final TableMetadata metadata = MetaDataCache.get(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         if (Objects.isNull(metadata)) {
             throw new TableNotExistException(tableName);
         }
