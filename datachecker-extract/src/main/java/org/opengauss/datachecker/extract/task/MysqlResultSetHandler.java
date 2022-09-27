@@ -37,7 +37,6 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
 
         // byte binary blob
-        typeHandlers.put(MysqlType.BIT, binaryByteToString);
         typeHandlers.put(MysqlType.BINARY, binaryByteToString);
         typeHandlers.put(MysqlType.VARBINARY, binaryByteToString);
 

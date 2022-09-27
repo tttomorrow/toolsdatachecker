@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.extract.debe;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -29,7 +30,6 @@ import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.util.CollectionUtils;
 
 import javax.annotation.PostConstruct;
 import javax.validation.constraints.NotEmpty;
@@ -82,7 +82,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     public List<SourceDataLog> getDebeziumTopicRecords(int fetchOffset) {
         checkIncrementCheckEnvironment();
         int begin = 0;
-        DebeziumDataLogs debeziumDataLogs = new DebeziumDataLogs();
+        DebeziumDataLogs debeziumDataLogs = new DebeziumDataLogs(metaDataService);
         while (begin <= fetchOffset) {
             DebeziumDataBean debeziumDataBean = debeziumListener.poll();
             if (Objects.isNull(debeziumDataBean)) {
@@ -149,13 +149,16 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
      */
     private void checkDebeziumEnvironment(
         @NotEmpty(message = "Debezium configuration topic cannot be empty") String debeziumTopic,
-        @NotEmpty(message = "Debezium configuration tables cannot be empty") List<String> debeziumTables,
+        List<String> debeziumTables,
         @NotEmpty(message = "Source side table metadata cache exception") Set<String> allTableSet) {
         checkSourceEndpoint();
         if (!kafkaAdminService.isTopicExists(debeziumTopic)) {
             // The configuration item debezium topic information does not exist
             throw new DebeziumConfigException(
                 "The configuration item debezium topic " + debeziumTopic + " information does not exist");
+        }
+        if (CollectionUtils.isEmpty(debeziumTables)) {
+            return;
         }
         final List<String> allTableList = allTableSet.stream().map(String::toUpperCase).collect(Collectors.toList());
         List<String> invalidTables =

@@ -104,6 +104,17 @@ public class MetaDataService {
         return tableMetadata;
     }
 
+    public TableMetadata getMetaDataOfSchemaByCache(String tableName) {
+        if (!MetaDataCache.containsKey(tableName)) {
+            MetaDataCache.put(tableName, queryMetaDataOfSchema(tableName));
+        }
+        return MetaDataCache.get(tableName);
+    }
+
+    public void updateMetaDataOfSchemaByCache(String tableName) {
+        MetaDataCache.put(tableName, queryMetaDataOfSchema(tableName));
+    }
+
     /**
      * query column Metadata info
      *

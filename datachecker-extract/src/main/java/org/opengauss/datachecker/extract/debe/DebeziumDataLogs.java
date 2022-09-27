@@ -19,8 +19,8 @@ import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.exception.TableNotExistException;
-import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.constants.ExtConstants;
+import org.opengauss.datachecker.extract.service.MetaDataService;
 
 import javax.validation.constraints.NotEmpty;
 import java.util.ArrayList;
@@ -39,6 +39,11 @@ import java.util.stream.Collectors;
  */
 public class DebeziumDataLogs extends ConcurrentHashMap<String, SourceDataLog> {
     private static final long serialVersionUID = 6477495180190870182L;
+    private final MetaDataService metaDataService;
+
+    public DebeziumDataLogs(MetaDataService metaDataService) {
+        this.metaDataService = metaDataService;
+    }
 
     /**
      * get Table log data encapsulation
@@ -60,7 +65,7 @@ public class DebeziumDataLogs extends ConcurrentHashMap<String, SourceDataLog> {
      * @param tableName tableName
      */
     private void buildDefault(String tableName) {
-        final TableMetadata metadata = MetaDataCache.get(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         SourceDataLog dataLog = new SourceDataLog();
         if (Objects.nonNull(metadata)) {
             dataLog.setTableName(tableName).setCompositePrimarys(
