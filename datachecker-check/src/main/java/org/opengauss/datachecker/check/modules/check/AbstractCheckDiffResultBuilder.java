@@ -237,55 +237,59 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         if (Objects.equals(CheckMode.INCREMENT, checkMode)) {
             return true;
         }
-        int totalRepair = keyDeleteSet.size() + keyInsertSet.size() + keyUpdateSet.size();
+        int totalRepair = getKeySetSize(keyDeleteSet) + getKeySetSize(keyInsertSet) + getKeySetSize(keyUpdateSet);
         int curErrorRate = (totalRepair * 100 / rowCount);
         if (totalRepair <= MAX_DIFF_REPAIR_SIZE && curErrorRate <= errorRate) {
             return true;
         } else {
             log.info("check table[{}] diff-count={},error-rate={}%, error is too large ,not to build repair dml", table,
-                keyUpdateSet.size(), curErrorRate);
+                totalRepair, curErrorRate);
             return false;
         }
     }
 
+    protected int getKeySetSize(Set<String> keySet) {
+        return keySet == null ? 0 : keySet.size();
+    }
+
     protected List<String> checkRepairUpdateSinkDiff(String schema, String table, Set<String> keyUpdateSet) {
         try {
-            if (keyUpdateSet.size() > 0 && isNotLargeDiffKeys()) {
+            if (getKeySetSize(keyUpdateSet) > 0 && isNotLargeDiffKeys()) {
                 log.info("check table[{}] repair [{}] diff-count={} build repair dml", table,
                     DML.REPLACE.getDescription(), keyUpdateSet.size());
                 return feignClient.buildRepairStatementUpdateDml(Endpoint.SOURCE, schema, table, keyUpdateSet);
             }
         } catch (Exception exception) {
             log.error("check table[{}] repair [{}] diff-count={} build repair dml error", schema,
-                DML.REPLACE.getDescription(), keyUpdateSet.size(), exception);
+                DML.REPLACE.getDescription(), getKeySetSize(keyUpdateSet), exception);
         }
         return new ArrayList<>();
     }
 
     protected List<String> checkRepairInsertSinkDiff(String schema, String table, Set<String> keyInsertSet) {
         try {
-            if (keyInsertSet.size() > 0 && isNotLargeDiffKeys()) {
+            if (getKeySetSize(keyInsertSet) > 0 && isNotLargeDiffKeys()) {
                 log.info("check table[{}] repair [{}] diff-count={} build repair dml", table,
                     DML.INSERT.getDescription(), keyInsertSet.size());
                 return feignClient.buildRepairStatementInsertDml(Endpoint.SOURCE, schema, table, keyInsertSet);
             }
         } catch (Exception exception) {
             log.error("check table[{}] repair [{}] diff-count={} build repair dml error", schema,
-                DML.INSERT.getDescription(), keyInsertSet.size(), exception);
+                DML.INSERT.getDescription(), getKeySetSize(keyInsertSet), exception);
         }
         return new ArrayList<>();
     }
 
     protected List<String> checkRepairDeleteSinkDiff(String schema, String table, Set<String> keyDeleteSet) {
         try {
-            if (keyDeleteSet.size() > 0 && isNotLargeDiffKeys()) {
+            if (getKeySetSize(keyDeleteSet) > 0 && isNotLargeDiffKeys()) {
                 log.info("check table[{}] repair [{}] diff-count={} build repair dml", table,
                     DML.DELETE.getDescription(), keyDeleteSet.size());
                 return feignClient.buildRepairStatementDeleteDml(Endpoint.SOURCE, schema, table, keyDeleteSet);
             }
         } catch (Exception exception) {
             log.error("check table[{}] repair [{}] diff-count={} build repair dml error", schema,
-                DML.DELETE.getDescription(), keyDeleteSet.size(), exception);
+                DML.DELETE.getDescription(), getKeySetSize(keyDeleteSet), exception);
         }
         return new ArrayList<>();
     }

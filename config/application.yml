@@ -1,16 +1,6 @@
 server:
   port: 9000
-
-debug: false
-
 spring:
-  datasource:
-    druid:
-      dataCheck:
-        driver-class-name: com.mysql.cj.jdbc.Driver
-        url: jdbc:mysql://{ip}:{port}/check?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
-        username:
-        password:
   kafka:
     bootstrap-servers: { ip }:{port};{ip}:{port}
 data:
