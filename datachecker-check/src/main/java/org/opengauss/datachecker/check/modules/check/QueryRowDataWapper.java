@@ -16,13 +16,13 @@
 package org.opengauss.datachecker.check.modules.check;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.DispatchClientException;
 import org.opengauss.datachecker.common.web.Result;
-import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,6 +76,9 @@ public class QueryRowDataWapper {
      * @return result
      */
     public List<RowDataHash> queryRowData(Endpoint endpoint, SourceDataLog dataLog) {
+        if (dataLog == null || CollectionUtils.isEmpty(dataLog.getCompositePrimaryValues())) {
+            return new ArrayList<>();
+        }
         Result<List<RowDataHash>> result = feignClient.getClient(endpoint).querySecondaryCheckRowData(dataLog);
         if (!result.isSuccess()) {
             throw new DispatchClientException(endpoint,

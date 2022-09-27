@@ -40,7 +40,8 @@ public class ExportCheckResult {
 
     public static void export(String path, CheckDiffResult result) {
         String fileName = getCheckResultFileName(path, result.getTopic(), result.getPartitions());
-        FileUtils.writeAppendFile(fileName, JsonObjectUtil.format(result));
+        FileUtils.deleteFile(fileName);
+        FileUtils.writeFile(fileName, JsonObjectUtil.format(result));
     }
 
     private static String getCheckResultFileName(String path, String tableName, int partitions) {

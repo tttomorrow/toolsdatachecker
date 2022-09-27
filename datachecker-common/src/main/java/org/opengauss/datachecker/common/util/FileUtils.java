@@ -100,6 +100,14 @@ public class FileUtils {
         }
     }
 
+    public static void writeFile(String filename, String content) {
+        try {
+            Files.write(Paths.get(filename), content.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+        } catch (IOException e) {
+            log.error("file write error:", e);
+        }
+    }
+
     /**
      * Load files under the specified path
      *

@@ -73,9 +73,10 @@ public class IncrementManagerService {
 
     private void incrementDataLogsChecking(List<SourceDataLog> dataLogList) {
         String processNo = PROCESS_SIGNATURE.get();
+        log.debug("incrementDataLogsChecking {}", dataLogList.size());
         dataLogList.forEach(dataLog -> {
-            log.debug("increment data checking {} mode=[{}],{}", processNo, CheckMode.INCREMENT,
-                dataLog.getTableName());
+            log.debug("increment data checking {} mode=[{}],{},{}", processNo, CheckMode.INCREMENT,
+                dataLog.getTableName(), dataLog.toString());
             // Verify the data according to the table name and Kafka partition
             dataCheckService.incrementCheckTableData(dataLog.getTableName(), processNo, dataLog);
         });

@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.debe;
 
 import com.alibaba.fastjson.JSONException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.opengauss.datachecker.common.exception.DebeziumConfigException;
 import org.springframework.stereotype.Service;
@@ -38,11 +39,13 @@ public class DebeziumConsumerListener {
 
     public void listen(ConsumerRecord<String, String> record) {
         try {
+            if (StringUtils.isEmpty(record.value())) {
+                return;
+            }
             debeziumDataHandler.handler(record.value(), DATA_LOG_QUEUE);
         } catch (DebeziumConfigException | JSONException | InterruptedException ex) {
             // Abnormal message structure, ignoring the current message
-            log.error("Abnormal message structure, ignoring the current message,{},{}", record.value(),
-                ex.getMessage());
+            log.error("DebeziumConsumerListener Abnormal message , ignoring this message,{}", record.value(), ex);
         }
     }
 
