@@ -11,67 +11,84 @@ openGauss数据迁移校验工具 ，包含全量数据校验以及增量数据�
 
 #### 安装教程
 
-1.  获取数据校验服务jar包，及配置文件模版（datachecker-check.jar/datachecker-extract.jar,application.yml,application-sink.yml,application-source.yml）
-2.  将jar包以及配置文件copy到指定服务器目录，并配置相关配置文件，启动相应的jar服务即可。
-3.  下载并启动kafka
+1.  下载并启动kafka
+2.  获取数据校验服务jar包，及配置文件模版（datachecker-check.jar/datachecker-extract.jar,application.yml,application-sink.yml,application-source.yml）
+3.  将jar包以及配置文件copy到指定服务器目录，并配置相关配置文件，启动相应的jar服务即可。
 
 #### 使用说明
 
 **启动Zookeeper**
 
 ```
-cd {path}/kafka_2.12-3.1.1/bin
+cd {path}/confluent-7.2.0
 ```
 
-Start the ZooKeeper service
-
-Note: Soon, ZooKeeper will no longer be required by Apache Kafka.
-
 ```
-bin/zookeeper-server-start.sh config/zookeeper.properties
-```
-
-Open another terminal session and run:
-
-```
-sh bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
+bin/zookeeper-server-start  etc/kafka/zookeeper.properties
+或者
+bin/zookeeper-server-start -daemon etc/kafka/zookeeper.properties
 ```
 
 **启动Kafka**
 
-Start the Kafka broker service
-
 ```
-bin/kafka-server-start.sh config/server.properties
-
-sh bin/kafka-server-start.sh -daemon /config/server.properties
+bin/kafka-server-start etc/kafka/server.properties
+或者
+bin/kafka-server-start -daemon etc/kafka/server.properties
 ```
 
-**启动kafka界面服务 kafka-eagle（可选项）**
+**启动kafka connect（增量校验）**
 
 ```
-cd {path}/kafka-eagle/bin
-sh ke.sh start | restart
+# 新建connect配置
+vi etc/kafka/mysql-conect.properties
+
+name=mysql-connect-all
+connector.class=io.debezium.connector.mysql.MySqlConnector
+database.hostname=
+database.port=3306
+database.user=root
+database.password=test@123
+database.server.id=1
+database.server.name=mysql_debezium_connect-all
+database.whitelist=test
+database.history.kafka.bootstrap.servers=
+database.history.kafka.topic=mysql_test_topic-all
+include.schema.changes=true
+transforms=Reroute
+transforms.Reroute.type=io.debezium.transforms.ByLogicalTableRouter
+transforms.Reroute.topic.regex=(.*)test(.*)
+transforms.Reroute.topic.replacement=data_check_test_all
+
+# 启动connect服务
+bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka/mysql-conect.properties
 ```
-
-* Welcome, Now you can visit http://ip:port
-
-* Account:admin ,Password:123456 (这里是kafka-eagle默认账户和密码)
 
 **启动数据校验服务**
 
 ```
-源端抽取服务
+#源端抽取服务
 java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-source.yml
 
-宿端抽取服务
+#宿端抽取服务
 java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-sink.yml
+
+或者使用
+sh extract-endpoints.sh start|stop|restart 命令
 
 校验服务
 java -jar datachecker-check.jar -Dspring.config.additional-location=.\config\application.yml
+或者使用
+sh check-endpoint.sh start|stop|restart 命令
 ```
 
+备注：
 
+```
+增量校验服务启动，需要修改源端配置文件\config\application-source.yml 
+debezium-enable:true
+并配置其他 debezium相关配置，服务启动即可开启增量校验服务
+```
 
 **开发人员本地 启动服务**
 
@@ -86,6 +103,16 @@ java -jar datachecker-check.jar -Dspring.config.additional-location=.\config\app
 
 校验服务
 -Dspring.config.additional-location=.\config\application.yml
+```
+
+**限制与约束**
+
+```
+JDK版本要求JDK11+
+当前版本仅支持对源端MySQL，目标端openGauss数据校验
+当前版本仅支持数据校验，不支持表对象校验
+MYSQL需要5.7+版本
+当前版本不支持地理位置几何图形数据校验
 ```
 
 
