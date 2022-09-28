@@ -12,31 +12,24 @@ Incremental data verification, through debezium monitoring the data change recor
 
 #### Installation
 
-1.  Obtain the data verification service jar package and the configuration file template (datachecker-check.jar/datachecker-extract.jar, application.yml, application sink.yml, application source.yml)
-2. Copy the jar package and configuration file to the specified server directory, configure the relevant configuration file, and start the corresponding jar service.
-
-3. Download and start Kafka
+1.  Download and start Kafka
+2.  Obtain the data verification service jar package and the configuration file template (datachecker-check.jar/datachecker-extract.jar, application.yml, application sink.yml, application source.yml)
+3.  Copy the jar package and configuration file to the specified server directory, configure the relevant configuration file, and start the corresponding jar service.
 
 #### Instructions
 
 **Start zookeeper**
 
 ```
-cd {path}/kafka_2.12-3.1.1/bin
+cd {path}/confluent-7.2.0
 ```
 
 Start the ZooKeeper service
 
-Note: Soon, ZooKeeper will no longer be required by Apache Kafka.
-
 ```
-bin/zookeeper-server-start.sh config/zookeeper.properties
-```
-
-Open another terminal session and run:
-
-```
-sh bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
+bin/zookeeper-server-start etc/kafka/zookeeper.properties
+or
+bin/zookeeper-server-start -daemon etc/kafka/zookeeper.properties
 ```
 
 **Start Kafka**
@@ -44,21 +37,39 @@ sh bin/zookeeper-server-start.sh -daemon config/zookeeper.properties
 Start the Kafka broker service
 
 ```
-bin/kafka-server-start.sh config/server.properties
+bin/kafka-server-start  etc/kafka/server.properties
 
-sh bin/kafka-server-start.sh -daemon /config/server.properties
+bin/kafka-server-start -daemon etc/kafka/server.properties
 ```
 
-**Start Kafka interface service Kafka Eagle (optional)**
+**Start  kafka connect (incremental check)**
 
 ```
-cd {path}/kafka-eagle/bin
-sh ke.sh start | restart
+# New connect configuration
+vi etc/kafka/mysql-conect.properties
+
+name=mysql-connect-all
+connector.class=io.debezium.connector.mysql.MySqlConnector
+database.hostname=
+database.port=3306
+database.user=root
+database.password=test@123
+database.server.id=1
+database.server.name=mysql_debezium_connect-all
+database.whitelist=test
+database.history.kafka.bootstrap.servers=
+database.history.kafka.topic=mysql_test_topic-all
+include.schema.changes=true
+transforms=Reroute
+transforms.Reroute.type=io.debezium.transforms.ByLogicalTableRouter
+transforms.Reroute.topic.regex=(.*)test(.*)
+transforms.Reroute.topic.replacement=data_check_test_all
+
+# Start the Kafka connect service 
+bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka/mysql-conect.properties
 ```
 
-* Welcome, Now you can visit http://ip:port
 
-* Account:admin ,Password:123456(here is the default account and password of Kafka Eagle)
 
 **Start datachecker performance service**
 
@@ -69,8 +80,21 @@ java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\a
 Destination extraction service
 java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-sink.yml
 
+or use extract-endpoints shell command to start the source and sink service
+sh extract-endpoints.sh start|stop|restart 
+
 check service
 java -jar datachecker-check.jar -Dspring.config.additional-location=.\config\application.yml
+or use check-endpoint shell command to start the check service
+sh check-endpoint.sh start|stop|restart 
+```
+
+**remarks: **
+
+```
+The incremental verification service is started, and the source side configuration file  config\application-source.yml needs to be modified.
+debezium-enable:true
+And configure other debezium related configurations. The incremental verification service can be started when the service is started
 ```
 
 
@@ -88,6 +112,16 @@ Destination extraction service
 
 check service
 -Dspring.config.additional-location=.\config\application.yml
+```
+
+**Limits and Constraints**
+
+```
+JDK version requirements JDK11+
+The current version only supports the verification of source MySQL and target openGauss data
+The current version only supports data verification, not table object verification
+MYSQL requires version 5.7+
+The current version does not support the verification of geographic location geometry data
 ```
 
 
