@@ -18,6 +18,7 @@ package org.opengauss.datachecker.check.modules.check;
 import com.google.common.collect.MapDifference;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.modules.bucket.Bucket;
 import org.opengauss.datachecker.check.modules.bucket.BuilderBucketHandler;
@@ -36,7 +37,6 @@ import org.opengauss.datachecker.common.exception.DispatchClientException;
 import org.opengauss.datachecker.common.exception.MerkleTreeDepthException;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.lang.NonNull;
-import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -58,7 +58,7 @@ import java.util.Set;
  */
 @Slf4j
 public class IncrementCheckThread extends Thread {
-    private static final int THRESHOLD_MIN_BUCKET_SIZE = 20;
+    private static final int THRESHOLD_MIN_BUCKET_SIZE = 2;
     private static final String THREAD_NAME_PRIFEX = "increment-data-check-";
 
     private final String tableName;
@@ -176,7 +176,8 @@ public class IncrementCheckThread extends Thread {
 
     private void initSecondaryCheckBucketList(List<String> diffIdList) {
         dataLog.setCompositePrimaryValues(diffIdList);
-        buildBucket(Endpoint.SOURCE, dataLog);
+        buildSecondaryCheckBucket(Endpoint.SOURCE, dataLog, sourceBucketList);
+        buildSecondaryCheckBucket(Endpoint.SINK, dataLog, sinkBucketList);
         // Align the source and destination bucket list
         alignAllBuckets();
         sortBuckets(sourceBucketList);
@@ -196,7 +197,7 @@ public class IncrementCheckThread extends Thread {
             } else {
                 // sourceSize is less than thresholdMinBucketSize, that is, there is only one bucket. Compare
                 DifferencePair<Map, Map, Map> subDifference =
-                    compareBucket(sourceBucketList.get(0), sinkBucketList.get(0));
+                    compareBucket(getBucket(sourceBucketList), getBucket(sinkBucketList));
                 difference.getDiffering().putAll(subDifference.getDiffering());
                 difference.getOnlyOnLeft().putAll(subDifference.getOnlyOnLeft());
                 difference.getOnlyOnRight().putAll(subDifference.getOnlyOnRight());
@@ -210,6 +211,14 @@ public class IncrementCheckThread extends Thread {
 
         // Recursively compare two Merkel trees and return the difference record.
         compareMerkleTree(sourceTree, sinkTree);
+    }
+
+    private Bucket getBucket(List<Bucket> bucketList) {
+        if (CollectionUtils.isNotEmpty(bucketList)) {
+            return bucketList.get(0);
+        } else {
+            return null;
+        }
     }
 
     private void lastDataClean() {
@@ -354,9 +363,9 @@ public class IncrementCheckThread extends Thread {
         bucketList.addAll(bucketMap.values());
     }
 
-    private void buildBucket(Endpoint endpoint, SourceDataLog dataLog) {
+    private void buildSecondaryCheckBucket(Endpoint endpoint, SourceDataLog dataLog, List<Bucket> bucketList) {
         final List<RowDataHash> dataList = getSecondaryCheckRowData(endpoint, dataLog);
-        buildBucket(dataList, endpoint, sourceBucketList);
+        buildBucket(dataList, endpoint, bucketList);
     }
 
     /**
@@ -391,6 +400,9 @@ public class IncrementCheckThread extends Thread {
     }
 
     private List<RowDataHash> getSecondaryCheckRowData(Endpoint endpoint, SourceDataLog dataLog) {
+        if (dataLog == null || CollectionUtils.isEmpty(dataLog.getCompositePrimaryValues())) {
+            return new ArrayList<>();
+        }
         return queryRowDataWapper.queryRowData(endpoint, dataLog);
     }
 
@@ -402,6 +414,10 @@ public class IncrementCheckThread extends Thread {
      * @return Difference Pair record
      */
     private DifferencePair<Map, Map, Map> compareBucket(Bucket sourceBucket, Bucket sinkBucket) {
+        if (sourceBucket == null || sinkBucket == null) {
+            return DifferencePair.of(sourceBucket == null ? sinkBucket.getBucket() : new HashMap<>(),
+                sinkBucket == null ? sourceBucket.getBucket() : new HashMap<>(), new HashMap());
+        }
         Map<String, RowDataHash> sourceMap = sourceBucket.getBucket();
         Map<String, RowDataHash> sinkMap = sinkBucket.getBucket();
         MapDifference<String, RowDataHash> bucketDifference = Maps.difference(sourceMap, sinkMap);

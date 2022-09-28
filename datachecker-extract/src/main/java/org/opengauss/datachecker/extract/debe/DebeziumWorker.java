@@ -52,8 +52,8 @@ public class DebeziumWorker implements Runnable {
                 try {
                     debeziumConsumerListener.listen(record);
                 } catch (Exception ex) {
-                    log.error("Abnormal message structure, ignoring the current message,{},{}", record.value(),
-                        ex.getMessage());
+                    log.error("DebeziumWorker Abnormal message, ignoring the current message,{},{}", record.toString(),
+                        ex);
                 }
             }
         }

@@ -21,6 +21,7 @@ import org.opengauss.datachecker.common.entry.debezium.DebeziumData;
 import org.opengauss.datachecker.common.entry.debezium.DebeziumPayload;
 import org.opengauss.datachecker.common.entry.debezium.PayloadSource;
 
+import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -40,7 +41,7 @@ public class DebeziumDataHandler {
      * @param message message
      * @param queue   debeziumDataLogs
      */
-    public void handler(String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue)
+    public void handler(@NotEmpty String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue)
         throws InterruptedException {
         final DebeziumData debeziumData = JSONObject.parseObject(message, DebeziumData.class);
         final DebeziumPayload payload = debeziumData.getPayload();
