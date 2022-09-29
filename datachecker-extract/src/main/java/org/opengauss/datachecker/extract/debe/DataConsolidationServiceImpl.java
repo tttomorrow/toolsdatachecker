@@ -17,9 +17,12 @@ package org.opengauss.datachecker.extract.debe;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.entry.check.IncrementCheckConfig;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.exception.DebeziumConfigException;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
@@ -34,8 +37,11 @@ import org.springframework.util.Assert;
 import javax.annotation.PostConstruct;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -51,6 +57,9 @@ import java.util.stream.Collectors;
 @Service
 public class DataConsolidationServiceImpl implements DataConsolidationService {
     private static final IncrementCheckConfig INCREMENT_CHECK_CONIFG = new IncrementCheckConfig();
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final String MYSQL_DATE_TYPE = "date";
+
     @Autowired
     private DebeziumConsumerListener debeziumListener;
     @Autowired
@@ -88,10 +97,30 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
             if (Objects.isNull(debeziumDataBean)) {
                 break;
             }
+            mysqlDateConvert(debeziumDataBean);
             debeziumDataLogs.addDebeziumDataKey(debeziumDataBean.getTable(), debeziumDataBean.getData());
             begin++;
         }
         return new ArrayList<>(debeziumDataLogs.values());
+    }
+
+    private void mysqlDateConvert(DebeziumDataBean debeziumDataBean) {
+        final TableMetadata tableMetadata = metaDataService.getMetaDataOfSchemaByCache(debeziumDataBean.getTable());
+        if (Objects.isNull(tableMetadata)) {
+            return;
+        }
+        final List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
+        final List<String> dateList = columnsMetas.stream().filter(
+            column -> StringUtils.equalsIgnoreCase(column.getColumnType(), MYSQL_DATE_TYPE))
+                                                  .map(ColumnsMetaData::getColumnName).collect(Collectors.toList());
+        final Map<String, String> valueMap = debeziumDataBean.getData();
+        dateList.forEach(dateField -> {
+            valueMap.put(dateField, decompressLocalDate(Integer.valueOf(valueMap.get(dateField))));
+        });
+    }
+
+    private String decompressLocalDate(int compressDate) {
+        return LocalDate.ofEpochDay(compressDate).format(DATE_FORMATTER);
     }
 
     /**

@@ -48,7 +48,6 @@ public class DebeziumDataHandler {
         final Map<String, String> before = payload.getBefore();
         final Map<String, String> after = payload.getAfter();
         final PayloadSource source = payload.getSource();
-        // Extract the data and add it to the debezium incremental log object
         queue.put(new DebeziumDataBean(source.getTable(), after != null ? after : before));
     }
 }
