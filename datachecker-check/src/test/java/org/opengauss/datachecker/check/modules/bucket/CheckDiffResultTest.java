@@ -1,7 +1,5 @@
-package org.opengauss.datachecker.check.modules.bucket.check;
+package org.opengauss.datachecker.check.modules.bucket;
 
-import com.alibaba.fastjson.JSONObject;
-import org.apache.kafka.common.protocol.types.Field;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
