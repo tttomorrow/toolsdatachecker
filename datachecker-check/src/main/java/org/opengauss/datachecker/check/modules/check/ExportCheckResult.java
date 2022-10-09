@@ -44,8 +44,8 @@ public class ExportCheckResult {
         FileUtils.writeFile(fileName, JsonObjectUtil.format(result));
     }
 
-    private static String getCheckResultFileName(String path, String tableName, int partitions) {
-        final String fileName = tableName.concat("_").concat(String.valueOf(partitions)).concat(".txt");
+    private static String getCheckResultFileName(String path, String topicName, int partitions) {
+        final String fileName = topicName.concat("_").concat(String.valueOf(partitions)).concat(".txt");
         return getResultPath(path).concat(fileName);
     }
 

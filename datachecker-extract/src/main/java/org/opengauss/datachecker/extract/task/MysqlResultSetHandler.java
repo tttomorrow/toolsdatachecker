@@ -20,6 +20,7 @@ import com.mysql.cj.MysqlType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -33,12 +34,19 @@ public class MysqlResultSetHandler extends ResultSetHandler {
     private final Map<MysqlType, TypeHandler> typeHandlers = new ConcurrentHashMap<>();
 
     {
-        TypeHandler binaryByteToString = (resultSet, columnLabel) -> byteToString(resultSet.getBytes(columnLabel));
+        TypeHandler binaryToString = (resultSet, columnLabel) -> byteToStringTrim(resultSet.getBytes(columnLabel));
+        TypeHandler varbinaryToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
         TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
+        TypeHandler bitToString = (resultSet, columnLabel) -> bitToString(resultSet.getInt(columnLabel));
+        TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
 
+        typeHandlers.put(MysqlType.FLOAT, numericToString);
+        typeHandlers.put(MysqlType.DOUBLE, numericToString);
+        typeHandlers.put(MysqlType.DECIMAL, numericToString);
+        typeHandlers.put(MysqlType.BIT, bitToString);
         // byte binary blob
-        typeHandlers.put(MysqlType.BINARY, binaryByteToString);
-        typeHandlers.put(MysqlType.VARBINARY, binaryByteToString);
+        typeHandlers.put(MysqlType.BINARY, binaryToString);
+        typeHandlers.put(MysqlType.VARBINARY, varbinaryToString);
 
         typeHandlers.put(MysqlType.BLOB, blobToString);
         typeHandlers.put(MysqlType.LONGBLOB, blobToString);
@@ -55,6 +63,35 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         typeHandlers.put(MysqlType.YEAR, this::getYearFormat);
     }
 
+    private String byteToStringTrim(byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+        int iMax = bytes.length - 1;
+        if (iMax == -1) {
+            return "";
+        }
+        Stack<Byte> stack = new Stack<>();
+        boolean isSkip = bytes[iMax] == 0;
+        for (int i = iMax; i >= 0; i--) {
+            if (bytes[i] != 0 || !isSkip) {
+                isSkip = false;
+                stack.push(bytes[i]);
+            }
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append(stack.pop());
+        while (!stack.empty()){
+            builder.append(",");
+            builder.append(stack.pop());
+        }
+        return builder.toString();
+    }
+
+    private String bitToString(Integer integer) {
+        return String.valueOf(integer);
+    }
+
     @Override
     public String convert(ResultSet resultSet, String columnTypeName, String columnLabel) throws SQLException {
         final MysqlType mysqlType = MysqlType.valueOf(columnTypeName);
@@ -64,5 +101,4 @@ public class MysqlResultSetHandler extends ResultSetHandler {
             return String.valueOf(resultSet.getObject(columnLabel));
         }
     }
-
 }

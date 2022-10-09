@@ -67,7 +67,7 @@ class ResultSetHandlerTest {
         jdbcTemplateOne.execute(CreateTableSql.INSERT_0037_01);
 
         jdbc = new NamedParameterJdbcTemplate(jdbcTemplateOne);
-        resultSetHandler = new ResultSetHandler();
+        resultSetHandler = new MysqlResultSetHandler();
     }
 
     interface CreateTableSql {
