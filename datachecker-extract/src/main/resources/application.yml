@@ -2,10 +2,11 @@ debug: false
 
 spring:
   check:
-    server-uri: http://{ip}:{port}
+    server-uri: http://127.0.0.1:9000
   lifecycle:
     timeout-per-shutdown-phase: 5
   kafka:
+    bootstrap-servers: localhost:9092
     properties:
       linger.ms: 10
       max.in.flight.requests.per.connection: 5

@@ -1,20 +1,17 @@
 server:
-  port: 9001
-
-debug: false
-
+  port: 9002
 spring:
   check:
-    server-uri: http://{ip}:{port}
+    server-uri: http://127.0.0.1:9000
   extract:
     schema: jack
     databaseType: OG
   kafka:
-    bootstrap-servers: { ip }:{port};{ip}:{port}
+    bootstrap-servers: localhost:9092
   datasource:
     druid:
       dataSourceOne:
         driver-class-name: org.opengauss.Driver
         url: jdbc:opengauss://{ip}:{port}/{schema_db}?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
         username:
-        password:
+        password: 'xxxx'  # The password text may contain special characters, which need to be enclosed in quotation marks
