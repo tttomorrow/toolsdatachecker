@@ -1,5 +1,5 @@
 server:
-  port: 9001
+  port: 9002
   shutdown: graceful
 
 debug: false
@@ -17,6 +17,8 @@ spring:
     databaseType: OG  #OG opengauss
     endpoint: SINK
     debezium-enable: false
+    debezium-topic:
+    debezium-groupId:
     sync-extract: true
 
   datasource:

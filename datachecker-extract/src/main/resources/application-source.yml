@@ -1,5 +1,5 @@
 server:
-  port: 9002
+  port: 9001
   shutdown: graceful
 
 debug: false
@@ -16,7 +16,6 @@ spring:
     schema: test
     databaseType: MS  # MS mysql
     endpoint: SOURCE
-    query-table-row-count: true
     debezium-enable: false # Whether to enable incremental debezium configuration (not enabled by default)
     debezium-topic:
     debezium-groupId: debezium-extract-group
@@ -36,9 +35,9 @@ spring:
         username: xxxxx
         password: xxxxxx
         type: com.alibaba.druid.pool.DruidDataSource
-        initialSize: 20
-        minIdle: 5
-        maxActive: 200
+        initialSize: 100
+        minIdle: 50
+        maxActive: 500
         maxWait: 60000
         timeBetweenEvictionRunsMillis: 60000
         minEvictableIdleTimeMillis: 300000
