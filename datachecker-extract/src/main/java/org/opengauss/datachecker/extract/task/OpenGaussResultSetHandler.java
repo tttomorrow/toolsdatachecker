@@ -60,6 +60,7 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
         }
     }
 
+    @SuppressWarnings("all")
     interface OpenGaussType {
         String BYTEA = "bytea";
         String BLOB = "blob";

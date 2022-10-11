@@ -20,6 +20,7 @@ import com.mysql.cj.MysqlType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -81,7 +82,7 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         }
         StringBuilder builder = new StringBuilder();
         builder.append(stack.pop());
-        while (!stack.empty()){
+        while (!stack.empty()) {
             builder.append(",");
             builder.append(stack.pop());
         }
@@ -89,7 +90,7 @@ public class MysqlResultSetHandler extends ResultSetHandler {
     }
 
     private String bitToString(Integer integer) {
-        return String.valueOf(integer);
+        return Objects.isNull(integer) ? null : String.valueOf(integer);
     }
 
     @Override
