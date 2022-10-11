@@ -83,23 +83,23 @@ public abstract class ResultSetHandler {
         throws SQLException;
 
     protected String numericToString(BigDecimal bigDecimal) {
-        return Objects.isNull(bigDecimal) ? "null" : bigDecimal.stripTrailingZeros().toPlainString();
+        return Objects.isNull(bigDecimal) ? NULL : bigDecimal.stripTrailingZeros().toPlainString();
     }
 
     protected String getDateFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Date date = resultSet.getDate(columnLabel);
-        return Objects.nonNull(date) ? DATE.format(date.toLocalDate()) : EMPTY;
+        return Objects.nonNull(date) ? DATE.format(date.toLocalDate()) : NULL;
     }
 
     protected String getTimeFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Time time = resultSet.getTime(columnLabel);
-        return Objects.nonNull(time) ? TIME.format(time.toLocalTime()) : EMPTY;
+        return Objects.nonNull(time) ? TIME.format(time.toLocalTime()) : NULL;
     }
 
     protected String getTimestampFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Timestamp timestamp =
             resultSet.getTimestamp(columnLabel, Calendar.getInstance(TimeZone.getTimeZone("GMT+8")));
-        return Objects.nonNull(timestamp) ? formatTimestamp(timestamp) : EMPTY;
+        return Objects.nonNull(timestamp) ? formatTimestamp(timestamp) : NULL;
     }
 
     private String formatTimestamp(@NonNull Timestamp timestamp) {
@@ -109,7 +109,7 @@ public abstract class ResultSetHandler {
 
     protected String getYearFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Date date = resultSet.getDate(columnLabel);
-        return Objects.nonNull(date) ? YEAR.format(date.toLocalDate()) : EMPTY;
+        return Objects.nonNull(date) ? YEAR.format(date.toLocalDate()) : NULL;
     }
 
     protected String blobToString(Blob blob) throws SQLException {
@@ -141,7 +141,7 @@ public abstract class ResultSetHandler {
     }
     protected String trim(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final String string = resultSet.getString(columnLabel);
-        return string == null ? EMPTY : string.stripTrailing();
+        return string == null ? NULL : string.stripTrailing();
     }
 
     @FunctionalInterface
