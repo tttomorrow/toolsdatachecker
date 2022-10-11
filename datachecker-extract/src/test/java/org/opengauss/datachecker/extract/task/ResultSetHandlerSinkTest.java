@@ -55,7 +55,7 @@ class ResultSetHandlerSinkTest {
         createEnv_0052_05();
         createEnv_0052_10();
         jdbc = new NamedParameterJdbcTemplate(jdbcTemplateOne);
-        resultSetHandler = new ResultSetHandler();
+        resultSetHandler = new OpenGaussResultSetHandler();
     }
 
     private void createEnv_0034_02() {

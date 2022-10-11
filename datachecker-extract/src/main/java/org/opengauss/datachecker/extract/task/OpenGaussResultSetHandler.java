@@ -31,11 +31,14 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
     private final Map<String, TypeHandler> typeHandlers = new ConcurrentHashMap<>();
 
     {
-        TypeHandler binaryByteToString = (resultSet, columnLabel) -> byteToString(resultSet.getBytes(columnLabel));
+        TypeHandler byteaToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
         TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
+        TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
+
+        typeHandlers.put(OpenGaussType.NUMERIC, numericToString);
 
         // byte binary blob
-        typeHandlers.put(OpenGaussType.BYTEA, binaryByteToString);
+        typeHandlers.put(OpenGaussType.BYTEA, byteaToString);
         typeHandlers.put(OpenGaussType.BLOB, blobToString);
 
         // The openGauss jdbc driver obtains the character,character varying  type as varchar
@@ -60,6 +63,7 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
     interface OpenGaussType {
         String BYTEA = "bytea";
         String BLOB = "blob";
+        String NUMERIC = "numeric";
         String VARCHAR = "varchar";
         String BPCHAR = "bpchar";
         String DATE = "date";

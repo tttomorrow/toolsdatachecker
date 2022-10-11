@@ -239,7 +239,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         }
         int totalRepair = getKeySetSize(keyDeleteSet) + getKeySetSize(keyInsertSet) + getKeySetSize(keyUpdateSet);
         int curErrorRate = (totalRepair * 100 / rowCount);
-        if (totalRepair <= MAX_DIFF_REPAIR_SIZE && curErrorRate <= errorRate) {
+        if (totalRepair <= MAX_DIFF_REPAIR_SIZE || curErrorRate <= errorRate) {
             return true;
         } else {
             log.info("check table[{}] diff-count={},error-rate={}%, error is too large ,not to build repair dml", table,

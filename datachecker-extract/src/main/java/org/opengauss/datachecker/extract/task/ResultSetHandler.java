@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.lang.NonNull;
 
+import java.math.BigDecimal;
 import java.sql.Blob;
 import java.sql.Date;
 import java.sql.ResultSet;
@@ -81,6 +82,10 @@ public abstract class ResultSetHandler {
     protected abstract String convert(ResultSet resultSet, String columnTypeName, String columnLabel)
         throws SQLException;
 
+    protected String numericToString(BigDecimal bigDecimal) {
+        return Objects.isNull(bigDecimal) ? "null" : bigDecimal.stripTrailingZeros().toPlainString();
+    }
+
     protected String getDateFormat(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final Date date = resultSet.getDate(columnLabel);
         return Objects.nonNull(date) ? DATE.format(date.toLocalDate()) : EMPTY;
@@ -108,27 +113,32 @@ public abstract class ResultSetHandler {
     }
 
     protected String blobToString(Blob blob) throws SQLException {
-        return Objects.nonNull(blob) ? byteToString(blob.getBytes(1, (int) blob.length())) : NULL;
+        if (Objects.isNull(blob)) {
+            return NULL;
+        }
+        return new String(blob.getBytes(1, (int) blob.length()));
     }
 
-    protected String byteToString(byte[] bytes) {
+    protected String bytesToString(byte[] bytes) {
         if (bytes == null) {
             return NULL;
         }
-        int iMax = bytes.length - 1;
-        if (iMax == -1) {
+        int iMax = bytes.length;
+        if (iMax == 0) {
             return EMPTY;
         }
         StringBuilder builder = new StringBuilder();
-        for (int i = 0; ; i++) {
-            builder.append(bytes[i]);
-            if (i == iMax) {
-                return builder.toString();
+        builder.append(bytes[0]);
+        for (int i = 1; i < iMax; i++) {
+            if (bytes[i] == 0) {
+                break;
+            } else {
+                builder.append(",");
+                builder.append(bytes[i]);
             }
-            builder.append(",");
         }
+        return builder.toString();
     }
-
     protected String trim(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final String string = resultSet.getString(columnLabel);
         return string == null ? EMPTY : string.stripTrailing();
