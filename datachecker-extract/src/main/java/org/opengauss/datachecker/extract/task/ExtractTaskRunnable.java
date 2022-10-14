@@ -89,9 +89,9 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         log.debug("selectSql {}", sql);
         // Query data through JDBC SQL and Hash the queried data results ,
         // then package data into RowDataHash type Objects
-        log.info("Data extraction task {} start, data query through JDBC", task.getTaskName());
+        log.info("Data extraction task {} start, data query through jdbc", task.getTaskName());
         List<RowDataHash> recordHashList = queryAndConvertColumnValues(sql, tableMetadata);
-        log.info("Data extraction task {} completes, data query through JDBC", task.getTaskName());
+        log.info("Data extraction task {} completes, data query through jdbc", task.getTaskName());
 
         // Push the data to Kafka according to the fragmentation order
         syncSend(topic, recordHashList);
@@ -149,7 +149,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
                 return;
             }
             executeTask();
-        } catch (DataAccessException | ExtractException exp) {
+        } catch (RuntimeException exp) {
             log.error("Data extraction task {} has some exception,{}", task.getTaskName(), exp.getMessage());
             TableExtractStatusCache.addErrorList(tableName);
         }

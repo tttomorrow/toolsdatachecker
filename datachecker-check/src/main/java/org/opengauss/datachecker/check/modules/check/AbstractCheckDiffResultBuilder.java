@@ -238,7 +238,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
             return true;
         }
         int totalRepair = getKeySetSize(keyDeleteSet) + getKeySetSize(keyInsertSet) + getKeySetSize(keyUpdateSet);
-        int curErrorRate = (totalRepair * 100 / rowCount);
+        int curErrorRate = rowCount > 0 ? (totalRepair * 100 / rowCount) : 0;
         if (totalRepair <= MAX_DIFF_REPAIR_SIZE || curErrorRate <= errorRate) {
             return true;
         } else {

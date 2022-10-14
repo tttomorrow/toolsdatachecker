@@ -95,7 +95,7 @@ public class MysqlResultSetHandler extends ResultSetHandler {
 
     @Override
     public String convert(ResultSet resultSet, String columnTypeName, String columnLabel) throws SQLException {
-        final MysqlType mysqlType = MysqlType.valueOf(columnTypeName);
+        final MysqlType mysqlType = MysqlType.getByName(columnTypeName);
         if (typeHandlers.containsKey(mysqlType)) {
             return typeHandlers.get(mysqlType).convert(resultSet, columnLabel);
         } else {
