@@ -45,7 +45,6 @@ public class DataCheckConfig {
 
     @PostConstruct
     public DataCheckProperties getDataCheckProperties() {
-        log.info("check config properties [{}]", JsonObjectUtil.format(properties));
         return properties;
     }
 
