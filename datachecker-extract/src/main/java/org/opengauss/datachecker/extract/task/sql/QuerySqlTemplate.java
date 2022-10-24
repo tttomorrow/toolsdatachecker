@@ -83,7 +83,10 @@ public interface QuerySqlTemplate {
      * Query SQL statement fragment: SQL statement field spacing symbol
      */
     String DELIMITER = ",";
-
+    String MYSQL_ESCAPE = "`";
+    String MYSQL_DELIMITER = MYSQL_ESCAPE + DELIMITER + MYSQL_ESCAPE;
+    String OPENGAUSS_ESCAPE = "\"";
+    String OPENGAUSS_DELIMITER = OPENGAUSS_ESCAPE + DELIMITER + OPENGAUSS_ESCAPE;
     /**
      * Query SQL statement fragment: SQL statement equality condition symbol
      */

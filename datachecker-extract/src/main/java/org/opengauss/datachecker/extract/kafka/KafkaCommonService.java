@@ -49,7 +49,7 @@ public class KafkaCommonService {
      * table name
      * Last splicing table name upper or lower code
      */
-    private static final String TOPIC_TEMPLATE = "%s_%s_%s_%s";
+    private static final String TOPIC_TEMPLATE = "%s_%s_%s";
     private static final String UPPER_CODE = "1";
     private static final String LOWER_CODE = "0";
 
@@ -99,7 +99,7 @@ public class KafkaCommonService {
 
     private String createTopicName(String process, String tableName) {
         final Endpoint endpoint = extractProperties.getEndpoint();
-        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName, letterCaseEncoding(tableName));
+        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName) + letterCaseEncoding(tableName);
     }
 
     private String letterCaseEncoding(String tableName) {

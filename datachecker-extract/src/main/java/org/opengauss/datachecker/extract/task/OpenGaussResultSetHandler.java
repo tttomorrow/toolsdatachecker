@@ -18,6 +18,7 @@ package org.opengauss.datachecker.extract.task;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -56,7 +57,8 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
         if (typeHandlers.containsKey(columnTypeName)) {
             return typeHandlers.get(columnTypeName).convert(resultSet, columnLabel);
         } else {
-            return String.valueOf(resultSet.getObject(columnLabel));
+            return Objects.isNull(resultSet.getObject(columnLabel)) ? NULL :
+                String.valueOf(resultSet.getObject(columnLabel));
         }
     }
 

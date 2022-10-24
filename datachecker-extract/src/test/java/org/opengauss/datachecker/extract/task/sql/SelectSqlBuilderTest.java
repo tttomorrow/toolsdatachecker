@@ -52,9 +52,16 @@ class SelectSqlBuilderTest extends MockTableMeta {
         String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.OG).builder();
         // Verify the results
         assertThat(result).isEqualTo(
-            "SELECT id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year FROM test.\"t_data_checker_time_0018_01\"");
+            "SELECT \"id\",\"c_date_time\",\"c_date_time_3\",\"c_timestamp\",\"c_date\",\"c_time\",\"c_year\" FROM test.\"t_data_checker_time_0018_01\"");
     }
-
+    @DisplayName("mysql no divisions single primary select SQL build")
+    @Test
+    void testMysqlSelectNoDivisionsSqlBuilder() {
+        String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.MS).builder();
+        // Verify the results
+        assertThat(result).isEqualTo(
+            "SELECT `id`,`c_date_time`,`c_date_time_3`,`c_timestamp`,`c_date`,`c_time`,`c_year` FROM test.`t_data_checker_time_0018_01`");
+    }
     @DisplayName("openGauss divisions single primary select SQL build")
     @Test
     void testSelectDivisionsSqlBuilder() {
@@ -62,7 +69,15 @@ class SelectSqlBuilderTest extends MockTableMeta {
                                         .buildSelectSqlOffset(mockTableMetadata, 0, 12);
         // Verify the results
         assertThat(result).isEqualTo(
-            "SELECT id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year FROM test.\"t_data_checker_time_0018_01\" LIMIT 0,12");
+            "SELECT \"id\",\"c_date_time\",\"c_date_time_3\",\"c_timestamp\",\"c_date\",\"c_time\",\"c_year\" FROM test.\"t_data_checker_time_0018_01\" LIMIT 0,12");
     }
-
+    @DisplayName("mysql divisions single primary select SQL build")
+    @Test
+    void testMysqlSelectDivisionsSqlBuilder() {
+        String result = selectSqlBuilder.isDivisions(false).dataBaseType(DataBaseType.MS)
+                                        .buildSelectSqlOffset(mockTableMetadata, 0, 12);
+        // Verify the results
+        assertThat(result).isEqualTo(
+            "SELECT `id`,`c_date_time`,`c_date_time_3`,`c_timestamp`,`c_date`,`c_time`,`c_year` FROM test.`t_data_checker_time_0018_01` LIMIT 0,12");
+    }
 }

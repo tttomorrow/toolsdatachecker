@@ -25,6 +25,7 @@ import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -55,6 +56,7 @@ public class EndpointManagerService {
     /**
      * Start the health check self check thread
      */
+    @PostConstruct
     public void start() {
         endpointHealthCheck();
         SCHEDULED_EXECUTOR.scheduleWithFixedDelay(() -> {
