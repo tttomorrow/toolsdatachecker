@@ -38,13 +38,12 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         TypeHandler binaryToString = (resultSet, columnLabel) -> byteToStringTrim(resultSet.getBytes(columnLabel));
         TypeHandler varbinaryToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
         TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
-        TypeHandler bitToString = (resultSet, columnLabel) -> bitToString(resultSet.getInt(columnLabel));
         TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
 
         typeHandlers.put(MysqlType.FLOAT, numericToString);
         typeHandlers.put(MysqlType.DOUBLE, numericToString);
         typeHandlers.put(MysqlType.DECIMAL, numericToString);
-        typeHandlers.put(MysqlType.BIT, bitToString);
+        typeHandlers.put(MysqlType.BIT, this::bitToString);
         // byte binary blob
         typeHandlers.put(MysqlType.BINARY, binaryToString);
         typeHandlers.put(MysqlType.VARBINARY, varbinaryToString);
@@ -64,9 +63,14 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         typeHandlers.put(MysqlType.YEAR, this::getYearFormat);
     }
 
+    private String bitToString(ResultSet resultSet, String columnLabel) throws SQLException {
+        return Objects.isNull(resultSet.getObject(columnLabel)) ? NULL :
+            String.valueOf(resultSet.getString(columnLabel));
+    }
+
     private String byteToStringTrim(byte[] bytes) {
         if (bytes == null) {
-            return null;
+            return NULL;
         }
         int iMax = bytes.length - 1;
         if (iMax == -1) {
@@ -89,17 +93,14 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         return builder.toString();
     }
 
-    private String bitToString(Integer integer) {
-        return Objects.isNull(integer) ? null : String.valueOf(integer);
-    }
-
     @Override
     public String convert(ResultSet resultSet, String columnTypeName, String columnLabel) throws SQLException {
         final MysqlType mysqlType = MysqlType.getByName(columnTypeName);
         if (typeHandlers.containsKey(mysqlType)) {
             return typeHandlers.get(mysqlType).convert(resultSet, columnLabel);
         } else {
-            return String.valueOf(resultSet.getObject(columnLabel));
+            return Objects.isNull(resultSet.getObject(columnLabel)) ? NULL :
+                String.valueOf(resultSet.getObject(columnLabel));
         }
     }
 }

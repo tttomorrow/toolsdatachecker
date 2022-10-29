@@ -21,7 +21,10 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.cache.RemovalListener;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
+import org.opengauss.datachecker.extract.service.MetaDataService;
+import org.opengauss.datachecker.extract.util.SpringUtil;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +38,7 @@ import java.util.Set;
  * @since ：11
  */
 @Slf4j
+@Component
 public class MetaDataCache {
     private static LoadingCache<String, TableMetadata> CACHE = null;
 
@@ -55,7 +59,8 @@ public class MetaDataCache {
                     @Override
                     public TableMetadata load(String tableName) {
                         log.info("cache: [{}], does not exist", tableName);
-                        return null;
+                        MetaDataService metaDataService = SpringUtil.getBean(MetaDataService.class);
+                        return metaDataService.queryMetaDataOfSchema(tableName);
                     }
                 });
         log.info("initialize table meta data cache");

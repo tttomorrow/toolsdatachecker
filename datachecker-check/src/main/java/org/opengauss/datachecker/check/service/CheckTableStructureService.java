@@ -94,8 +94,15 @@ public class CheckTableStructureService {
             CheckDiffResult result =
                 CheckDiffResultBuilder.builder(null).table(tableName).isTableStructureEquals(false).build();
             ExportCheckResult.export(checkResultPath, result);
+            log.debug("compared  table[{}] field names not match source={},sink={}", tableName,
+                getFieldNames(sourceMeta), getFieldNames(sinkMeta));
             log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
         }
+    }
+
+    private String getFieldNames(TableMetadata sourceMeta) {
+        return sourceMeta.getColumnsMetas().stream().map(column -> column.getColumnName() + column.getOrdinalPosition())
+                         .collect(Collectors.joining());
     }
 
     private void checkMissTable(String tableName, TableMetadata sourceMeta) {

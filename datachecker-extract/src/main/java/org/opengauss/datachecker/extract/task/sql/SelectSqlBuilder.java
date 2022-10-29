@@ -31,6 +31,10 @@ import java.util.stream.Collectors;
 
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.COLUMN;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.DELIMITER;
+import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.MYSQL_ESCAPE;
+import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.MYSQL_DELIMITER;
+import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.OPENGAUSS_DELIMITER;
+import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.OPENGAUSS_ESCAPE;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.OFFSET;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.SCHEMA;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.START;
@@ -136,59 +140,39 @@ public class SelectSqlBuilder {
         }
     }
 
-    /**
-     * <pre>
-     * Construct query statements based on metadata and fragment information
-     * SELECT * FROM test.test1 LIMIT 0,20
-     * </pre>
-     *
-     * @param tableMetadata Table metadata information
-     * @param start         Start position of fragment query
-     * @param offset        Fragment query start position fragment query displacement
-     * @return Return the constructed select statement
-     */
-    private String buildSelectSqlOffset(TableMetadata tableMetadata, long start, long offset,
-        boolean isConvertTableName) {
+    public String buildSelectSqlOffset(TableMetadata tableMetadata, long start, long offset) {
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
         String tableName = tableMetadata.getTableName();
-        String columnNames = getColumnNameList(columnsMetas);
-        SqlGenerateMeta sqlGenerateMeta;
-        if (isConvertTableName) {
-            sqlGenerateMeta = new SqlGenerateMeta(schema, convert(tableName), columnNames, start, offset);
-        } else {
-            sqlGenerateMeta = new SqlGenerateMeta(schema, tableName, columnNames, start, offset);
-        }
+        String columnNames = getColumnNameList(columnsMetas, dataBaseType);
+        SqlGenerateMeta sqlGenerateMeta =
+            new SqlGenerateMeta(schema, convertTableName(tableName, dataBaseType), columnNames, start, offset);
         return getSqlGenerate(dataBaseType).replace(sqlGenerateMeta);
     }
 
-    private String convert(String tableName) {
-        return "\"" + tableName + "\"";
-    }
-
-    public String buildSelectSqlOffset(TableMetadata tableMetadata, long start, long offset) {
-        if (Objects.equals(dataBaseType, DataBaseType.OG)) {
-            return buildSelectSqlOffset(tableMetadata, start, offset, true);
+    private static String convertTableName(String tableName, DataBaseType dataBaseType) {
+        if (DataBaseType.MS.equals(dataBaseType)) {
+            return MYSQL_ESCAPE + tableName + MYSQL_ESCAPE;
+        } else if (DataBaseType.OG.equals(dataBaseType)) {
+            return OPENGAUSS_ESCAPE + tableName + OPENGAUSS_ESCAPE;
         }
-        return buildSelectSqlOffset(tableMetadata, start, offset, false);
+        return tableName;
     }
 
     private String buildSelectSqlOffsetZero(List<ColumnsMetaData> columnsMetas, String tableName) {
-        if (Objects.equals(dataBaseType, DataBaseType.OG)) {
-            return buildSelectSqlOffsetZero(columnsMetas, tableName, true);
-        } else {
-            return buildSelectSqlOffsetZero(columnsMetas, tableName, false);
-        }
-    }
-
-    private String buildSelectSqlOffsetZero(List<ColumnsMetaData> columnsMetas, String tableName,
-        boolean isConvertTableName) {
-        String columnNames = getColumnNameList(columnsMetas);
+        String columnNames = getColumnNameList(columnsMetas, dataBaseType);
         SqlGenerateMeta sqlGenerateMeta =
-            new SqlGenerateMeta(schema, isConvertTableName ? convert(tableName) : tableName, columnNames, 0, 0);
+            new SqlGenerateMeta(schema,  convertTableName(tableName, dataBaseType), columnNames, 0, 0);
         return NO_OFFSET_GENERATE.replace(sqlGenerateMeta);
     }
 
-    private static String getColumnNameList(@NonNull List<ColumnsMetaData> columnsMetas) {
+    private static String getColumnNameList(@NonNull List<ColumnsMetaData> columnsMetas, DataBaseType dataBaseType) {
+        if (DataBaseType.MS.equals(dataBaseType)) {
+            return MYSQL_ESCAPE + columnsMetas.stream().map(ColumnsMetaData::getColumnName)
+                                              .collect(Collectors.joining(MYSQL_DELIMITER)) + MYSQL_ESCAPE;
+        } else if (DataBaseType.OG.equals(dataBaseType)) {
+            return OPENGAUSS_ESCAPE + columnsMetas.stream().map(ColumnsMetaData::getColumnName)
+                                                  .collect(Collectors.joining(OPENGAUSS_DELIMITER)) + OPENGAUSS_ESCAPE;
+        }
         return columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
     }
 
