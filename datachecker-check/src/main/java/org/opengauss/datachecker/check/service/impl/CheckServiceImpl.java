@@ -126,6 +126,7 @@ public class CheckServiceImpl implements CheckService {
     @Override
     public String start(CheckMode checkMode) {
         if (STARTED.compareAndSet(false, true)) {
+            ExportCheckResult.backCheckResultDirectory();
             endpointMetaDataManager.load();
             tableStatusRegister.selfCheck();
             log.info(CheckMessage.CHECK_SERVICE_STARTING, checkMode.getCode());

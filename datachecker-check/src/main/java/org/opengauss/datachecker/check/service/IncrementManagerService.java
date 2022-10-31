@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
+import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.CheckingException;
@@ -30,7 +31,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * IncrementManagerService
@@ -67,8 +69,25 @@ public class IncrementManagerService {
         }
         PROCESS_SIGNATURE.set(IdGenerator.nextId36());
         // Collect the last verification results and build an incremental verification log
-        dataLogList.addAll(collectLastResults());
+        mergeDataLogList(dataLogList, collectLastResults());
         incrementDataLogsChecking(dataLogList);
+    }
+
+    private void mergeDataLogList(List<SourceDataLog> dataLogList, Map<String, SourceDataLog> collectLastResults) {
+        final Map<String, SourceDataLog> dataLogMap =
+            dataLogList.stream().collect(Collectors.toMap(SourceDataLog::getTableName, Function.identity()));
+        collectLastResults.forEach((tableName,lastLog) -> {
+            if (dataLogMap.containsKey(tableName)) {
+                final List<String> values = dataLogMap.get(tableName).getCompositePrimaryValues();
+                final Set<String> margeValueSet = new HashSet<>();
+                margeValueSet.addAll(values);
+                margeValueSet.addAll(lastLog.getCompositePrimaryValues());
+                dataLogMap.get(tableName).getCompositePrimaryValues().clear();
+                dataLogMap.get(tableName).getCompositePrimaryValues().addAll(margeValueSet);
+            } else {
+                dataLogList.add(lastLog);
+            }
+        });
     }
 
     private void incrementDataLogsChecking(List<SourceDataLog> dataLogList) {
@@ -87,9 +106,12 @@ public class IncrementManagerService {
      *
      * @return Analysis of last verification result
      */
-    private List<SourceDataLog> collectLastResults() {
+    private Map<String, SourceDataLog> collectLastResults() {
         List<SourceDataLog> dataLogList = new ArrayList<>();
-        final List<Path> checkResultFileList = FileUtils.loadDirectory(getResultPath());
+        final List<Path> checkResultFileList = FileUtils.loadDirectory(ExportCheckResult.getResultPath());
+        if (CollectionUtils.isEmpty(checkResultFileList)) {
+            return new HashMap<>();
+        }
         List<CheckDiffResult> historyResultList = new ArrayList<>();
         checkResultFileList.forEach(checkResultFile -> {
             try {
@@ -99,35 +121,34 @@ public class IncrementManagerService {
                 log.error("load check result {} has error", checkResultFile.getFileName());
             }
         });
-        parseCheckResult(historyResultList, dataLogList);
-        return dataLogList;
+        ExportCheckResult.backCheckResultDirectory();
+        return parseCheckResult(historyResultList);
     }
 
-    private String getResultPath() {
-        String rootPath = path.endsWith(File.separator) ? path : path + File.separator;
-        return rootPath + "result" + File.separator;
-    }
-
-    private void parseCheckResult(List<CheckDiffResult> historyDataList, List<SourceDataLog> dataLogList) {
+    private Map<String, SourceDataLog> parseCheckResult(List<CheckDiffResult> historyDataList) {
         Map<String, SourceDataLog> dataLogMap = new HashMap<>();
         historyDataList.forEach(dataLog -> {
+            final Set<String> diffKeyValues = getDiffKeyValues(dataLog);
             final String tableName = dataLog.getTable();
             if (dataLogMap.containsKey(tableName)) {
-                dataLogMap.get(tableName).getCompositePrimaryValues().addAll(getDiffKeyValues(dataLog));
+                final List<String> values = dataLogMap.get(tableName).getCompositePrimaryValues();
+                diffKeyValues.addAll(values);
+                dataLogMap.get(tableName).getCompositePrimaryValues().clear();
+                dataLogMap.get(tableName).getCompositePrimaryValues().addAll(diffKeyValues);
             } else {
                 SourceDataLog sourceDataLog = new SourceDataLog();
-                sourceDataLog.setTableName(tableName).setCompositePrimaryValues(getDiffKeyValues(dataLog));
+                sourceDataLog.setTableName(tableName).setCompositePrimaryValues(new ArrayList<>(diffKeyValues));
                 dataLogMap.put(tableName, sourceDataLog);
             }
         });
-        dataLogList.addAll(dataLogMap.values());
+        return dataLogMap;
     }
 
-    private List<String> getDiffKeyValues(CheckDiffResult dataLog) {
+    private Set<String> getDiffKeyValues(CheckDiffResult dataLog) {
         Set<String> keyValues = new HashSet<>();
         keyValues.addAll(dataLog.getKeyInsertSet());
         keyValues.addAll(dataLog.getKeyUpdateSet());
         keyValues.addAll(dataLog.getKeyDeleteSet());
-        return new ArrayList<>(keyValues);
+        return keyValues;
     }
 }

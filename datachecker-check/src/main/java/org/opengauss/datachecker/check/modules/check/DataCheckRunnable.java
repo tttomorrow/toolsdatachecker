@@ -416,7 +416,7 @@ public class DataCheckRunnable implements Runnable {
                                           .checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
                                           .keyInsertSet(difference.getOnlyOnLeft().keySet())
                                           .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
-        ExportCheckResult.export(path, result);
+        ExportCheckResult.export(result);
         log.info("Complete the output of data verification results of table [{}-{}]", tableName, partitions);
     }
 
