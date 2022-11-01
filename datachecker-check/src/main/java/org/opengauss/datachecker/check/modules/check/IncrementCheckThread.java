@@ -64,7 +64,6 @@ public class IncrementCheckThread extends Thread {
     private final String tableName;
     private final int bucketCapacity;
     private final int rowCount;
-    private final String path;
     private final FeignClientService feignClient;
     private final List<Bucket> sourceBucketList = new ArrayList<>();
     private final List<Bucket> sinkBucketList = new ArrayList<>();
@@ -79,6 +78,8 @@ public class IncrementCheckThread extends Thread {
     private boolean isExistTableMiss;
     private Endpoint onlyExistEndpoint;
 
+    private int maxRowSize;
+
     /**
      * IncrementCheckThread constructor method
      *
@@ -91,7 +92,6 @@ public class IncrementCheckThread extends Thread {
         process = checkParam.getProcess();
         rowCount = dataLog.getCompositePrimaryValues().size();
         tableName = checkParam.getTableName();
-        path = checkParam.getPath();
         bucketCapacity = checkParam.getBucketCapacity();
         feignClient = support.getFeignClientService();
         queryRowDataWapper = new QueryRowDataWapper(feignClient);
@@ -116,6 +116,7 @@ public class IncrementCheckThread extends Thread {
             // Metadata verification
             isTableStructureEquals = checkTableMetadata();
             if (isTableStructureEquals) {
+                maxRowSize = dataLog.getCompositePrimaryValues().size();
                 // Initial verification
                 firstCheckCompare();
                 // Analyze the initial verification results
@@ -357,7 +358,7 @@ public class IncrementCheckThread extends Thread {
         BuilderBucketHandler bucketBuilder = new BuilderBucketHandler(bucketCapacity);
 
         // Pull the data to build the bucket list
-        bucketBuilder.builder(dataList, dataList.size(), bucketMap);
+        bucketBuilder.builder(dataList, maxRowSize, bucketMap);
         // Statistics bucket list information
         bucketNumberStatisticsIncrement(endpoint, bucketMap.keySet());
         bucketList.addAll(bucketMap.values());
@@ -468,7 +469,7 @@ public class IncrementCheckThread extends Thread {
                                           .keyUpdateSet(difference.getDiffering().keySet())
                                           .keyInsertSet(difference.getOnlyOnLeft().keySet())
                                           .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
-        ExportCheckResult.export(path, result);
+        ExportCheckResult.export(result);
     }
 
     private String buildThreadName() {

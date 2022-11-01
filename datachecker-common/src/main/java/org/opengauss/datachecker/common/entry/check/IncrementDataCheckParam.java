@@ -39,10 +39,6 @@ public class IncrementDataCheckParam {
      * Verify topic partition
      */
     private int errorRate;
-    /**
-     * Verification result output path
-     */
-    private String path;
     private String schema;
     private SourceDataLog dataLog;
 }

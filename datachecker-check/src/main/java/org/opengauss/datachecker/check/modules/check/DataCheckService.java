@@ -79,16 +79,10 @@ public class DataCheckService {
      * @param dataLog   dataLog
      */
     public void incrementCheckTableData(String tableName, String process, SourceDataLog dataLog) {
-        IncrementDataCheckParam checkParam = buildIncrementCheckParam(tableName, dataCheckConfig);
-        checkParam.setDataLog(dataLog).setProcess(process);
+        IncrementDataCheckParam checkParam =
+            new IncrementDataCheckParam().setTableName(tableName).setBucketCapacity(dataCheckConfig.getBucketCapacity())
+                                         .setDataLog(dataLog).setProcess(process);
         final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
         checkAsyncExecutor.submit(incrementCheck);
-    }
-
-    private IncrementDataCheckParam buildIncrementCheckParam(String tableName, DataCheckConfig dataCheckConfig) {
-        final int bucketCapacity = dataCheckConfig.getBucketCapacity();
-        final String checkResultPath = dataCheckConfig.getCheckResultPath();
-        return new IncrementDataCheckParam().setTableName(tableName).setBucketCapacity(bucketCapacity)
-                                            .setPath(checkResultPath);
     }
 }

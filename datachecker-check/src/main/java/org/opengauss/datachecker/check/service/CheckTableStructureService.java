@@ -45,8 +45,7 @@ public class CheckTableStructureService {
     private TaskManagerService taskManagerService;
     @Autowired
     private EndpointMetaDataManager endpointMetaDataManager;
-    @Value("${data.check.data-path}")
-    private String checkResultPath;
+
     private final CompareTableStructure tableStructureCompare = (source, sink) -> {
         if (source.size() == sink.size()) {
             final List<String> sourceUpperList =
@@ -93,7 +92,7 @@ public class CheckTableStructureService {
             taskManagerService.refreshTableExtractStatus(tableName, Endpoint.CHECK, -1);
             CheckDiffResult result =
                 CheckDiffResultBuilder.builder(null).table(tableName).isTableStructureEquals(false).build();
-            ExportCheckResult.export(checkResultPath, result);
+            ExportCheckResult.export(result);
             log.debug("compared  table[{}] field names not match source={},sink={}", tableName,
                 getFieldNames(sourceMeta), getFieldNames(sinkMeta));
             log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
@@ -109,7 +108,7 @@ public class CheckTableStructureService {
         Endpoint onlyExistEndpoint = Objects.isNull(sourceMeta) ? Endpoint.SINK : Endpoint.SOURCE;
         CheckDiffResult result =
             CheckDiffResultBuilder.builder(null).table(tableName).isExistTableMiss(true, onlyExistEndpoint).build();
-        ExportCheckResult.export(checkResultPath, result);
+        ExportCheckResult.export(result);
         log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
     }
 
