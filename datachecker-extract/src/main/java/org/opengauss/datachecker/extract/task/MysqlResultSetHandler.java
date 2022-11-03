@@ -53,8 +53,6 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         typeHandlers.put(MysqlType.MEDIUMBLOB, blobToString);
         typeHandlers.put(MysqlType.TINYBLOB, blobToString);
 
-        typeHandlers.put(MysqlType.VARCHAR, this::trim);
-
         // date time timestamp
         typeHandlers.put(MysqlType.DATE, this::getDateFormat);
         typeHandlers.put(MysqlType.DATETIME, this::getTimestampFormat);

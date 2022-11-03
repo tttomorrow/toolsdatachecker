@@ -19,12 +19,14 @@ import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.CheckingException;
+import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.IdGenerator;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,9 +54,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class IncrementManagerService {
+    private static final int MAX_CHECK_DIFF_SIZE = 5000;
     private static final AtomicReference<String> PROCESS_SIGNATURE = new AtomicReference<>();
-    @Value("${data.check.data-path}")
-    private String path;
     @Resource
     private DataCheckService dataCheckService;
 
@@ -70,19 +71,28 @@ public class IncrementManagerService {
         PROCESS_SIGNATURE.set(IdGenerator.nextId36());
         // Collect the last verification results and build an incremental verification log
         mergeDataLogList(dataLogList, collectLastResults());
+        ExportCheckResult.backCheckResultDirectory();
         incrementDataLogsChecking(dataLogList);
     }
 
     private void mergeDataLogList(List<SourceDataLog> dataLogList, Map<String, SourceDataLog> collectLastResults) {
         final Map<String, SourceDataLog> dataLogMap =
             dataLogList.stream().collect(Collectors.toMap(SourceDataLog::getTableName, Function.identity()));
-        collectLastResults.forEach((tableName,lastLog) -> {
-            if (dataLogMap.containsKey(tableName)) {
+        collectLastResults.forEach((tableName, lastLog) -> {
+            final int cnt = lastLog.getCompositePrimaryValues().size();
+            if (cnt > MAX_CHECK_DIFF_SIZE) {
+                dataLogList.remove(dataLogMap.get(tableName));
+                log.error("table={} begin offset ={} data has large different rows,please synchronized repeat! ",
+                    tableName, lastLog.getBeginOffset());
+                throw new LargeDataDiffException("table=" + tableName + " data has large different (" + cnt + ") rows");
+            } else if (dataLogMap.containsKey(tableName)) {
                 final List<String> values = dataLogMap.get(tableName).getCompositePrimaryValues();
+                final long beginOffset = Math.min(dataLogMap.get(tableName).getBeginOffset(), lastLog.getBeginOffset());
                 final Set<String> margeValueSet = new HashSet<>();
                 margeValueSet.addAll(values);
                 margeValueSet.addAll(lastLog.getCompositePrimaryValues());
                 dataLogMap.get(tableName).getCompositePrimaryValues().clear();
+                dataLogMap.get(tableName).setBeginOffset(beginOffset);
                 dataLogMap.get(tableName).getCompositePrimaryValues().addAll(margeValueSet);
             } else {
                 dataLogList.add(lastLog);
@@ -92,10 +102,10 @@ public class IncrementManagerService {
 
     private void incrementDataLogsChecking(List<SourceDataLog> dataLogList) {
         String processNo = PROCESS_SIGNATURE.get();
-        log.debug("incrementDataLogsChecking {}", dataLogList.size());
+        log.debug("incrementDataLogsChecking datalog size= {}", dataLogList.size());
         dataLogList.forEach(dataLog -> {
-            log.debug("increment data checking {} mode=[{}],{},{}", processNo, CheckMode.INCREMENT,
-                dataLog.getTableName(), dataLog.toString());
+            log.debug("increment process=[{}] , tableName=[{}], begin offset =[{}], diffSize=[{}]", processNo,
+                dataLog.getTableName(), dataLog.getBeginOffset(), dataLog.getCompositePrimaryValues().size());
             // Verify the data according to the table name and Kafka partition
             dataCheckService.incrementCheckTableData(dataLog.getTableName(), processNo, dataLog);
         });
@@ -107,7 +117,6 @@ public class IncrementManagerService {
      * @return Analysis of last verification result
      */
     private Map<String, SourceDataLog> collectLastResults() {
-        List<SourceDataLog> dataLogList = new ArrayList<>();
         final List<Path> checkResultFileList = FileUtils.loadDirectory(ExportCheckResult.getResultPath());
         if (CollectionUtils.isEmpty(checkResultFileList)) {
             return new HashMap<>();
@@ -121,24 +130,30 @@ public class IncrementManagerService {
                 log.error("load check result {} has error", checkResultFile.getFileName());
             }
         });
-        ExportCheckResult.backCheckResultDirectory();
+
         return parseCheckResult(historyResultList);
     }
 
     private Map<String, SourceDataLog> parseCheckResult(List<CheckDiffResult> historyDataList) {
         Map<String, SourceDataLog> dataLogMap = new HashMap<>();
         historyDataList.forEach(dataLog -> {
-            final Set<String> diffKeyValues = getDiffKeyValues(dataLog);
-            final String tableName = dataLog.getTable();
-            if (dataLogMap.containsKey(tableName)) {
-                final List<String> values = dataLogMap.get(tableName).getCompositePrimaryValues();
-                diffKeyValues.addAll(values);
-                dataLogMap.get(tableName).getCompositePrimaryValues().clear();
-                dataLogMap.get(tableName).getCompositePrimaryValues().addAll(diffKeyValues);
-            } else {
-                SourceDataLog sourceDataLog = new SourceDataLog();
-                sourceDataLog.setTableName(tableName).setCompositePrimaryValues(new ArrayList<>(diffKeyValues));
-                dataLogMap.put(tableName, sourceDataLog);
+            if (StringUtils.equals(dataLog.getResult(), CheckDiffResult.FAILED_RESULT)) {
+                final Set<String> diffKeyValues = getDiffKeyValues(dataLog);
+                final String tableName = dataLog.getTable();
+                if (dataLogMap.containsKey(tableName)) {
+                    final SourceDataLog dataLogMarge = dataLogMap.get(tableName);
+                    final long beginOffset = Math.min(dataLogMarge.getBeginOffset(), dataLog.getBeginOffset());
+                    final List<String> values = dataLogMarge.getCompositePrimaryValues();
+                    diffKeyValues.addAll(values);
+                    dataLogMarge.getCompositePrimaryValues().clear();
+                    dataLogMarge.getCompositePrimaryValues().addAll(diffKeyValues);
+                    dataLogMarge.setBeginOffset(beginOffset);
+                } else {
+                    SourceDataLog sourceDataLog = new SourceDataLog();
+                    sourceDataLog.setTableName(tableName).setBeginOffset(dataLog.getBeginOffset())
+                                 .setCompositePrimaryValues(new ArrayList<>(diffKeyValues));
+                    dataLogMap.put(tableName, sourceDataLog);
+                }
             }
         });
         return dataLogMap;

@@ -58,6 +58,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -81,6 +82,7 @@ public class DataExtractServiceImpl implements DataExtractService {
      * The sleep time of the thread executing the data extraction task each time, in milliseconds
      */
     private static final int MAX_SLEEP_MILLIS_TIME = 2000;
+    private static final int MAX_QUERY_PAGE_SIZE = 500;
     private static final String PROCESS_NO_RESET = "0";
 
     /**
@@ -380,7 +382,23 @@ public class DataExtractServiceImpl implements DataExtractService {
         if (Objects.isNull(metadata)) {
             throw new TableNotExistException(tableName);
         }
-        return dataManipulationService.queryColumnHashValues(tableName, compositeKeys, metadata);
+        if (compositeKeys.size() > MAX_QUERY_PAGE_SIZE) {
+            List<RowDataHash> result = new ArrayList<>();
+            AtomicInteger cnt = new AtomicInteger(0);
+            List<String> tempCompositeKeys = new ArrayList<>();
+            compositeKeys.forEach(key -> {
+                tempCompositeKeys.add(key);
+                if (cnt.incrementAndGet() == MAX_QUERY_PAGE_SIZE) {
+                    result
+                        .addAll(dataManipulationService.queryColumnHashValues(tableName, tempCompositeKeys, metadata));
+                    tempCompositeKeys.clear();
+                }
+            });
+            result.addAll(dataManipulationService.queryColumnHashValues(tableName, tempCompositeKeys, metadata));
+            return result;
+        } else {
+            return dataManipulationService.queryColumnHashValues(tableName, compositeKeys, metadata);
+        }
     }
 
     @Override

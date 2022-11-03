@@ -39,7 +39,7 @@ public class SourceDataLog {
      */
     @Schema(name = "tableName")
     private String tableName;
-
+    private long beginOffset = -1;
     /**
      * List of primary key field names of the current table
      */

@@ -46,6 +46,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     private int partitions;
     private int rowCount;
     private int errorRate;
+    private long beginOffset;
     private String topic;
     private String schema;
     private boolean isTableStructureEquals;
@@ -151,11 +152,15 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         return self();
     }
 
+    public B beginOffset(long beginOffset) {
+        this.beginOffset = beginOffset;
+        return self();
+    }
+
     public B errorRate(int errorRate) {
         this.errorRate = errorRate;
         return self();
     }
-
     public B rowCount(int rowCount) {
         this.rowCount = rowCount;
         return self();

@@ -38,14 +38,16 @@ import java.util.Set;
  */
 @Data
 @JSONType(
-    orders = {"schema", "table", "topic", "partitions", "checkMode", "result", "message", "createTime", "keyInsertSet",
-        "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
+    orders = {"schema", "table", "topic", "partitions", "beginOffset", "checkMode", "result", "message", "createTime",
+        "keyInsertSet", "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
     ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml"})
 public class CheckDiffResult {
+    public static final String FAILED_RESULT = "failed";
     private String schema;
     private String table;
     private String topic;
     private int partitions;
+    private long beginOffset;
     private int totalRepair;
     private CheckMode checkMode;
     private LocalDateTime createTime;
@@ -72,6 +74,7 @@ public class CheckDiffResult {
     public CheckDiffResult(final AbstractCheckDiffResultBuilder<?, ?> builder) {
         table = Objects.isNull(builder.getTable()) ? "" : builder.getTable();
         partitions = builder.getPartitions();
+        beginOffset = builder.getBeginOffset();
         topic = Objects.isNull(builder.getTopic()) ? "" : builder.getTopic();
         schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
         createTime = builder.getCreateTime();
@@ -105,12 +108,12 @@ public class CheckDiffResult {
     }
 
     private void resultTableStructureNotEquals() {
-        result = "failed";
+        result = FAILED_RESULT;
         message = "table structure is not equals , please check the database sync !";
     }
 
     private void resultTableNotExist(Endpoint onlyExistEndpoint) {
-        result = "failed";
+        result = FAILED_RESULT;
         message =
             "table [".concat(table).concat("] , ").concat(" only exist in ").concat(onlyExistEndpoint.getDescription())
                      .concat("!");
@@ -123,7 +126,7 @@ public class CheckDiffResult {
             result = "success";
             message += result;
         } else {
-            result = "failed";
+            result = FAILED_RESULT;
             message += result;
             message +=
                 "( insert=" + keyInsertSet.size() + " update=" + keyUpdateSet.size() + " delete=" + keyDeleteSet.size()

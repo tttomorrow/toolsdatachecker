@@ -91,6 +91,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     public List<SourceDataLog> getDebeziumTopicRecords(int fetchOffset) {
         checkIncrementCheckEnvironment();
         int begin = 0;
+
         DebeziumDataLogs debeziumDataLogs = new DebeziumDataLogs(metaDataService);
         while (begin <= fetchOffset) {
             DebeziumDataBean debeziumDataBean = debeziumListener.poll();
@@ -98,7 +99,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
                 break;
             }
             mysqlDateConvert(debeziumDataBean);
-            debeziumDataLogs.addDebeziumDataKey(debeziumDataBean.getTable(), debeziumDataBean.getData());
+            debeziumDataLogs.addDebeziumDataKey(debeziumDataBean);
             begin++;
         }
         return new ArrayList<>(debeziumDataLogs.values());

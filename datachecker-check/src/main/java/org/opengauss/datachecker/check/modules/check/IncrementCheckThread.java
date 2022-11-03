@@ -445,8 +445,11 @@ public class IncrementCheckThread extends Thread {
      * @param sink         Sink Merkel tree node
      * @param diffNodeList Difference node record
      */
-    private void compareMerkleTree(@NonNull Node source, @NonNull Node sink, List<Pair<Node, Node>> diffNodeList) {
+    private void compareMerkleTree(Node source, Node sink, List<Pair<Node, Node>> diffNodeList) {
         // If the nodes are the same, exit
+        if (source == null || sink == null) {
+            return;
+        }
         if (Arrays.equals(source.getSignature(), sink.getSignature())) {
             return;
         }
@@ -463,6 +466,7 @@ public class IncrementCheckThread extends Thread {
     private void checkResult() {
         CheckDiffResult result =
             AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(buildResultFileName())
+                                          .beginOffset(dataLog.getBeginOffset())
                                           .schema(sinkSchema).partitions(0).rowCount(rowCount)
                                           .isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
                                           .checkMode(CheckMode.INCREMENT).isTableStructureEquals(isTableStructureEquals)
