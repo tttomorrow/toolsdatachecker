@@ -42,7 +42,8 @@ public class DebeziumConsumerListener {
             if (StringUtils.isEmpty(record.value())) {
                 return;
             }
-            debeziumDataHandler.handler(record.value(), DATA_LOG_QUEUE);
+            final long offset = record.offset();
+            debeziumDataHandler.handler(offset,record.value(), DATA_LOG_QUEUE);
         } catch (DebeziumConfigException | JSONException | InterruptedException ex) {
             // Abnormal message structure, ignoring the current message
             log.error("DebeziumConsumerListener Abnormal message , ignoring this message,{}", record.value(), ex);

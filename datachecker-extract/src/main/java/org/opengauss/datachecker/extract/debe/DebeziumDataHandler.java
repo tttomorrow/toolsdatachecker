@@ -38,16 +38,17 @@ public class DebeziumDataHandler {
     /**
      * Debezium message parsing and adding the parsing result to the {@code DebeziumDataLogs.class} result set
      *
+     * @param offset offset
      * @param message message
      * @param queue   debeziumDataLogs
      */
-    public void handler(@NotEmpty String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue)
+    public void handler(long offset, @NotEmpty String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue)
         throws InterruptedException {
         final DebeziumData debeziumData = JSONObject.parseObject(message, DebeziumData.class);
         final DebeziumPayload payload = debeziumData.getPayload();
         final Map<String, String> before = payload.getBefore();
         final Map<String, String> after = payload.getAfter();
         final PayloadSource source = payload.getSource();
-        queue.put(new DebeziumDataBean(source.getTable(), after != null ? after : before));
+        queue.put(new DebeziumDataBean(source.getTable(),offset, after != null ? after : before));
     }
 }

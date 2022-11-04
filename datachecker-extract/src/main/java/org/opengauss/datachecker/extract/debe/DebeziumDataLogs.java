@@ -80,20 +80,25 @@ public class DebeziumDataLogs extends ConcurrentHashMap<String, SourceDataLog> {
     /**
      * Add the {@code tableName} table log to the table log object
      *
-     * @param tableName tableName
-     * @param valuesMap All field values of the current record
+     * @param debeziumData debeziumData
      * @return Add the {@code tableName} table log successfully
      */
-    public boolean addDebeziumDataKey(String tableName, Map<String, String> valuesMap) {
-        final SourceDataLog dataLog = getOrDefault(tableName);
+    public boolean addDebeziumDataKey(DebeziumDataBean debeziumData) {
+        final SourceDataLog dataLog = getOrDefault(debeziumData.getTable());
         if (Objects.nonNull(dataLog)) {
             List<String> primaryValues = new ArrayList<>();
             final List<String> primarys = dataLog.getCompositePrimarys();
             primarys.forEach(primary -> {
-                if (valuesMap.containsKey(primary)) {
-                    primaryValues.add(valuesMap.get(primary));
+                if (debeziumData.getData().containsKey(primary)) {
+                    primaryValues.add(debeziumData.getData().get(primary));
                 }
             });
+            final long beginOffset = dataLog.getBeginOffset();
+            if (beginOffset == -1) {
+                dataLog.setBeginOffset(debeziumData.getOffset());
+            } else {
+                dataLog.setBeginOffset(Math.min(beginOffset, debeziumData.getOffset()));
+            }
             dataLog.getCompositePrimaryValues().add(String.join(ExtConstants.PRIMARY_DELIMITER, primaryValues));
             return true;
         }

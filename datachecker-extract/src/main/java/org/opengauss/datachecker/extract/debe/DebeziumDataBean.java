@@ -26,15 +26,21 @@ import java.util.Map;
  */
 public class DebeziumDataBean {
     private String table;
+    private long offset;
     private Map<String, String> data;
 
-    public DebeziumDataBean(String table, Map<String, String> data) {
+    public DebeziumDataBean(String table, long offset, Map<String, String> data) {
         this.table = table;
+        this.offset = offset;
         this.data = data;
     }
 
     public String getTable() {
         return table;
+    }
+
+    public long getOffset() {
+        return offset;
     }
 
     public Map<String, String> getData() {

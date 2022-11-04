@@ -41,4 +41,9 @@ public class CheckingException extends RuntimeException {
         }
         return msg + message;
     }
+
+    @Override
+    public Throwable fillInStackTrace() {
+        return this;
+    }
 }
