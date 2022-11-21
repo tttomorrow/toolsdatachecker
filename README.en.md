@@ -10,6 +10,17 @@ Full data verification: JDBC is used to extract the source and target data, and 
 
 Incremental data verification, through debezium monitoring the data change records of the source database, the extraction service regularly processes the change records of debezium according to a certain frequency, and makes statistics on the change records. Send the statistical results to the data verification service. The data verification service initiates incremental data verification and outputs the verification results to the specified path file.
 
+ 
+
+**Installation environment requirements:**
+
+```
+JDK11+
+Install kafka (start zookeeper and kafka service)
+```
+
+
+
 #### Installation
 
 1.  Download and start Kafka
@@ -69,32 +80,84 @@ transforms.Reroute.topic.replacement=data_check_test_all
 bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka/mysql-conect.properties
 ```
 
+ **Verify service startup configuration** 
 
+```
+Verify the service configuration and modify the application.yml file
+	server.port is the verification service web port, which can not be modified by default
+	bootstrap-servers is the working address of kafka, and the default installation can not be modified
+	data.check.data-path is the output address of the verification result, and the default configuration can not be modified
+	data.check.source-uri the source side service request address, and the default configuration can not be modified
+	data.check.sink-uri is the service request address of the target end, and the default configuration can not be modified
+```
+
+ **Source side service startup configuration** 
+
+```
+Source side service configuration modification application-source.yml file
+	server.port  is the source side extraction service web port, which can not be modified by default
+	spring.check.server-uri is the verification service request address, and the default configuration can not be modified
+	spring.extract.schema is the current validation data schema, and the name of the MySQL database
+	bootstrap-servers is the working address of kafka, which can not be modified by default
+	
+	Data Source Configuration
+```
+
+ **Target side service startup configuration** 
+
+```
+Target side service configuration modification application-sink.yml file
+	server.port  is the sink side extraction service web port, which can not be modified by default
+	spring.check.server-uri is the verification service request address, and the default configuration can not be modified
+	spring.extract.schema is the current validation data schema, and the name of the MySQL database
+	bootstrap-servers is the working address of kafka, which can not be modified by default
+	
+	Data Source Configuration
+```
 
 **Start datachecker performance service**
 
 ```
-Source side extraction service
-java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-source.yml
-
-Destination extraction service
-java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-sink.yml
-
-or use extract-endpoints shell command to start the source and sink service
+use extract-endpoints shell command to start the source and sink service
 sh extract-endpoints.sh start|stop|restart 
-
-check service
-java -jar datachecker-check.jar -Dspring.config.additional-location=.\config\application.yml
-or use check-endpoint shell command to start the check service
+use check-endpoint shell command to start the check service
 sh check-endpoint.sh start|stop|restart 
+
+The extraction service must be started first, and then the verification service.
 ```
+
+ **Background start command** 
+
+```
+nohup java -Dspring.config.additional-location=config/application-source.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=source  >/dev/null 2>&1 &
+
+nohup java -Dspring.config.additional-location=config/application-sink.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=sink >/dev/null 2>&1 &
+
+nohup java -Dspring.config.additional-location=config/application.yml -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
+```
+
+
+
+**After the verification service is fully started, a verification request is sent**
+
+```
+curl -X 'POST' 'http://localhost:9000/start/check?checkMode=FULL' -H 'accept: */*' -d '' -H 'Content-Type: application/json' 
+
+Note: localhost: 9000, which is the verification service request address, and port 9000 is the default port set for the verification service
+```
+
+
 
 **remarks: **
 
 ```
-The incremental verification service is started, and the source side configuration file  config\application-source.yml needs to be modified.
-debezium-enable:true
-And configure other debezium related configurations. The incremental verification service can be started when the service is started
+1. Single instance verification uses sh script to start the verification service. If verification needs to be started in parallel, copy the current working directory file. After reconfiguration, use the java background startup command.
+
+2. After the extraction service is started, it will automatically load the table related information of the database. If the data volume is large, the data loading will be time-consuming.
+
+3. After the validation service is started, it will detect whether the table data information on the extraction end has been loaded. If the loading is not completed within a certain period of time, the validation service will automatically exit. At this time, you need to query the table information loading progress of the source and destination, and view the loading progress through the log information. Or restart the verification service directly.
+
+4. The incremental verification service is started, and the source side configuration file  config  application source needs to be modified Debezium enable: true in yml and configure other debezium related configurations. Start the service to start the incremental verification service
 ```
 
 
