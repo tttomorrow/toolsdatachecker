@@ -8,6 +8,10 @@ openGauss数据迁移校验工具 ，包含全量数据校验以及增量数据�
 
 增量数据校验，通过debezium监控源端数据库的数据变更记录，抽取服务按照一定的频率定期处理debezium的变更记录，对变更记录进行统计。将统计结果发送给数据校验服务。由数据校验服务发起增量数据校验，并将校验结果输出到指定路径文件。
 
+**安装环境要求：**
+
+	JDK11+
+	kafka安装（启动zookeeper，kafka服务）
 
 #### 安装教程
 
@@ -15,7 +19,7 @@ openGauss数据迁移校验工具 ，包含全量数据校验以及增量数据�
 2.  获取数据校验服务jar包，及配置文件模版（datachecker-check.jar/datachecker-extract.jar,application.yml,application-sink.yml,application-source.yml）
 3.  将jar包以及配置文件copy到指定服务器目录，并配置相关配置文件，启动相应的jar服务即可。
 
-#### 使用说明
+#### 详细使用说明
 
 **启动Zookeeper**
 
@@ -64,30 +68,80 @@ transforms.Reroute.topic.replacement=data_check_test_all
 bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka/mysql-conect.properties
 ```
 
+**校验服务启动配置** 
+
+```
+校验服务配置 修改application.yml文件
+	server.port 为校验服务web端口，默认可不修改
+	bootstrap-servers 为kafka工作地址，默认安装可不修改
+	data.check.data-path 校验结果输出地址，默认配置可不修改
+	data.check.source-uri 源端服务请求地址，默认配置可不修改
+	data.check.sink-uri 目标端服务请求地址，默认配置可不修改
+	data.check.core-pool-size 并发线程数设置，根据当前环境配置，可不修改
+```
+
+**源端服务启动配置**
+
+```
+源端服务配置 修改application-source.yml文件
+	server.port 为源端抽取服务web端口，默认可不修改
+	spring.check.server-uri 校验服务请求地址，默认配置可不修改
+	spring.extract.schema 当前校验数据schema，mysql 数据库名称
+	spring.extract.core-pool-size 并发线程数设置，根据当前环境配置，可不修改
+	bootstrap-servers 为kafka工作地址，默认安装可不修改
+	
+	数据源配置
+	
+```
+
+**目标端服务启动配置**
+
+```
+目标端服务配置 修改application-sink.yml文件
+	server.port 为目标端抽取服务web端口，默认可不修改
+	spring.check.server-uri 校验服务请求地址，默认配置可不修改
+	spring.extract.schema 当前校验数据schema，opengauss schema名称
+	spring.extract.core-pool-size 并发线程数设置，根据当前环境配置，可不修改
+	bootstrap-servers 为kafka工作地址，默认安装可不修改
+	
+	数据源配置
+```
+
+
+
 **启动数据校验服务**
 
-```
-#源端抽取服务
-java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-source.yml
-
-#宿端抽取服务
-java -jar datachecker-extract.jar -Dspring.config.additional-location=.\config\application-sink.yml
-
-或者使用
-sh extract-endpoints.sh start|stop|restart 命令
-
-校验服务
-java -jar datachecker-check.jar -Dspring.config.additional-location=.\config\application.yml
-或者使用
-sh check-endpoint.sh start|stop|restart 命令
+```shell
+sh extract-endpoints.sh start|restart|stop
+sh check-endpoint.sh start|restart|stop
+先启动抽取服务，后启动校验服务。
 ```
 
-备注：
+**后台启动命令**
+
+```shell
+nohup java -Dspring.config.additional-location=config/application-source.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=source  >/dev/null 2>&1 &
+
+nohup java -Dspring.config.additional-location=config/application-sink.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=sink >/dev/null 2>&1 &
+
+nohup java -Dspring.config.additional-location=config/application.yml -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
+```
+
+**校验服务完全启动成功后，发起校验请求。**
+
+```shell
+curl -X 'POST' 'http://localhost:9000/start/check?checkMode=FULL' -H 'accept: */*' -d '' -H 'Content-Type: application/json' 
+
+说明：localhost:9000，为校验服务请求地址，端口9000为校验服务默认设置端口
+```
+
+**备注：**
 
 ```
-增量校验服务启动，需要修改源端配置文件\config\application-source.yml 
-debezium-enable:true
-并配置其他 debezium相关配置，服务启动即可开启增量校验服务
+1、单实例校验使用sh 脚本启动校验服务，如果需要并行开启校验，复制当前工作目录文件，重新配置后，使用java 后台启动命令。
+2、抽取服务在启动后，会自动加载数据库的表相关信息，如果数据量较大，则数据加载会比较耗时。
+3、校验服务启动后，会检测抽取端的表数据信息是否加载完成，如果在一定时间内，未完成加载，则校验服务会自行退出。这时需要查询源端和宿端的表信息加载进度，通过日志信息查看加载进度。或者直接重新启动校验服务。
+4、增量校验服务启动，需要修改源端配置文件\config\application-source.yml 中	debezium-enable:true并配置其他 debezium相关配置，服务启动即可开启增量校验服务
 ```
 
 **开发人员本地 启动服务**

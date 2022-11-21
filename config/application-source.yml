@@ -20,6 +20,6 @@ spring:
     druid:
       dataSourceOne:
         driver-class-name: com.mysql.cj.jdbc.Driver
-        url: jdbc:mysql://{ip}:{port}/{database}?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
+        url: jdbc:mysql://127.0.0.1:3306/mysql?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC&allowPublicKeyRetrieval=true
         username:
         password: 'xxxx' # The password text may contain special characters, which need to be enclosed in quotation marks

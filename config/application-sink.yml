@@ -12,6 +12,6 @@ spring:
     druid:
       dataSourceOne:
         driver-class-name: org.opengauss.Driver
-        url: jdbc:opengauss://{ip}:{port}/{schema_db}?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
+        url: jdbc:opengauss://127.0.0.1:5432/postgres?useSSL=false&useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
         username:
         password: 'xxxx'  # The password text may contain special characters, which need to be enclosed in quotation marks
