@@ -38,7 +38,6 @@ public class KafkaManagerService {
     private final KafkaAdminService kafkaAdminService;
     private final KafkaCommonService kafkaCommonService;
     private final KafkaConsumerConfig kafkaConsumerConfig;
-    private final KafkaProducerConfig kafkaProducerConfig;
 
     /**
      * Create a topic according to the table name
@@ -63,8 +62,6 @@ public class KafkaManagerService {
         log.info("Extract service cleanup Kafka topic mapping information");
         kafkaConsumerConfig.cleanKafkaConsumer();
         log.info("Extract service to clean up Kafka consumer information");
-        kafkaProducerConfig.cleanKafkaProducer();
-        log.info("Extract service cleanup Kafka producer mapping information");
         List<String> topics = kafkaAdminService.getAllTopic(processNo);
         kafkaAdminService.deleteTopic(topics);
         log.info("Extract service cleanup current process ({}) Kafka topics {}", processNo, topics);
@@ -78,7 +75,6 @@ public class KafkaManagerService {
     public void cleanKafka() {
         final List<String> topics = kafkaCommonService.getAllTopicName();
         kafkaConsumerConfig.cleanKafkaConsumer();
-        kafkaProducerConfig.cleanKafkaProducer();
         kafkaAdminService.deleteTopic(topics);
         kafkaCommonService.cleanTopicMapping();
     }
@@ -99,26 +95,6 @@ public class KafkaManagerService {
     public void deleteTopic() {
         List<String> topics = kafkaAdminService.getAllTopic();
         kafkaAdminService.deleteTopic(topics);
-    }
-
-    /**
-     * Query the topic information of the specified table name
-     *
-     * @param tableName tableName
-     * @return topic information
-     */
-    public Topic getTopic(String tableName) {
-        return kafkaCommonService.getTopic(tableName);
-    }
-
-    /**
-     * Query the topic information of the specified table name
-     *
-     * @param tableName tableName
-     * @return topic information
-     */
-    public Topic getIncrementTopicInfo(String tableName) {
-        return kafkaCommonService.getIncrementTopicInfo(tableName);
     }
 
     /**

@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
-import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.common.util.IdGenerator;
 import org.opengauss.datachecker.common.web.Result;
 import org.opengauss.datachecker.extract.kafka.KafkaConsumerService;
@@ -64,19 +63,6 @@ public class KafkaManagerController {
     }
 
     /**
-     * Query the specified incremental topic data
-     *
-     * @param tableName tableName
-     * @return topic data
-     */
-    @Operation(summary = "Query the specified incremental topic data")
-    @GetMapping("/extract/query/increment/topic/data")
-    public Result<List<RowDataHash>> queryIncrementTopicData(
-        @Parameter(name = "tableName", description = "tableName") @RequestParam("tableName") String tableName) {
-        return Result.success(kafkaConsumerService.getIncrementTopicRecords(tableName));
-    }
-
-    /**
      * Create topic according to the table name
      *
      * @param tableName  tableName
@@ -91,32 +77,6 @@ public class KafkaManagerController {
             int partitions) {
         String process = IdGenerator.nextId36();
         return Result.success(kafkaManagerService.createTopic(process, tableName, partitions));
-    }
-
-    /**
-     * Query topic information of the specified table name
-     *
-     * @param tableName tableName
-     * @return kafka topic info
-     */
-    @Operation(summary = "Query topic information of the specified table name")
-    @GetMapping("/extract/topic/info")
-    public Result<Topic> queryTopicInfo(
-        @Parameter(name = "tableName", description = "tableName") @RequestParam(name = "tableName") String tableName) {
-        return Result.success(kafkaManagerService.getTopic(tableName));
-    }
-
-    /**
-     * Query topic information of the specified table name
-     *
-     * @param tableName tableName
-     * @return kafka topic info
-     */
-    @Operation(summary = "Query topic information of the specified table name")
-    @GetMapping("/extract/increment/topic/info")
-    public Result<Topic> getIncrementTopicInfo(
-        @Parameter(name = "tableName", description = "tableName") @RequestParam(name = "tableName") String tableName) {
-        return Result.success(kafkaManagerService.getIncrementTopicInfo(tableName));
     }
 
     /**

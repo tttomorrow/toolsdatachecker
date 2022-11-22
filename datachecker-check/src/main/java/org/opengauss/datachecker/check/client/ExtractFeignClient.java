@@ -16,12 +16,12 @@
 package org.opengauss.datachecker.check.client;
 
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
+import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
-import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,24 +82,6 @@ public interface ExtractFeignClient {
      */
     @PostMapping("/extract/exec/task/all")
     Result<Void> execExtractTaskAllTables(@RequestParam(name = "processNo") String processNo);
-
-    /**
-     * Query the topic information corresponding to the specified table
-     *
-     * @param tableName tableName
-     * @return Topic information
-     */
-    @GetMapping("/extract/topic/info")
-    Result<Topic> queryTopicInfo(@RequestParam(name = "tableName") String tableName);
-
-    /**
-     * Get incremental topic information
-     *
-     * @param tableName table Name
-     * @return Return the topic information corresponding to the table
-     */
-    @GetMapping("/extract/increment/topic/info")
-    Result<Topic> getIncrementTopicInfo(@RequestParam(name = "tableName") String tableName);
 
     /**
      * Query the specified topic data
@@ -193,12 +175,12 @@ public interface ExtractFeignClient {
     Result<List<RowDataHash>> querySecondaryCheckRowData(@RequestBody SourceDataLog dataLog);
 
     /**
-     * Query the schema information of the extraction end database
+     * Get the current endpoint configuration information
      *
-     * @return schema
+     * @return ExtractConfig
      */
-    @GetMapping("/extract/query/database/schema")
-    Result<String> getDatabaseSchema();
+    @GetMapping("/extract/config")
+    Result<ExtractConfig> getEndpointConfig();
 
     /**
      * Update black and white list

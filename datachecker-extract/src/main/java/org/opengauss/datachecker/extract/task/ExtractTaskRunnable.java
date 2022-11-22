@@ -66,7 +66,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
      * @param support Thread helper class
      */
     public ExtractTaskRunnable(ExtractTask task, Topic topic, ExtractThreadSupport support) {
-        super(support.getKafkaProducerConfig());
+        super(support.getKafkaTemplate());
         this.task = task;
         this.topic = topic;
         databaseType = support.getExtractProperties().getDatabaseType();
@@ -89,14 +89,18 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         log.debug("selectSql {}", sql);
         // Query data through JDBC SQL and Hash the queried data results ,
         // then package data into RowDataHash type Objects
-        log.info("Data extraction task {} start, data query through jdbc", task.getTaskName());
         List<RowDataHash> recordHashList = queryAndConvertColumnValues(sql, tableMetadata);
-        log.info("Data extraction task {} completes, data query through jdbc", task.getTaskName());
+        log.info("task {} query data completed, size = {} , send topic={}, partitions={}", task.getTaskName(),
+            recordHashList.size(), topic.getTopicName(), topic.getPartitions());
 
         // Push the data to Kafka according to the fragmentation order
         syncSend(topic, recordHashList);
 
-        ThreadUtil.newSingleThreadExecutor().submit(() -> {
+        new Thread(extractStatusRunnable()).start();
+    }
+
+    private Runnable extractStatusRunnable() {
+        return () -> {
             Thread.currentThread().setName(EXTRACT_STATUS_THREAD_NAME_PREFIX.concat(task.getTaskName()));
             String tableName = task.getTableName();
             // When the push is completed, the extraction status of the current task will be updated
@@ -125,7 +129,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
                     log.info("refresh table=[{}] extract status completed,task=[{}]", tableName, task.getTaskName());
                 }
             }
-        });
+        };
     }
 
     private List<RowDataHash> queryAndConvertColumnValues(String sql, TableMetadata tableMetadata) {
@@ -140,7 +144,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
 
     @Override
     public void run() {
-        Thread.currentThread().setName(EXTRACT_THREAD_NAME_PREFIX.concat(task.getTaskName()));
+        Thread.currentThread().setName(task.getTaskName() + "_" + Thread.currentThread().getId());
         final String tableName = task.getTableName();
         log.info("Data extraction task {} is starting", tableName);
         try {

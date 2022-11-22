@@ -16,17 +16,20 @@
 package org.opengauss.datachecker.extract.config;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author ：wangchao
@@ -35,38 +38,24 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Component
+@EnableKafka
 @EnableConfigurationProperties(KafkaProperties.class)
 public class KafkaProducerConfig {
-
-    private static final Object LOCK = new Object();
-    private static final Map<String, KafkaProducer<String, String>> PRODUCER_MAP = new ConcurrentHashMap<>();
-
     @Autowired
     private KafkaProperties properties;
 
-    /**
-     * Obtaining a specified producer client based on topic.
-     *
-     * @param topic topic name
-     * @return the topic corresponds to the producer client.
-     */
-    public KafkaProducer<String, String> getKafkaProducer(String topic) {
-        KafkaProducer<String, String> producer = PRODUCER_MAP.get(topic);
-        if (Objects.isNull(producer)) {
-            synchronized (LOCK) {
-                producer = PRODUCER_MAP.get(topic);
-                if (Objects.isNull(producer)) {
-                    producer = buildKafkaProducer();
-                    PRODUCER_MAP.put(topic, producer);
-                }
-            }
-        }
-        return producer;
+    public ProducerFactory<String, String> producerFactory() {
+        return new DefaultKafkaProducerFactory<>(buildProducerConfig());
     }
 
-    private KafkaProducer<String, String> buildKafkaProducer() {
+    @Bean
+    public KafkaTemplate<String, String> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
+
+    private Map<String, Object> buildProducerConfig() {
         // configuration information
-        Properties props = new Properties();
+        Map<String, Object> props = new HashMap<>(InitialCapacity.CAPACITY_8);
         // kafka server address
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, String.join(",", properties.getBootstrapServers()));
         props.put(ProducerConfig.ACKS_CONFIG, properties.getProducer().getAcks());
@@ -74,19 +63,6 @@ public class KafkaProducerConfig {
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, properties.getProducer().getKeySerializer());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, properties.getProducer().getValueSerializer());
         // creating a kafka producer instance
-        KafkaProducer<String, String> producer = new KafkaProducer<>(props);
-        return producer;
-    }
-
-    public KafkaProducer<String, String> getDebeziumKafkaProducer() {
-        return buildKafkaProducer();
-    }
-
-    /**
-     * clear KafkaProducer
-     */
-    public void cleanKafkaProducer() {
-        PRODUCER_MAP.clear();
-        log.info("clear KafkaProducer");
+        return props;
     }
 }

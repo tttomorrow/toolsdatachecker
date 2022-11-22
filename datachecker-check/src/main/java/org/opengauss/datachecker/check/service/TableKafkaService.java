@@ -56,8 +56,8 @@ public class TableKafkaService {
             final KafkaConsumerHandler consumerHandler =
                 new KafkaConsumerHandler(kafkaConsumerService.buildKafkaConsumer(false),
                     kafkaConsumerService.getRetryFetchRecordTimes());
-            final List<RowDataHash> rowDataHashes = consumerHandler.queryRowData(topic, partitions, true);
-            log.info("topic={},partitions={} record-size={}", topic.getTopicName(), partitions, rowDataHashes.size());
+            final List<RowDataHash> rowDataHashes = consumerHandler.queryRowData(topicName, partitions, true);
+            log.info("topic={},partitions={} record-size={}", topicName, partitions, rowDataHashes.size());
             final TopicRecordInfo recordInfo =
                 new TopicRecordInfo().setTopic(topic.getTopicName()).setPartitions(partitions)
                                      .setRecordSize(rowDataHashes.size());

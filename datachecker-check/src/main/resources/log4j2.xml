@@ -14,88 +14,44 @@
   ~ See the Mulan PSL v2 for more details.
   -->
 
-<Configuration status="WARN" monitorInterval="600">
+<Configuration status="ERROR" monitorInterval="600">
     <Properties>
-
-        <Property name="LOG_HOME">logs/check</Property>
-        <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%-36.36c{1.}] - %msg%n"/>
-
+        <Property name="LOG_HOME">logs</Property>
+<!--        <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%-36.36c{1.}] - %msg%n"/>-->
+        <property name="LOG_PATTERN" value="%date{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n" />
     </Properties>
 
     <Appenders>
-
         <Console name="console_out_appender" target="SYSTEM_OUT">
             <Filters>
                 <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
             </Filters>
             <PatternLayout pattern="${LOG_PATTERN}"/>
         </Console>
-
-        <RollingFile name="debug_appender" immediateFlush="true" fileName="${LOG_HOME}/debug.log"
-                     filePattern="${LOG_HOME}/debug/debug - %d{yyyy-MM-dd}.log.gz">
+        <RollingFile name="check_appender" immediateFlush="true" fileName="${LOG_HOME}/check.log"
+                     filePattern="${LOG_HOME}/history/check - %d{yyyy-MM-dd}.log.gz">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-
+                <SizeBasedTriggeringPolicy size="20MB"/>
             </Policies>
             <Filters>
-                <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
-            </Filters>
-        </RollingFile>
-
-        <RollingFile name="info_appender" immediateFlush="true" fileName="${LOG_HOME}/info.log"
-                     filePattern="${LOG_HOME}/info/info - %d{yyyy-MM-dd}.log.gz">
-            <PatternLayout pattern="${LOG_PATTERN}"/>
-            <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-            </Policies>
-            <Filters>
-                <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
-            </Filters>
-        </RollingFile>
-
-        <RollingFile name="error_appender" immediateFlush="true" fileName="${LOG_HOME}/error.log"
-                     filePattern="${LOG_HOME}/error/error - %d{yyyy-MM-dd}.log.gz">
-            <PatternLayout pattern="${LOG_PATTERN}"/>
-            <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-            </Policies>
-            <Filters>
-                <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
-            </Filters>
-        </RollingFile>
-
-        <RollingFile name="health_appender" immediateFlush="true" fileName="${LOG_HOME}/health.log"
-                     filePattern="${LOG_HOME}/health/health - %d{yyyy-MM-dd}.log.gz">
-            <PatternLayout pattern="${LOG_PATTERN}"/>
-            <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-            </Policies>
-            <Filters>
-                <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
+                <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
             </Filters>
         </RollingFile>
     </Appenders>
 
     <Loggers>
-        <root level="debug">
+        <root level="ERROR">
             <appender-ref ref="console_out_appender"/>
-            <appender-ref ref="debug_appender"/>
-            <appender-ref ref="info_appender"/>
-            <appender-ref ref="error_appender"/>
-            <appender-ref ref="health_appender"/>
+            <appender-ref ref="check_appender"/>
         </root>
-
-        <logger name="org.opengauss.datachecker.check.service.EndpointManagerService" level="info" additivity="false">
-            <appender-ref ref="console_out_appender"/>
-            <appender-ref ref="health_appender"/>
-        </logger>
-
-        <logger name="org.apache.kafka" level="error"/>
-        <logger name="org.springframework" level="info"/>
-        <logger name="org.springframework.web" level="error"/>
-        <logger name="org.jboss.netty" level="warn"/>
-        <logger name="org.apache.http" level="warn"/>
+        <logger name="org.apache.kafka" level="ERROR"/>
+        <logger name="org.opengauss.datachecker.check.service.EndpointManagerService" level="ERROR"/>
+        <logger name="org.springframework" level="ERROR" additivity="false"/>
+        <logger name="org.hibernate.validator" level="ERROR"/>
+        <logger name="_org.springframework.web" level="ERROR"/>
+        <logger name="org.jboss" level="ERROR"/>
+        <logger name="org.apache.http" level="ERROR"/>
     </Loggers>
 
 </Configuration>

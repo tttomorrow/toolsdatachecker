@@ -47,7 +47,7 @@ public class IncrementDataAnalysisService {
     /**
      * Single thread scheduled task - execute check polling thread
      */
-    private static final ScheduledExecutorService SCHEDULED_EXECUTOR = ThreadUtil.newSingleThreadScheduledExecutor();
+    private static ScheduledExecutorService SCHEDULED_EXECUTOR = null;
     private static final int DEBEZIUM_TIME_PERIOD_UNIT = 60000;
 
     private final ExtractProperties extractProperties;
@@ -71,6 +71,7 @@ public class IncrementDataAnalysisService {
      */
     @PostConstruct
     public void startIncrDataAnalysis() {
+        SCHEDULED_EXECUTOR = ThreadUtil.newSingleThreadScheduledExecutor();
         if (extractProperties.isDebeziumEnable() && consolidationService.isSourceEndpoint()) {
             log.info("Start incremental verification analysis");
             verificationConfiguration();

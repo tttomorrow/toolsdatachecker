@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.dao;
 
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 
 import java.util.List;
@@ -35,6 +36,13 @@ public interface MetaDataDAO {
      * @return health status
      */
     boolean health();
+
+    /**
+     * Return metadata loading progress
+     *
+     * @return metadata loading progress
+     */
+    MetadataLoadProcess getMetadataLoadProcess();
 
     /**
      * Reset black and white list

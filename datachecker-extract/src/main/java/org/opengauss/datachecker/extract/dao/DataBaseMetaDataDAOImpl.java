@@ -23,6 +23,7 @@ import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.enums.DataBaseMeta;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.util.EnumUtil;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
@@ -65,6 +66,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     protected final JdbcTemplate JdbcTemplateOne;
 
     private final ExtractProperties extractProperties;
+    private volatile MetadataLoadProcess metadataLoadProcess = new MetadataLoadProcess();
 
     @Override
     public boolean health() {
@@ -164,12 +166,13 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
         final String schema = getSchema();
         final Boolean isConvertTableName = isOpenGauss();
-
+        metadataLoadProcess.setTotal(tableNameList.size());
         tableNameList.forEach(tableName -> {
             final Long rowCount = JdbcTemplateOne.queryForObject(
                 String.format(sqlQueryTableRowCount, schema, isConvertTableName ? convert(tableName) : tableName),
                 Long.class);
             tableMetadata.add(new TableMetadata().setTableName(tableName).setTableRows(rowCount));
+            metadataLoadProcess.setLoadCount(tableMetadata.size());
         });
         return tableMetadata;
     }
@@ -180,6 +183,11 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
 
     private String convert(String tableName) {
         return "\"" + tableName + "\"";
+    }
+
+    @Override
+    public MetadataLoadProcess getMetadataLoadProcess() {
+        return metadataLoadProcess;
     }
 
     @Override

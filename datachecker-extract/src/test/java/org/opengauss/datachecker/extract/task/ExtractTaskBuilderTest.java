@@ -45,7 +45,6 @@ public class ExtractTaskBuilderTest {
     /**
      * init
      */
-    @PostConstruct
     public void init() {
         MetaDataCache.initCache();
         MetaDataCache.putMap(metadataService.queryMetaDataOfSchema());

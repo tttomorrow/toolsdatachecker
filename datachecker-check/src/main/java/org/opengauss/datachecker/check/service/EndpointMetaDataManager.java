@@ -22,6 +22,8 @@ import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.exception.CheckMetaDataException;
+import org.opengauss.datachecker.common.util.TaskUtil;
+import org.opengauss.datachecker.common.util.TopicUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -55,11 +57,6 @@ public class EndpointMetaDataManager {
      * Reload metadata information
      */
     public void load() {
-        clearCache();
-        final Map<String, TableMetadata> source = feignClientService.queryMetaDataOfSchema(Endpoint.SOURCE);
-        final Map<String, TableMetadata> sink = feignClientService.queryMetaDataOfSchema(Endpoint.SINK);
-        SOURCE_METADATA.putAll(source);
-        SINK_METADATA.putAll(sink);
         if (MapUtils.isNotEmpty(SOURCE_METADATA) && MapUtils.isNotEmpty(SINK_METADATA)) {
             final List<String> sourceTables = getEndpointTableNamesSortByTableRows(SOURCE_METADATA);
             final List<String> sinkTables = getEndpointTableNamesSortByTableRows(SINK_METADATA);
@@ -67,13 +64,27 @@ public class EndpointMetaDataManager {
             final List<String> missTables = compareAndFilterMissTables(sourceTables, sinkTables);
             CHECK_TABLE_LIST.addAll(checkTables);
             MISS_TABLE_LIST.addAll(missTables);
-            log.info("Load endpoint metadata information");
         } else {
-            log.error("The metadata information is empty, and the verification is terminated abnormally,"
+            log.error("the metadata information is empty, and the verification is terminated abnormally,"
                 + "sourceMetadata={},sinkMetadata={}", SOURCE_METADATA.size(), SINK_METADATA.size());
             throw new CheckMetaDataException(
-                "The metadata information is empty, and the verification is terminated abnormally");
+                "the metadata information is empty, and the verification is terminated abnormally");
         }
+    }
+
+    /**
+     * Query the metadata information of the source side and target side, and return the metadata query status
+     *
+     * @return metadata query status
+     */
+    public boolean isMetaLoading() {
+        if (MapUtils.isEmpty(SOURCE_METADATA)) {
+            SOURCE_METADATA.putAll(feignClientService.queryMetaDataOfSchema(Endpoint.SOURCE));
+        }
+        if (MapUtils.isEmpty(SINK_METADATA)) {
+            SINK_METADATA.putAll(feignClientService.queryMetaDataOfSchema(Endpoint.SINK));
+        }
+        return SOURCE_METADATA.isEmpty() || SINK_METADATA.isEmpty();
     }
 
     private List<String> compareAndFilterMissTables(List<String> sourceTables, List<String> sinkTables) {
@@ -106,6 +117,18 @@ public class EndpointMetaDataManager {
             }
         }
         return metadata;
+    }
+
+    /**
+     * Calculate and return the number of verification tasks
+     *
+     * @return the number of verification tasks
+     */
+    public int getCheckTaskCount() {
+        final Integer checkTaskCount =
+            SOURCE_METADATA.values().stream().map(TableMetadata::getTableRows).map(TaskUtil::calcTaskCount)
+                           .map(TopicUtil::calcPartitions).reduce(Integer::sum).orElse(SOURCE_METADATA.size());
+        return checkTaskCount;
     }
 
     private void clearCache() {

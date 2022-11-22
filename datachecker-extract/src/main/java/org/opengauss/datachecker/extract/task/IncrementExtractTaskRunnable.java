@@ -73,7 +73,7 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
      * @param support support
      */
     public IncrementExtractTaskRunnable(ExtractIncrementTask task, Topic topic, IncrementExtractThreadSupport support) {
-        super(support.getKafkaProducerConfig());
+        super(support.getKafkaTemplate());
         this.topic = topic;
         schema = support.getExtractProperties().getSchema();
         endpoint = support.getExtractProperties().getEndpoint();

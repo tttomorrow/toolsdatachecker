@@ -73,6 +73,7 @@ bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka
 ```
 校验服务配置 修改application.yml文件
 	server.port 为校验服务web端口，默认可不修改
+	logging.config  设置校验服务日志路径为config/log4j2.xml文件绝对路径
 	bootstrap-servers 为kafka工作地址，默认安装可不修改
 	data.check.data-path 校验结果输出地址，默认配置可不修改
 	data.check.source-uri 源端服务请求地址，默认配置可不修改
@@ -85,6 +86,7 @@ bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka
 ```
 源端服务配置 修改application-source.yml文件
 	server.port 为源端抽取服务web端口，默认可不修改
+	logging.config 设置校验服务日志路径为config/log4j2source.xml文件绝对路径
 	spring.check.server-uri 校验服务请求地址，默认配置可不修改
 	spring.extract.schema 当前校验数据schema，mysql 数据库名称
 	spring.extract.core-pool-size 并发线程数设置，根据当前环境配置，可不修改
@@ -99,6 +101,7 @@ bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka
 ```
 目标端服务配置 修改application-sink.yml文件
 	server.port 为目标端抽取服务web端口，默认可不修改
+	logging.config 设置校验服务日志路径为config/log4j2sink.xml文件绝对路径
 	spring.check.server-uri 校验服务请求地址，默认配置可不修改
 	spring.extract.schema 当前校验数据schema，opengauss schema名称
 	spring.extract.core-pool-size 并发线程数设置，根据当前环境配置，可不修改
@@ -127,13 +130,7 @@ nohup java -Dspring.config.additional-location=config/application-sink.yml -jar 
 nohup java -Dspring.config.additional-location=config/application.yml -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
 ```
 
-**校验服务完全启动成功后，发起校验请求。**
-
-```shell
-curl -X 'POST' 'http://localhost:9000/start/check?checkMode=FULL' -H 'accept: */*' -d '' -H 'Content-Type: application/json' 
-
-说明：localhost:9000，为校验服务请求地址，端口9000为校验服务默认设置端口
-```
+**校验服务完全启动成功后，会自动发起校验请求。**
 
 **备注：**
 

@@ -32,10 +32,9 @@ import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
-import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.exception.MerkleTreeDepthException;
+import org.opengauss.datachecker.common.util.TopicUtil;
 import org.springframework.lang.NonNull;
 import org.springframework.util.CollectionUtils;
 
@@ -78,13 +77,14 @@ public class DataCheckRunnable implements Runnable {
     private final KafkaConsumerHandler kafkaConsumerHandler;
 
     private String sinkSchema;
-    private Topic topic;
+    private String sourceTopic;
+    private String sinkTopic;
     private String tableName;
     private int partitions;
     private int rowCount;
+    private int tablePartitionRowCount;
     private int errorRate;
     private int bucketCapacity;
-    private String path;
 
     /**
      * DataCheckRunnable
@@ -123,7 +123,7 @@ public class DataCheckRunnable implements Runnable {
         try {
             paramInit();
             checkTableData();
-        } catch (CheckingException ex) {
+        } catch (Exception ex) {
             log.error("happen before some error,", ex);
         } finally {
             checkResult();
@@ -158,13 +158,14 @@ public class DataCheckRunnable implements Runnable {
     }
 
     private void paramInit() {
-        sinkSchema = feignClient.getDatabaseSchema(Endpoint.SINK);
-        topic = checkParam.getTopic();
-        tableName = topic.getTableName();
+        tableName = checkParam.getTableName();
         partitions = checkParam.getPartitions();
+        sourceTopic = TopicUtil.buildTopicName(checkParam.getProcess(), Endpoint.SOURCE, tableName);
+        sinkTopic = TopicUtil.buildTopicName(checkParam.getProcess(), Endpoint.SINK, tableName);
+        sinkSchema = checkParam.getSchema();
         rowCount = 0;
+        tablePartitionRowCount = checkParam.getTablePartitionRowCount();
         errorRate = checkParam.getErrorRate();
-        path = checkParam.getPath();
         bucketCapacity = checkParam.getBucketCapacity();
         resetThreadName(tableName, partitions);
     }
@@ -235,20 +236,24 @@ public class DataCheckRunnable implements Runnable {
     private void initBucketList(Endpoint endpoint, int partitions, List<Bucket> bucketList) {
         Map<Integer, Bucket> bucketMap = new ConcurrentHashMap<>(Constants.InitialCapacity.EMPTY);
         // Use feign client to pull Kafka data
-        List<RowDataHash> dataList = getTopicPartitionsData(endpoint, partitions);
+        List<RowDataHash> dataList = getTopicPartitionsData(getTopicName(endpoint), partitions);
         rowCount = rowCount + dataList.size();
         if (CollectionUtils.isEmpty(dataList)) {
             return;
         }
-        log.info("Initialize the verification thread data, and pull the total number of [{}-{}-{}] data records to {}",
+        log.info("Initialize the verification data, and pull the total number of [{}-{}-{}] data records to {}",
             endpoint.getDescription(), tableName, partitions, dataList.size());
         BuilderBucketHandler bucketBuilder = new BuilderBucketHandler(bucketCapacity);
 
         // Use the pulled data to build the bucket list
-        bucketBuilder.builder(dataList, dataList.size(), bucketMap);
+        bucketBuilder.builder(dataList, tablePartitionRowCount, bucketMap);
         // Statistics bucket list information
         bucketNoStatistics(endpoint, bucketMap.keySet());
         bucketList.addAll(bucketMap.values());
+    }
+
+    private String getTopicName(Endpoint endpoint) {
+        return Objects.equals(Endpoint.SOURCE, endpoint) ? sourceTopic : sinkTopic;
     }
 
     /**
@@ -362,15 +367,14 @@ public class DataCheckRunnable implements Runnable {
 
     /**
      * Pull the Kafka partition {@code partitions} data
-     * of the table {@code tableName} of the specified endpoint {@code endpoint}
+     * of the table {@code tableName} of the specified topicName
      *
-     * @param endpoint   endpoint
+     * @param topicName  topicName
      * @param partitions kafka partitions
      * @return Specify table Kafka partition data
      */
-    private List<RowDataHash> getTopicPartitionsData(Endpoint endpoint, int partitions) {
-        Topic endpointTopic = feignClient.queryTopicInfo(endpoint, tableName);
-        return kafkaConsumerHandler.queryCheckRowData(endpointTopic, partitions);
+    private List<RowDataHash> getTopicPartitionsData(String topicName, int partitions) {
+        return kafkaConsumerHandler.queryCheckRowData(topicName, partitions);
     }
 
     private boolean shouldCheckMerkleTree(int sourceBucketCount, int sinkBucketCount) {
@@ -410,8 +414,8 @@ public class DataCheckRunnable implements Runnable {
 
     private void checkResult() {
         CheckDiffResult result =
-            AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
-                                          .schema(sinkSchema).partitions(partitions).isTableStructureEquals(true)
+            AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(sourceTopic).schema(sinkSchema)
+                                          .partitions(partitions).isTableStructureEquals(true)
                                           .isExistTableMiss(false, null).rowCount(rowCount).errorRate(20)
                                           .checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
                                           .keyInsertSet(difference.getOnlyOnLeft().keySet())
@@ -421,6 +425,6 @@ public class DataCheckRunnable implements Runnable {
     }
 
     private void resetThreadName(String tableName, int partitions) {
-        Thread.currentThread().setName(THREAD_NAME_PRIFEX + tableName + "_" + partitions);
+        Thread.currentThread().setName(tableName + "_" + partitions + "_" + Thread.currentThread().getId());
     }
 }

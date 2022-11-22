@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.Topic;
+import org.opengauss.datachecker.common.util.TopicUtil;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
@@ -41,22 +42,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class KafkaCommonService {
-    /**
-     * Rules for generating topic names for full verification
-     * process_endpoint_tableName_code
-     * The second  %  is the process verification process number
-     * The first % is the endpoint {@link Endpoint}
-     * table name
-     * Last splicing table name upper or lower code
-     */
-    private static final String TOPIC_TEMPLATE = "%s_%s_%s";
-    private static final String UPPER_CODE = "1";
-    private static final String LOWER_CODE = "0";
-
-    /**
-     * Incremental verification topic prefix
-     */
-    private static final String INCREMENT_TOPIC_PREFIX = "increment_";
     private static final Object LOCK = new Object();
     private static final Map<String, Topic> TABLE_TOPIC_CACHE = new HashMap<>();
 
@@ -88,7 +73,7 @@ public class KafkaCommonService {
                 topic = TABLE_TOPIC_CACHE.get(tableName);
                 if (Objects.isNull(topic)) {
                     topic = new Topic().setTableName(tableName).setTopicName(createTopicName(process, tableName))
-                                       .setPartitions(calcPartitions(divisions));
+                                       .setPartitions(TopicUtil.calcPartitions(divisions));
                     TABLE_TOPIC_CACHE.put(tableName, topic);
                 }
             }
@@ -99,35 +84,7 @@ public class KafkaCommonService {
 
     private String createTopicName(String process, String tableName) {
         final Endpoint endpoint = extractProperties.getEndpoint();
-        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName) + letterCaseEncoding(tableName);
-    }
-
-    private String letterCaseEncoding(String tableName) {
-        final char[] chars = tableName.toCharArray();
-        StringBuilder builder = new StringBuilder();
-        for (char aChar : chars) {
-            if (aChar >= 'A' && aChar <= 'Z') {
-                builder.append(UPPER_CODE);
-            } else if (aChar >= 'a' && aChar <= 'z') {
-                builder.append(LOWER_CODE);
-            }
-        }
-        final String encoding = builder.toString();
-        if (encoding.contains(UPPER_CODE) && encoding.contains(LOWER_CODE)) {
-            return encoding;
-        }
-        return "";
-    }
-
-    /**
-     * Calculate the Kafka partition according to the total number of task slices.
-     * The total number of Kafka partitions shall not exceed 10
-     *
-     * @param divisions Number of task slices extracted
-     * @return Total number of Kafka partitions
-     */
-    public int calcPartitions(int divisions) {
-        return Math.min(divisions, 10);
+        return TopicUtil.buildTopicName(process, endpoint, tableName);
     }
 
     /**
@@ -140,23 +97,5 @@ public class KafkaCommonService {
     public void cleanTopicMapping() {
         TABLE_TOPIC_CACHE.clear();
         log.info("clear table topic cache information");
-    }
-
-    /**
-     * Get incremental topic information
-     *
-     * @param tableName tableName
-     * @return Topic
-     */
-    public Topic getIncrementTopicInfo(String tableName) {
-        Topic topic = new Topic();
-        topic.setTableName(tableName).setTopicName(getIncrementTopicName(tableName)).setPartitions(1);
-        log.debug("kafka topic info : [{}]  ", topic.toString());
-        return topic;
-    }
-
-    private String getIncrementTopicName(String tableName) {
-        return INCREMENT_TOPIC_PREFIX.concat(Integer.toString(extractProperties.getEndpoint().getCode())).concat("_")
-                                     .concat(tableName).toLowerCase();
     }
 }

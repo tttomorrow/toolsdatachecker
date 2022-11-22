@@ -35,6 +35,7 @@ data:
     bucket-expect-capacity: 10
     health-check-api: /extract/health
     black-white-mode: BLACK
+    black-list:
     # statistical-enable : Configure whether to perform verification time statistics.
     # If true, the execution time of the verification process will be statistically analyzed automatically.
     statistical-enable: false

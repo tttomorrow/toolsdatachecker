@@ -18,10 +18,9 @@ package org.opengauss.datachecker.check.service.impl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.opengauss.datachecker.check.annotation.Statistical;
 import org.opengauss.datachecker.check.cache.TableStatusRegister;
 import org.opengauss.datachecker.check.client.FeignClientService;
-import org.opengauss.datachecker.check.config.DataCheckProperties;
+import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.check.service.CheckService;
@@ -31,24 +30,24 @@ import org.opengauss.datachecker.common.entry.check.CheckProgress;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
-import org.opengauss.datachecker.common.entry.extract.Topic;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.exception.CheckingException;
-import org.opengauss.datachecker.common.exception.CheckingPollingException;
 import org.opengauss.datachecker.common.exception.CommonException;
 import org.opengauss.datachecker.common.util.IdGenerator;
 import org.opengauss.datachecker.common.util.JsonObjectUtil;
+import org.opengauss.datachecker.common.util.TaskUtil;
 import org.opengauss.datachecker.common.util.ThreadUtil;
+import org.opengauss.datachecker.common.util.TopicUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
@@ -82,11 +81,6 @@ public class CheckServiceImpl implements CheckService {
     private static final AtomicReference<CheckProgress> CHECK_PROGRESS_REFERENCE = new AtomicReference<>();
 
     /**
-     * Verify Mode
-     */
-    private static final AtomicReference<CheckMode> CHECK_MODE_REF = new AtomicReference<>();
-
-    /**
      * Verify polling thread name
      */
     private static final String SELF_CHECK_POLL_THREAD_NAME = "check-polling-thread";
@@ -99,44 +93,34 @@ public class CheckServiceImpl implements CheckService {
     @Resource
     private DataCheckService dataCheckService;
     @Autowired
-    private DataCheckProperties properties;
-    @Autowired
     private EndpointMetaDataManager endpointMetaDataManager;
     @Autowired
     private CheckTableStructureService checkTableStructureService;
+    @Resource
+    private CheckEnvironment checkEnvironment;
     @Value("${data.check.auto-clean-environment}")
     private boolean isAutoCleanEnvironment = true;
     @Value("${data.check.check-with-sync-extracting}")
     private boolean isCheckWithSyncExtracting = true;
 
     /**
-     * Initialize the verification result environment
-     */
-    @PostConstruct
-    public void init() {
-        ExportCheckResult.initEnvironment(properties.getDataPath());
-    }
-
-    /**
      * Enable verification service
      *
      * @param checkMode check Mode
      */
-    @Statistical(name = "CheckServiceStart")
     @Override
     public String start(CheckMode checkMode) {
+        Assert.isTrue(checkEnvironment.isLoadMetaSuccess(), "current meta data is loading, please wait a moment");
+        log.info(CheckMessage.CHECK_SERVICE_STARTING, checkEnvironment.getCheckMode().getCode());
+        Assert.isTrue(Objects.equals(CheckMode.FULL, checkEnvironment.getCheckMode()),
+            "current check mode is " + CheckMode.INCREMENT.getDescription() + " , not start full check.");
         if (STARTED.compareAndSet(false, true)) {
             ExportCheckResult.backCheckResultDirectory();
-            endpointMetaDataManager.load();
-            tableStatusRegister.selfCheck();
-            log.info(CheckMessage.CHECK_SERVICE_STARTING, checkMode.getCode());
             try {
-                CHECK_MODE_REF.set(checkMode);
-                if (Objects.equals(CheckMode.FULL, checkMode)) {
-                    startCheckFullMode();
-                    // Wait for the task construction to complete, and start the task polling thread
-                    startCheckPollingThread();
-                }
+                tableStatusRegister.selfCheck();
+                startCheckFullMode();
+                // Wait for the task construction to complete, and start the task polling thread
+                startCheckPollingThread();
             } catch (CheckingException ex) {
                 cleanCheck();
                 throw new CheckingException(ex.getMessage());
@@ -167,9 +151,9 @@ public class CheckServiceImpl implements CheckService {
      */
     private void startCheckFullMode() {
         String processNo = IdGenerator.nextId36();
-        log.info("check full mode : query meta data from db schema (source and sink )");
         // Source endpoint task construction
         final List<ExtractTask> extractTasks = feignClientService.buildExtractTaskAllTables(Endpoint.SOURCE, processNo);
+        log.info("check full mode : build extract task source {}", processNo);
         // Sink endpoint task construction
         feignClientService.buildExtractTaskAllTables(Endpoint.SINK, processNo, extractTasks);
         log.info("check full mode : build extract task sink {}", processNo);
@@ -188,21 +172,8 @@ public class CheckServiceImpl implements CheckService {
      * And start the current task to verify the data.
      */
     public void startCheckPollingThread() {
-        if (Objects.nonNull(PROCESS_SIGNATURE.get()) && Objects.equals(CHECK_MODE_REF.getAcquire(), CheckMode.FULL)) {
-            ScheduledExecutorService scheduledExecutor = ThreadUtil.newSingleThreadScheduledExecutor();
-            scheduledExecutor.scheduleWithFixedDelay(() -> {
-                Thread.currentThread().setName(SELF_CHECK_POLL_THREAD_NAME);
-                if (Objects.isNull(PROCESS_SIGNATURE.get())) {
-                    throw new CheckingPollingException("process is empty,stop check polling");
-                }
-                // Check whether there is a table to complete data extraction
-                if (isCheckWithSyncExtracting) {
-                    checkTableWithSyncExtracting();
-                } else {
-                    checkTableWithExtractEnd();
-                }
-                completeProgressBar(scheduledExecutor);
-            }, 5, 2, TimeUnit.SECONDS);
+        while (!tableStatusRegister.isCheckCompleted()) {
+            checkTableWithSyncExtracting();
         }
     }
 
@@ -214,14 +185,12 @@ public class CheckServiceImpl implements CheckService {
             if (CollectionUtils.isEmpty(checkTableList)) {
                 log.info("");
             }
-            checkTableList.forEach(tableName -> {
-                startCheckTableThread(tableName);
-                ThreadUtil.sleep(100);
-            });
+            checkTableList.forEach(this::startCheckTableThread);
         }
     }
 
     private void checkTableWithSyncExtracting() {
+
         if (!tableStatusRegister.isCheckCompleted()) {
             String tableName = tableStatusRegister.completedTablePoll();
             if (StringUtils.isNotEmpty(tableName)) {
@@ -232,14 +201,20 @@ public class CheckServiceImpl implements CheckService {
     }
 
     private void startCheckTableThread(String tableName) {
-        Topic topic = feignClientService.queryTopicInfo(Endpoint.SOURCE, tableName);
-        if (Objects.nonNull(topic)) {
-            tableStatusRegister.initPartitionsStatus(tableName, topic.getPartitions());
-            IntStream.range(0, topic.getPartitions()).forEach(idxPartition -> {
-                log.info("kafka consumer topic=[{}] partitions=[{}]", topic.toString(), idxPartition);
+        final TableMetadata tableMetadata = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
+        if (Objects.nonNull(tableMetadata)) {
+            int taskCount = TaskUtil.calcTaskCount(tableMetadata.getTableRows());
+            final int partitions = TopicUtil.calcPartitions(taskCount);
+            final int tablePartitionRowCount =
+                TaskUtil.calcTablePartitionRowCount(tableMetadata.getTableRows(), partitions);
+            String process = getCurrentCheckProcess();
+            tableStatusRegister.initPartitionsStatus(tableName, partitions);
+            IntStream.range(0, partitions).forEach(idxPartition -> {
                 // Verify the data according to the table name and Kafka partition
-                dataCheckService.checkTableData(topic, idxPartition);
+                dataCheckService.checkTableData(process, tableName, idxPartition, tablePartitionRowCount);
             });
+        } else {
+            log.error("can not find table={} meta data, checking skipped", tableName);
         }
     }
 
@@ -285,7 +260,6 @@ public class CheckServiceImpl implements CheckService {
             cleanBuildTask(processNo);
         }
         ThreadUtil.sleep(3000);
-        CHECK_MODE_REF.set(null);
         PROCESS_SIGNATURE.set(null);
         STARTED.set(false);
         CHECKING.set(true);

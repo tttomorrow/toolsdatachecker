@@ -17,18 +17,16 @@ package org.opengauss.datachecker.check.modules.check;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.config.DataCheckConfig;
+import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.common.entry.check.DataCheckParam;
 import org.opengauss.datachecker.common.entry.check.IncrementDataCheckParam;
+import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
-import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
-import org.springframework.lang.NonNull;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.Future;
+import javax.annotation.Resource;
 
 /**
  * DataCheckService
@@ -40,35 +38,36 @@ import java.util.concurrent.Future;
 @Slf4j
 @Service
 public class DataCheckService {
-    @Autowired
+    @Resource
     private KafkaProperties kafkaProperties;
-    @Autowired
+    @Resource
     private DataCheckRunnableSupport dataCheckRunnableSupport;
-    @Autowired
+    @Resource
     private DataCheckConfig dataCheckConfig;
-    @Autowired
-    @Qualifier("asyncCheckExecutor")
-    private ThreadPoolTaskExecutor checkAsyncExecutor;
-
+    @Resource
+    private CheckEnvironment checkEnvironment;
+    @Resource
+    private ThreadPoolTaskExecutor asyncCheckExecutor;
     /**
      * submit check table data runnable
      *
-     * @param topic      topic
-     * @param partitions partitions
-     * @return future
+     * @param process                process
+     * @param tableName              tableName
+     * @param partitions             partitions
+     * @param tablePartitionRowCount tablePartitionRowCount
      */
-    public Future<?> checkTableData(@NonNull Topic topic, int partitions) {
-        DataCheckParam checkParam = buildCheckParam(topic, partitions, dataCheckConfig);
-        final DataCheckRunnable dataCheckRunnable = new DataCheckRunnable(checkParam, dataCheckRunnableSupport);
-        return checkAsyncExecutor.submit(dataCheckRunnable);
-    }
-
-    private DataCheckParam buildCheckParam(Topic topic, int partitions, DataCheckConfig dataCheckConfig) {
+    public void checkTableData(String process, String tableName, int partitions, int tablePartitionRowCount) {
         final int bucketCapacity = dataCheckConfig.getBucketCapacity();
         final int errorRate = dataCheckConfig.getDataCheckProperties().getErrorRate();
-        final String checkResultPath = dataCheckConfig.getCheckResultPath();
-        return new DataCheckParam().setBucketCapacity(bucketCapacity).setTopic(topic).setPartitions(partitions)
-                                   .setProperties(kafkaProperties).setPath(checkResultPath).setErrorRate(errorRate);
+        DataCheckParam checkParam = new DataCheckParam();
+        checkParam.setProcess(process).setTableName(tableName).setSchema(getSinkSchema())
+                  .setTablePartitionRowCount(tablePartitionRowCount).setBucketCapacity(bucketCapacity)
+                  .setPartitions(partitions).setProperties(kafkaProperties).setErrorRate(errorRate);
+        asyncCheckExecutor.submit(new DataCheckRunnable(checkParam, dataCheckRunnableSupport));
+    }
+
+    private String getSinkSchema() {
+        return checkEnvironment.getDatabase(Endpoint.SINK).getSchema();
     }
 
     /**
@@ -83,6 +82,6 @@ public class DataCheckService {
             new IncrementDataCheckParam().setTableName(tableName).setBucketCapacity(dataCheckConfig.getBucketCapacity())
                                          .setDataLog(dataLog).setProcess(process);
         final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
-        checkAsyncExecutor.submit(incrementCheck);
+        asyncCheckExecutor.submit(incrementCheck);
     }
 }

@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
+import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -27,7 +28,6 @@ import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
 import org.opengauss.datachecker.common.exception.ProcessMultipleException;
 import org.opengauss.datachecker.common.exception.TaskNotFoundException;
 import org.opengauss.datachecker.common.web.Result;
-import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.service.DataExtractService;
 import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,10 +53,8 @@ import java.util.Set;
 @Tag(name = "data extracton service")
 @RestController
 public class ExtractController {
-
     @Autowired
     private MetaDataService metaDataService;
-
     @Autowired
     private DataExtractService dataExtractService;
 
@@ -68,8 +66,7 @@ public class ExtractController {
      */
     @GetMapping("/extract/load/database/meta/data")
     public Result<Map<String, TableMetadata>> queryMetaDataOfSchema() {
-        Map<String, TableMetadata> metaDataMap = metaDataService.queryMetaDataOfSchema();
-        MetaDataCache.putMap(metaDataMap);
+        Map<String, TableMetadata> metaDataMap = metaDataService.queryMetaDataOfSchemaCache();
         return Result.success(metaDataMap);
     }
 
@@ -241,12 +238,12 @@ public class ExtractController {
     }
 
     /**
-     * queryDatabaseSchema
+     * Get the current endpoint configuration information
      *
-     * @return DatabaseSchema
+     * @return ExtractConfig
      */
-    @GetMapping("/extract/query/database/schema")
-    Result<String> getDatabaseSchema() {
-        return Result.success(dataExtractService.queryDatabaseSchema());
+    @GetMapping("/extract/config")
+    Result<ExtractConfig> getEndpointConfig() {
+        return Result.success(dataExtractService.getEndpointConfig());
     }
 }
