@@ -66,7 +66,6 @@ public class ExportCheckResult {
         String checkResultPath = getResultPath();
         FileUtils.createDirectories(checkResultPath);
         FileUtils.createDirectories(getResultBakRootDir());
-        log.info("initialize the verification result environment");
     }
 
     public static void backCheckResultDirectory() {

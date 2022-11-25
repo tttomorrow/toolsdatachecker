@@ -21,6 +21,8 @@ import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.Database;
+import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -38,26 +40,25 @@ import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.opengauss.datachecker.extract.kafka.KafkaAdminService;
 import org.opengauss.datachecker.extract.kafka.KafkaCommonService;
+import org.opengauss.datachecker.extract.load.ExtractEnvironment;
 import org.opengauss.datachecker.extract.task.DataManipulationService;
 import org.opengauss.datachecker.extract.task.ExtractTaskBuilder;
 import org.opengauss.datachecker.extract.task.ExtractTaskRunnable;
 import org.opengauss.datachecker.extract.task.ExtractThreadSupport;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.Future;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -71,7 +72,6 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@DependsOn("extractThreadExecutor")
 public class DataExtractServiceImpl implements DataExtractService {
 
     /**
@@ -95,9 +95,6 @@ public class DataExtractServiceImpl implements DataExtractService {
     private final AtomicReference<List<ExtractTask>> taskReference = new AtomicReference<>();
 
     @Autowired
-    @Qualifier("extractThreadExecutor")
-    private ThreadPoolTaskExecutor extractThreadExecutor;
-    @Autowired
     private ExtractTaskBuilder extractTaskBuilder;
     @Autowired
     private ExtractThreadSupport extractThreadSupport;
@@ -115,6 +112,10 @@ public class DataExtractServiceImpl implements DataExtractService {
     private DataManipulationService dataManipulationService;
     @Value("${spring.extract.sync-extract}")
     private boolean isSyncExtract = true;
+    @Value("${server.port}")
+    private int serverPort = 0;
+    @Resource
+    private ExtractEnvironment extractEnvironment;
 
     /**
      * Data extraction service
@@ -266,6 +267,7 @@ public class DataExtractServiceImpl implements DataExtractService {
     @Async
     @Override
     public void execExtractTaskAllTables(String processNo) throws TaskNotFoundException {
+        Thread.currentThread().setName("invoke-extract-task-" + serverPort + "-process-" + processNo.toLowerCase());
         if (Objects.equals(atomicProcessNo.get(), processNo)) {
             int sleepCount = 0;
             while (CollectionUtils.isEmpty(taskReference.get())) {
@@ -280,8 +282,9 @@ public class DataExtractServiceImpl implements DataExtractService {
             if (CollectionUtils.isEmpty(taskList)) {
                 return;
             }
+            final ExecutorService executorService = extractEnvironment.getExtractThreadPool();
+
             Map<String, Integer> tableCheckStatus = checkingFeignClient.queryTableCheckStatus();
-            List<Future<?>> taskFutureList = new ArrayList<>();
             taskList.forEach(task -> {
                 log.info("Perform data extraction tasks {}", task.getTaskName());
                 final String tableName = task.getTableName();
@@ -291,18 +294,8 @@ public class DataExtractServiceImpl implements DataExtractService {
                 }
                 Topic topic = kafkaCommonService.getTopicInfo(processNo, tableName, task.getDivisionsTotalNumber());
                 kafkaAdminService.createTopic(topic.getTopicName(), topic.getPartitions());
-                final ExtractTaskRunnable extractRunnable = new ExtractTaskRunnable(task, topic, extractThreadSupport);
-                taskFutureList.add(extractThreadExecutor.submit(extractRunnable));
+                executorService.submit(new ExtractTaskRunnable(task, topic, extractThreadSupport));
             });
-            if (isSyncExtract) {
-                taskFutureList.forEach(future -> {
-                    while (true) {
-                        if (future.isDone() && !future.isCancelled()) {
-                            break;
-                        }
-                    }
-                });
-            }
         }
     }
 
@@ -402,7 +395,12 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     @Override
-    public String queryDatabaseSchema() {
-        return extractProperties.getSchema();
+    public ExtractConfig getEndpointConfig() {
+        ExtractConfig config = new ExtractConfig();
+        final Database database = new Database();
+        database.setDatabaseType(extractProperties.getDatabaseType()).setSchema(extractProperties.getSchema())
+                .setEndpoint(extractProperties.getEndpoint());
+        config.setDebeziumEnable(extractProperties.isDebeziumEnable()).setDatabase(database);
+        return config;
     }
 }

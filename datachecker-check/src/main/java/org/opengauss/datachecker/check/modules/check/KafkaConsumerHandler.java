@@ -22,7 +22,6 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
-import org.opengauss.datachecker.common.entry.extract.Topic;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -60,7 +59,7 @@ public class KafkaConsumerHandler {
      * @param partitions Kafka partitions
      * @return kafka partitions data
      */
-    public List<RowDataHash> queryCheckRowData(Topic topic, int partitions) {
+    public List<RowDataHash> queryCheckRowData(String topic, int partitions) {
         return queryRowData(topic, partitions, false);
     }
 
@@ -72,9 +71,9 @@ public class KafkaConsumerHandler {
      * @param shouldChangeConsumerGroup if true change consumer Group random
      * @return kafka partitions data
      */
-    public List<RowDataHash> queryRowData(Topic topic, int partitions, boolean shouldChangeConsumerGroup) {
+    public List<RowDataHash> queryRowData(String topic, int partitions, boolean shouldChangeConsumerGroup) {
         List<RowDataHash> data = new LinkedList<>();
-        final TopicPartition topicPartition = new TopicPartition(topic.getTopicName(), partitions);
+        final TopicPartition topicPartition = new TopicPartition(topic, partitions);
         kafkaConsumer.assign(List.of(topicPartition));
         long endOfOffset = getEndOfOffset(topicPartition);
         long beginOfOffset = beginningOffsets(topicPartition);
@@ -83,7 +82,7 @@ public class KafkaConsumerHandler {
         }
         consumerTopicRecords(data, kafkaConsumer, endOfOffset);
         log.debug("consumer topic=[{}] partitions=[{}] dataList=[{}] ,beginOfOffset={},endOfOffset={}",
-            topic.getTopicName(), partitions, data.size(), beginOfOffset, endOfOffset);
+            topic, partitions, data.size(), beginOfOffset, endOfOffset);
         return data;
     }
 

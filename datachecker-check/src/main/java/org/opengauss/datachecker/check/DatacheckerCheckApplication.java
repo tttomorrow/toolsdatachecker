@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * DatacheckerCheckApplication
@@ -29,11 +28,10 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * @since 11
  **/
 @Slf4j
-@EnableAsync
 @EnableFeignClients(basePackages = {"org.opengauss.datachecker.check.client"})
 @SpringBootApplication
 public class DatacheckerCheckApplication {
     public static void main(String[] args) {
-        SpringApplication.run(DatacheckerCheckApplication.class, args);
+       SpringApplication.run(DatacheckerCheckApplication.class, args);
     }
 }

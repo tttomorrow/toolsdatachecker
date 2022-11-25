@@ -16,9 +16,9 @@
 package org.opengauss.datachecker.check.client;
 
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
-import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.common.exception.DispatchClientException;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +41,6 @@ import java.util.Set;
 public class FeignClientService {
     @Autowired
     private ExtractSourceFeignClient extractSourceClient;
-
     @Autowired
     private ExtractSinkFeignClient extractSinkClient;
 
@@ -160,38 +159,6 @@ public class FeignClientService {
     }
 
     /**
-     * Query the topic information corresponding to the specified table
-     *
-     * @param endpoint  endpoint type
-     * @param tableName tableName
-     * @return Topic information
-     */
-    public Topic queryTopicInfo(@NonNull Endpoint endpoint, String tableName) {
-        Result<Topic> result = getClient(endpoint).queryTopicInfo(tableName);
-        if (result.isSuccess()) {
-            return result.getData();
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Get incremental topic information
-     *
-     * @param endpoint  endpoint type
-     * @param tableName table Name
-     * @return Return the topic information corresponding to the table
-     */
-    public Topic getIncrementTopicInfo(@NonNull Endpoint endpoint, String tableName) {
-        Result<Topic> result = getClient(endpoint).getIncrementTopicInfo(tableName);
-        if (result.isSuccess()) {
-            return result.getData();
-        } else {
-            return null;
-        }
-    }
-
-    /**
      * Build repair statements based on parameters
      *
      * @param endpoint  endpoint type
@@ -254,11 +221,16 @@ public class FeignClientService {
      * @param endpoint endpoint type
      * @return schema
      */
-    public String getDatabaseSchema(Endpoint endpoint) {
-        Result<String> result = getClient(endpoint).getDatabaseSchema();
-        if (result.isSuccess()) {
-            return result.getData();
-        } else {
+    public ExtractConfig getEndpointConfig(Endpoint endpoint) {
+        Result<ExtractConfig> result = null;
+        try {
+            result = getClient(endpoint).getEndpointConfig();
+            if (result.isSuccess()) {
+                return result.getData();
+            } else {
+                return null;
+            }
+        } catch (Exception exception) {
             return null;
         }
     }

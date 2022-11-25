@@ -21,9 +21,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.dao.DataBaseMetaDataDAOImpl;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -52,10 +54,37 @@ public class MetaDataService {
      */
     @PostConstruct
     public void init() {
-        MetaDataCache.removeAll();
-        Map<String, TableMetadata> metaDataMap = queryMetaDataOfSchema();
         MetaDataCache.initCache();
-        MetaDataCache.putMap(metaDataMap);
+    }
+
+    /**
+     * Return database metadata information through cache
+     *
+     * @return metadata information
+     */
+    public Map<String, TableMetadata> queryMetaDataOfSchemaCache() {
+        return MetaDataCache.getAll();
+    }
+
+    /**
+     * Asynchronous loading of metadata cache information
+     */
+    @Async
+    public void loadMetaDataOfSchemaCache() {
+        if (MetaDataCache.isEmpty()) {
+            Map<String, TableMetadata> metaDataMap = queryMetaDataOfSchema();
+            MetaDataCache.putMap(metaDataMap);
+            log.debug("load meta data cache");
+        }
+    }
+
+    /**
+     * Return metadata loading progress
+     *
+     * @return metadata loading progress
+     */
+    public MetadataLoadProcess getMetadataLoadProcess() {
+        return dataBaseMetadataDAOImpl.getMetadataLoadProcess();
     }
 
     /**

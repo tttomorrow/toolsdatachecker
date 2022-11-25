@@ -64,24 +64,4 @@ public class KafkaConsumerService {
             dataList.size());
         return dataList;
     }
-
-    /**
-     * Get incremental verification topic data
-     *
-     * @param tableName tableName
-     * @return kafka topic data
-     */
-    public List<RowDataHash> getIncrementTopicRecords(String tableName) {
-        Topic topic = kafkaCommonService.getIncrementTopicInfo(tableName);
-        KafkaConsumer<String, String> kafkaConsumer = consumerConfig.getKafkaConsumer(topic.getTopicName(), 1);
-        kafkaConsumer.subscribe(List.of(topic.getTopicName()));
-        List<RowDataHash> dataList = new LinkedList<>();
-        ConsumerRecords<String, String> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(200));
-        consumerRecords.forEach(record -> {
-            dataList.add(JSON.parseObject(record.value(), RowDataHash.class));
-        });
-        kafkaConsumer.commitAsync();
-        log.debug("kafka consumer topic=[{}]  dataList=[{}]", topic.toString(), dataList.size());
-        return dataList;
-    }
 }

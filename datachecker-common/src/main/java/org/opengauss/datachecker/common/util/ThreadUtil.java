@@ -34,6 +34,18 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 public class ThreadUtil {
+    private static final int scheduled_core_pool_size = 5;
+    private static final int single_core_pool_size = 1;
+    private static final int single_thread_pool_deque_capacity = 100;
+
+    public static ScheduledExecutorService SCHEDULED_THREAD_POOL =
+        new ScheduledThreadPoolExecutor(scheduled_core_pool_size,
+            new BasicThreadFactory.Builder().daemon(true).build());
+    public static ThreadPoolExecutor SINGLE_THREAD_POOL =
+        new ThreadPoolExecutor(single_core_pool_size, single_core_pool_size, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingDeque<>(single_thread_pool_deque_capacity), Executors.defaultThreadFactory(),
+            new ThreadPoolExecutor.DiscardOldestPolicy());
+
     /**
      * Thread hibernation
      *
@@ -48,13 +60,32 @@ public class ThreadUtil {
     }
 
     /**
+     * The current thread sleeps for 1000 milliseconds
+     */
+    public static void sleepOneSecond() {
+        sleep(1000);
+    }
+
+    /**
+     * The current thread sleeps for 500 milliseconds
+     */
+    public static void sleepHalfSecond() {
+        sleep(500);
+    }
+
+    /**
      * Custom thread pool construction
      *
      * @return thread pool
      */
     public static ThreadPoolExecutor newSingleThreadExecutor() {
-        return new ThreadPoolExecutor(1, 1, 60L, TimeUnit.SECONDS, new LinkedBlockingDeque<>(100),
-            Executors.defaultThreadFactory(), new ThreadPoolExecutor.DiscardOldestPolicy());
+        if (SINGLE_THREAD_POOL.isShutdown()) {
+            SINGLE_THREAD_POOL =
+                new ThreadPoolExecutor(single_core_pool_size, single_core_pool_size, 60L, TimeUnit.SECONDS,
+                    new LinkedBlockingDeque<>(single_thread_pool_deque_capacity), Executors.defaultThreadFactory(),
+                    new ThreadPoolExecutor.DiscardOldestPolicy());
+        }
+        return SINGLE_THREAD_POOL;
     }
 
     /**
@@ -63,6 +94,10 @@ public class ThreadUtil {
      * @return Scheduled task single thread
      */
     public static ScheduledExecutorService newSingleThreadScheduledExecutor() {
-        return new ScheduledThreadPoolExecutor(1, new BasicThreadFactory.Builder().daemon(true).build());
+        if (SCHEDULED_THREAD_POOL.isShutdown()) {
+            SCHEDULED_THREAD_POOL = new ScheduledThreadPoolExecutor(scheduled_core_pool_size,
+                new BasicThreadFactory.Builder().daemon(true).build());
+        }
+        return SCHEDULED_THREAD_POOL;
     }
 }

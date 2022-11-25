@@ -17,7 +17,6 @@ package org.opengauss.datachecker.common.entry.check;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
-import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 
 /**
@@ -30,25 +29,12 @@ import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 @Data
 @Accessors(chain = true)
 public class DataCheckParam {
+    private String process;
     private String tableName;
-    /**
-     * Build bucket capacity parameters
-     */
     private int bucketCapacity;
-
-    /**
-     * Data verification topic object
-     */
-    private Topic topic;
-    /**
-     * Verify topic partition
-     */
     private int partitions;
     private int errorRate;
-    /**
-     * Verification result output path
-     */
-    private String path;
+    private int tablePartitionRowCount;
     private String schema;
     private KafkaProperties properties;
 }

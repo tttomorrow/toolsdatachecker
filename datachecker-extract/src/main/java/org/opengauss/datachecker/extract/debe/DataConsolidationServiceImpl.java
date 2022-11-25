@@ -151,7 +151,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
      * Check the configuration of the debezium environment for incremental verification
      */
     private void checkIncrementCheckEnvironment() {
-        final Set<String> allKeys = metaDataService.queryMetaDataOfSchema().keySet();
+        final Set<String> allKeys = metaDataService.queryMetaDataOfSchemaCache().keySet();
         checkDebeziumEnvironment(extractProperties.getDebeziumTopic(), extractProperties.getDebeziumTables(), allKeys);
     }
 

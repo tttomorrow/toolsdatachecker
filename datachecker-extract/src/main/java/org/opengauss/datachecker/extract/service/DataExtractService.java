@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.service;
 
+import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
@@ -27,8 +28,9 @@ import java.util.Map;
 import java.util.Set;
 
 /**
+ * DataExtractService
+ *
  * @author wang chao
- * @description DataExtractService
  * @date 2022/5/8 19:27
  * @since 11
  **/
@@ -113,7 +115,7 @@ public interface DataExtractService {
      * @return Primary key corresponds to table data
      */
     List<Map<String, String>> queryTableColumnValues(String tableName, List<String> compositeKeySet);
-    
+
     /**
      * Query the metadata information of the current table structure and hash
      *
@@ -131,10 +133,9 @@ public interface DataExtractService {
     List<RowDataHash> querySecondaryCheckRowData(SourceDataLog dataLog);
 
     /**
-     * Query the schema of the current linked database
+     * Get the current endpoint configuration information
      *
-     * @return database schema
+     * @return ExtractConfig
      */
-    String queryDatabaseSchema();
-
+    ExtractConfig getEndpointConfig();
 }

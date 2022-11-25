@@ -13,12 +13,9 @@
   ~ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
   ~ See the Mulan PSL v2 for more details.
   -->
-
-
-<Configuration status="WARN" monitorInterval="600">
+<Configuration status="ERROR" monitorInterval="600">
     <Properties>
-
-        <Property name="LOG_HOME">logs/sink</Property>
+        <Property name="LOG_HOME">logs</Property>
         <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%-36.36c{1.}] - %msg%n"/>
     </Properties>
 
@@ -29,55 +26,32 @@
             </Filters>
             <PatternLayout pattern="${LOG_PATTERN}"/>
         </Console>
-
-        <RollingFile name="debug_appender" immediateFlush="true" fileName="${LOG_HOME}/debug.log"
-                     filePattern="${LOG_HOME}/debug/debug - %d{yyyy-MM-dd}.log.gz">
+        <RollingFile name="sink_appender" immediateFlush="true" fileName="${LOG_HOME}/sink.log"
+                     filePattern="${LOG_HOME}/history/sink - %d{yyyy-MM-dd}.log.gz">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
+                <SizeBasedTriggeringPolicy size="20MB"/>
             </Policies>
             <Filters>
-                <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
-            </Filters>
-        </RollingFile>
-
-        <RollingFile name="info_appender" immediateFlush="true" fileName="${LOG_HOME}/info.log"
-                     filePattern="${LOG_HOME}/info/info - %d{yyyy-MM-dd}.log.gz">
-            <PatternLayout pattern="${LOG_PATTERN}"/>
-            <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-            </Policies>
-            <Filters>
-                <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
-            </Filters>
-        </RollingFile>
-
-        <RollingFile name="error_appender" immediateFlush="true" fileName="${LOG_HOME}/error.log"
-                     filePattern="${LOG_HOME}/error/error - %d{yyyy-MM-dd}.log.gz">
-            <PatternLayout pattern="${LOG_PATTERN}"/>
-            <Policies>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-            </Policies>
-            <Filters>
-                <ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
+                <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
             </Filters>
         </RollingFile>
 
     </Appenders>
 
     <Loggers>
-        <root level="debug">
+        <root level="ERROR">
             <appender-ref ref="console_out_appender"/>
-            <appender-ref ref="debug_appender"/>
-            <appender-ref ref="info_appender"/>
-            <appender-ref ref="error_appender"/>
+            <appender-ref ref="sink_appender"/>
         </root>
 
-        <logger name="org.apache.kafka" level="error"/>
-        <logger name="org.springframework" level="info"/>
-        <logger name="org.springframework.web" level="error"/>
-        <logger name="org.jboss.netty" level="warn"/>
-        <logger name="org.apache.http" level="warn"/>
+        <logger name="org.apache.kafka" level="ERROR"/>
+        <logger name="org.opengauss.core.v3" level="ERROR"/>
+        <logger name="org.hibernate.validator" level="ERROR"/>
+        <logger name="org.springframework" level="ERROR"/>
+        <logger name="_org.springframework.web" level="ERROR"/>
+        <logger name="org.jboss.netty" level="ERROR"/>
+        <logger name="org.apache.http" level="ERROR"/>
     </Loggers>
 
 </Configuration>

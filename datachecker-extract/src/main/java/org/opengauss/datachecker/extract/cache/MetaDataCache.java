@@ -26,6 +26,7 @@ import org.opengauss.datachecker.extract.util.SpringUtil;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -46,23 +47,25 @@ public class MetaDataCache {
      * Initializing the Metadata Cache Method
      */
     public static void initCache() {
-        CACHE = CacheBuilder.newBuilder()
-                            //Set the concurrent read/write level based on the number of CPU cores;
-                            .concurrencyLevel(Runtime.getRuntime().availableProcessors())
-                            // Size of the buffer pool
-                            .maximumSize(Integer.MAX_VALUE)
-                            // Removing a Listener
-                            .removalListener((RemovalListener<String, TableMetadata>) remove -> log
-                                .debug("cache: [{}], removed", remove.getKey())).recordStats().build(
-                // Method of handing a Key that does not exist
-                new CacheLoader<>() {
-                    @Override
-                    public TableMetadata load(String tableName) {
-                        log.info("cache: [{}], does not exist", tableName);
-                        MetaDataService metaDataService = SpringUtil.getBean(MetaDataService.class);
-                        return metaDataService.queryMetaDataOfSchema(tableName);
-                    }
-                });
+        if (CACHE == null) {
+            CACHE = CacheBuilder.newBuilder()
+                                //Set the concurrent read/write level based on the number of CPU cores;
+                                .concurrencyLevel(1)
+                                // Size of the buffer pool
+                                .maximumSize(Integer.MAX_VALUE)
+                                // Removing a Listener
+                                .removalListener((RemovalListener<String, TableMetadata>) remove -> log
+                                    .debug("cache: [{}], removed", remove.getKey())).recordStats().build(
+                    // Method of handing a Key that does not exist
+                    new CacheLoader<>() {
+                        @Override
+                        public TableMetadata load(String tableName) {
+                            log.info("cache: [{}], does not exist", tableName);
+                            MetaDataService metaDataService = SpringUtil.getBean(MetaDataService.class);
+                            return metaDataService.queryMetaDataOfSchema(tableName);
+                        }
+                    });
+        }
         log.info("initialize table meta data cache");
     }
 
@@ -78,6 +81,22 @@ public class MetaDataCache {
         } catch (Exception exception) {
             log.error("put in cache exception ", exception);
         }
+    }
+
+    public static Map<String, TableMetadata> getAll() {
+        try {
+            if (CACHE == null) {
+                initCache();
+            }
+            return CACHE.asMap();
+        } catch (Exception exception) {
+            log.error("put in cache exception ", exception);
+        }
+        return new HashMap<>();
+    }
+
+    public static boolean isEmpty() {
+        return CACHE == null || CACHE.size() == 0;
     }
 
     /**
@@ -129,7 +148,7 @@ public class MetaDataCache {
      */
     public static Set<String> getAllKeys() {
         try {
-            return CACHE.asMap().keySet();
+            return getAll().keySet();
         } catch (Exception exception) {
             log.error("get cache exception", exception);
             return null;

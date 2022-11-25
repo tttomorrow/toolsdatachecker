@@ -16,12 +16,12 @@
 package org.opengauss.datachecker.check.client;
 
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
+import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.TableMetadataHash;
-import org.opengauss.datachecker.common.entry.extract.Topic;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -74,17 +74,6 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
         @Override
         public Result<Void> execExtractTaskAllTables(String processNo) {
             return Result.error("Remote call, full extraction business processing process exception");
-        }
-
-        @Override
-        public Result<Topic> queryTopicInfo(String tableName) {
-            return Result
-                .error("Remote call, query the topic information corresponding to the specified table is abnormal");
-        }
-
-        @Override
-        public Result<Topic> getIncrementTopicInfo(String tableName) {
-            return Result.error("Remote call, get incremental topic information exception");
         }
 
         @Override
@@ -160,9 +149,9 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
         }
 
         @Override
-        public Result<String> getDatabaseSchema() {
+        public Result<ExtractConfig> getEndpointConfig() {
             return Result
-                .error("Remote call, query the schema information of the database at the extraction end, abnormal“");
+                .error("Remote call,  Get the current endpoint configuration information, abnormal“");
         }
 
         @Override

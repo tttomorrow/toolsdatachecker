@@ -90,6 +90,7 @@ public class IncrementCheckThread extends Thread {
         @NonNull DataCheckRunnableSupport support) {
         dataLog = checkParam.getDataLog();
         process = checkParam.getProcess();
+        sinkSchema = checkParam.getSchema();
         rowCount = dataLog.getCompositePrimaryValues().size();
         tableName = checkParam.getTableName();
         bucketCapacity = checkParam.getBucketCapacity();
@@ -112,7 +113,6 @@ public class IncrementCheckThread extends Thread {
     public void run() {
         try {
             setName(buildThreadName());
-            sinkSchema = feignClient.getDatabaseSchema(Endpoint.SINK);
             // Metadata verification
             isTableStructureEquals = checkTableMetadata();
             if (isTableStructureEquals) {
@@ -466,9 +466,8 @@ public class IncrementCheckThread extends Thread {
     private void checkResult() {
         CheckDiffResult result =
             AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(buildResultFileName())
-                                          .beginOffset(dataLog.getBeginOffset())
-                                          .schema(sinkSchema).partitions(0).rowCount(rowCount)
-                                          .isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
+                                          .beginOffset(dataLog.getBeginOffset()).schema(sinkSchema).partitions(0)
+                                          .rowCount(rowCount).isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
                                           .checkMode(CheckMode.INCREMENT).isTableStructureEquals(isTableStructureEquals)
                                           .keyUpdateSet(difference.getDiffering().keySet())
                                           .keyInsertSet(difference.getOnlyOnLeft().keySet())

@@ -1,5 +1,8 @@
 server:
   port: 9001
+logging:
+  config: #absolute_path/log4j2source.xml
+
 spring:
   check:
     server-uri: http://127.0.0.1:9000

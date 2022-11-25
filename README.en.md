@@ -85,6 +85,7 @@ bin/connect-standalone -daemon etc/kafka/connect-standalone.properties etc/kafka
 ```
 Verify the service configuration and modify the application.yml file
 	server.port is the verification service web port, which can not be modified by default
+	logging.config is the absolute path of the extraction service log path config/log4j2.xml file
 	bootstrap-servers is the working address of kafka, and the default installation can not be modified
 	data.check.data-path is the output address of the verification result, and the default configuration can not be modified
 	data.check.source-uri the source side service request address, and the default configuration can not be modified
@@ -95,7 +96,8 @@ Verify the service configuration and modify the application.yml file
 
 ```
 Source side service configuration modification application-source.yml file
-	server.port  is the source side extraction service web port, which can not be modified by default
+	server.port is the source side extraction service web port, which can not be modified by default
+	logging.config is the absolute path of the extraction service log path config/log4j2source.xml file
 	spring.check.server-uri is the verification service request address, and the default configuration can not be modified
 	spring.extract.schema is the current validation data schema, and the name of the MySQL database
 	bootstrap-servers is the working address of kafka, which can not be modified by default
@@ -108,6 +110,7 @@ Source side service configuration modification application-source.yml file
 ```
 Target side service configuration modification application-sink.yml file
 	server.port  is the sink side extraction service web port, which can not be modified by default
+	logging.config is the absolute path of the extraction service log path config/log4j2sink.xml file
 	spring.check.server-uri is the verification service request address, and the default configuration can not be modified
 	spring.extract.schema is the current validation data schema, and the name of the MySQL database
 	bootstrap-servers is the working address of kafka, which can not be modified by default
@@ -138,15 +141,7 @@ nohup java -Dspring.config.additional-location=config/application.yml -jar datac
 
 
 
-**After the verification service is fully started, a verification request is sent**
-
-```
-curl -X 'POST' 'http://localhost:9000/start/check?checkMode=FULL' -H 'accept: */*' -d '' -H 'Content-Type: application/json' 
-
-Note: localhost: 9000, which is the verification service request address, and port 9000 is the default port set for the verification service
-```
-
-
+**After the verification service is fully started, a verification request will be automatically initiated**
 
 **remarks: **
 

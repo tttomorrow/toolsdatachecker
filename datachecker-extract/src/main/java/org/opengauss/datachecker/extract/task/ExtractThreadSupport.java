@@ -18,10 +18,10 @@ package org.opengauss.datachecker.extract.task;
 import lombok.Getter;
 import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
-import org.opengauss.datachecker.extract.config.KafkaProducerConfig;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 
 /**
@@ -34,15 +34,12 @@ import javax.sql.DataSource;
 @Getter
 @Service
 public class ExtractThreadSupport {
-    @Autowired
+    @Resource
     private DataSource dataSourceOne;
-
-    @Autowired
-    private KafkaProducerConfig kafkaProducerConfig;
-
-    @Autowired
+    @Resource
+    private KafkaTemplate<String, String> kafkaTemplate;
+    @Resource
     private CheckingFeignClient checkingFeignClient;
-
-    @Autowired
+    @Resource
     private ExtractProperties extractProperties;
 }

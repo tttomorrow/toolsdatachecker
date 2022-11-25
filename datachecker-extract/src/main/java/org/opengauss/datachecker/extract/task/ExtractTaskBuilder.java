@@ -20,6 +20,7 @@ import org.opengauss.datachecker.common.entry.extract.ExtractIncrementTask;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
+import org.opengauss.datachecker.common.util.TaskUtil;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.cache.TableExtractStatusCache;
 import org.springframework.lang.NonNull;
@@ -46,7 +47,7 @@ import java.util.stream.IntStream;
  **/
 @Service
 public class ExtractTaskBuilder {
-    private static final int EXTRACT_MAX_ROW_COUNT = 50000;
+    private static final int EXTRACT_MAX_ROW_COUNT = TaskUtil.EXTRACT_MAX_ROW_COUNT;
     private static final String TASK_NAME_PREFIX = "TASK_TABLE_";
     private static final String INCREMENT_TASK_NAME_PREFIX = "INCREMENT_TASK_TABLE_";
 
@@ -120,7 +121,7 @@ public class ExtractTaskBuilder {
     private List<ExtractTask> buildTaskList(TableMetadata metadata) {
         List<ExtractTask> taskList = new ArrayList<>();
         long tableRows = metadata.getTableRows();
-        final int taskCount = calcTaskCount(tableRows);
+        final int taskCount = TaskUtil.calcTaskCount(tableRows);
 
         IntStream.rangeClosed(1, taskCount).forEach(idx -> {
             long remainingExtractNumber = tableRows - (idx - 1) * EXTRACT_MAX_ROW_COUNT;
@@ -131,16 +132,6 @@ public class ExtractTaskBuilder {
             taskList.add(extractTask);
         });
         return taskList;
-    }
-
-    /**
-     * Calculate the number of segmented tasks according to the total number recorded in the table
-     *
-     * @param tableRows Total table records
-     * @return Total number of split tasks
-     */
-    private int calcTaskCount(long tableRows) {
-        return (int) (tableRows / EXTRACT_MAX_ROW_COUNT);
     }
 
     /**
