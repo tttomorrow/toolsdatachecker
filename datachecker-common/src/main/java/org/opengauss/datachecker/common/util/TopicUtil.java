@@ -61,7 +61,7 @@ public class TopicUtil {
 
     private static String letterCaseEncoding(String tableName) {
         final char[] chars = tableName.toCharArray();
-        StringBuilder builder = new StringBuilder();
+        StringBuilder builder = new StringBuilder("0");
         for (char aChar : chars) {
             if (aChar >= 'A' && aChar <= 'Z') {
                 builder.append(UPPER_CODE);
@@ -70,9 +70,6 @@ public class TopicUtil {
             }
         }
         final String encoding = builder.toString();
-        if (encoding.contains(UPPER_CODE) && encoding.contains(LOWER_CODE)) {
-            return encoding;
-        }
-        return "";
+        return Long.toHexString(Long.valueOf(encoding,2));
     }
 }
