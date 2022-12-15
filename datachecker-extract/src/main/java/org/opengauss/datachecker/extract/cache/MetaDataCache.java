@@ -134,7 +134,7 @@ public class MetaDataCache {
      */
     public static boolean containsKey(String key) {
         try {
-            return Objects.nonNull(CACHE.get(key));
+            return CACHE.asMap().containsKey(key);
         } catch (Exception exception) {
             log.error("get cache exception", exception);
             return false;

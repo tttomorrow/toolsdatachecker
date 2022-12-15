@@ -48,6 +48,7 @@ public class DataCheckService {
     private CheckEnvironment checkEnvironment;
     @Resource
     private ThreadPoolTaskExecutor asyncCheckExecutor;
+
     /**
      * submit check table data runnable
      *
@@ -78,9 +79,9 @@ public class DataCheckService {
      * @param dataLog   dataLog
      */
     public void incrementCheckTableData(String tableName, String process, SourceDataLog dataLog) {
-        IncrementDataCheckParam checkParam =
-            new IncrementDataCheckParam().setTableName(tableName).setBucketCapacity(dataCheckConfig.getBucketCapacity())
-                                         .setDataLog(dataLog).setProcess(process);
+        IncrementDataCheckParam checkParam = new IncrementDataCheckParam();
+        checkParam.setSchema(getSinkSchema()).setTableName(tableName)
+                  .setBucketCapacity(dataCheckConfig.getBucketCapacity()).setDataLog(dataLog).setProcess(process);
         final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
         asyncCheckExecutor.submit(incrementCheck);
     }

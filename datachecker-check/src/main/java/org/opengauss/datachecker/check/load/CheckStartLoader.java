@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * CheckStartLoader
@@ -41,6 +42,9 @@ public class CheckStartLoader extends AbstractCheckLoader {
 
     @Override
     public void load(CheckEnvironment checkEnvironment) {
+        if (Objects.equals(CheckMode.INCREMENT, checkEnvironment.getCheckMode())) {
+            return;
+        }
         final LocalDateTime startTime = LocalDateTime.now();
         checkService.start(CheckMode.FULL);
         final LocalDateTime endTime = LocalDateTime.now();

@@ -32,6 +32,7 @@ import org.springframework.util.CollectionUtils;
 import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -127,6 +128,9 @@ public class MetaDataService {
      */
     public TableMetadata queryMetaDataOfSchema(String tableName) {
         TableMetadata tableMetadata = queryTableMetadataByTableName(tableName);
+        if (Objects.isNull(tableMetadata)) {
+            return tableMetadata;
+        }
         List<ColumnsMetaData> columnsMetadata = dataBaseMetadataDAOImpl.queryColumnMetadata(List.of(tableName));
         tableMetadata.setColumnsMetas(columnsMetadata).setPrimaryMetas(getTablePrimaryColumn(columnsMetadata));
         log.debug("Query database metadata information completed total={}", columnsMetadata);
@@ -156,8 +160,8 @@ public class MetaDataService {
 
     private TableMetadata queryTableMetadataByTableName(String tableName) {
         final List<TableMetadata> tableMetadatas = queryTableMetadata();
-        return tableMetadatas.stream().filter(meta -> StringUtils.equalsIgnoreCase(meta.getTableName(), tableName))
-                             .findFirst().orElseGet(null);
+        return tableMetadatas.stream().filter(meta -> StringUtils.equals(meta.getTableName(), tableName))
+                             .findFirst().orElse(null);
     }
 
     private List<TableMetadata> queryTableMetadata() {
