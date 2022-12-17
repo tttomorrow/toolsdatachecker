@@ -15,7 +15,6 @@
 
 package org.opengauss.datachecker.extract.task.sql;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
@@ -32,10 +31,9 @@ import java.util.stream.Collectors;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.COLUMN;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.DELIMITER;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.MYSQL_ESCAPE;
-import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.MYSQL_DELIMITER;
-import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.OPENGAUSS_DELIMITER;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.OPENGAUSS_ESCAPE;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.OFFSET;
+import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.ORDER_BY;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.SCHEMA;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.START;
 import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.TABLE_NAME;
@@ -49,11 +47,13 @@ import static org.opengauss.datachecker.extract.task.sql.QuerySqlTemplate.TABLE_
  **/
 public class SelectSqlBuilder {
     private static final Map<DataBaseType, SqlGenerate> SQL_GENERATE = new HashMap<>();
+    private static final Map<DataBaseType, SqlEscape> ESCAPE = new HashMap<>();
     private static final long OFF_SET_ZERO = 0L;
     private static final SqlGenerateTemplate GENERATE_TEMPLATE =
         (template, sqlGenerateMeta) -> template.replace(COLUMN, sqlGenerateMeta.getColumns())
                                                .replace(SCHEMA, sqlGenerateMeta.getSchema())
                                                .replace(TABLE_NAME, sqlGenerateMeta.getTableName())
+                                               .replace(ORDER_BY, sqlGenerateMeta.getOrder())
                                                .replace(START, String.valueOf(sqlGenerateMeta.getStart()))
                                                .replace(OFFSET, String.valueOf(sqlGenerateMeta.getOffset()));
     private static final SqlGenerateTemplate NO_OFFSET_SQL_GENERATE_TEMPLATE =
@@ -69,6 +69,9 @@ public class SelectSqlBuilder {
         SQL_GENERATE.put(DataBaseType.MS, OFFSET_GENERATE);
         SQL_GENERATE.put(DataBaseType.OG, OFFSET_GENERATE);
         SQL_GENERATE.put(DataBaseType.O, OFFSET_GENERATE);
+        ESCAPE.put(DataBaseType.MS, (key) -> MYSQL_ESCAPE + key + MYSQL_ESCAPE);
+        ESCAPE.put(DataBaseType.OG, (key) -> OPENGAUSS_ESCAPE + key + OPENGAUSS_ESCAPE);
+        ESCAPE.put(DataBaseType.O, (key) -> key);
     }
 
     private String schema;
@@ -140,40 +143,36 @@ public class SelectSqlBuilder {
         }
     }
 
+    private String getOrderBy(List<ColumnsMetaData> primaryMetas, DataBaseType dataBaseType) {
+        return "order by " + primaryMetas.stream().map(ColumnsMetaData::getColumnName)
+                                         .map(key -> escape(key, dataBaseType) + " asc")
+                                         .collect(Collectors.joining(DELIMITER));
+    }
+
     public String buildSelectSqlOffset(TableMetadata tableMetadata, long start, long offset) {
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
-        String tableName = tableMetadata.getTableName();
+        String schemaEscape = escape(schema, dataBaseType);
+        String tableName = escape(tableMetadata.getTableName(), dataBaseType);
         String columnNames = getColumnNameList(columnsMetas, dataBaseType);
-        SqlGenerateMeta sqlGenerateMeta =
-            new SqlGenerateMeta(schema, convertTableName(tableName, dataBaseType), columnNames, start, offset);
+        final String orderBy = getOrderBy(tableMetadata.getPrimaryMetas(), dataBaseType);
+        SqlGenerateMeta sqlGenerateMeta = new SqlGenerateMeta(schemaEscape, tableName, columnNames, orderBy, start, offset);
         return getSqlGenerate(dataBaseType).replace(sqlGenerateMeta);
     }
 
-    private static String convertTableName(String tableName, DataBaseType dataBaseType) {
-        if (DataBaseType.MS.equals(dataBaseType)) {
-            return MYSQL_ESCAPE + tableName + MYSQL_ESCAPE;
-        } else if (DataBaseType.OG.equals(dataBaseType)) {
-            return OPENGAUSS_ESCAPE + tableName + OPENGAUSS_ESCAPE;
-        }
-        return tableName;
+    private String escape(String content, DataBaseType dataBaseType) {
+        return ESCAPE.get(dataBaseType).escape(content);
     }
 
     private String buildSelectSqlOffsetZero(List<ColumnsMetaData> columnsMetas, String tableName) {
         String columnNames = getColumnNameList(columnsMetas, dataBaseType);
-        SqlGenerateMeta sqlGenerateMeta =
-            new SqlGenerateMeta(schema,  convertTableName(tableName, dataBaseType), columnNames, 0, 0);
+        String schemaEscape = escape(schema, dataBaseType);
+        SqlGenerateMeta sqlGenerateMeta = new SqlGenerateMeta(schemaEscape, escape(tableName, dataBaseType), columnNames);
         return NO_OFFSET_GENERATE.replace(sqlGenerateMeta);
     }
 
-    private static String getColumnNameList(@NonNull List<ColumnsMetaData> columnsMetas, DataBaseType dataBaseType) {
-        if (DataBaseType.MS.equals(dataBaseType)) {
-            return MYSQL_ESCAPE + columnsMetas.stream().map(ColumnsMetaData::getColumnName)
-                                              .collect(Collectors.joining(MYSQL_DELIMITER)) + MYSQL_ESCAPE;
-        } else if (DataBaseType.OG.equals(dataBaseType)) {
-            return OPENGAUSS_ESCAPE + columnsMetas.stream().map(ColumnsMetaData::getColumnName)
-                                                  .collect(Collectors.joining(OPENGAUSS_DELIMITER)) + OPENGAUSS_ESCAPE;
-        }
-        return columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
+    private String getColumnNameList(@NonNull List<ColumnsMetaData> columnsMetas, DataBaseType dataBaseType) {
+        return columnsMetas.stream().map(ColumnsMetaData::getColumnName).map(column -> escape(column, dataBaseType))
+                           .collect(Collectors.joining(DELIMITER));
     }
 
     private SqlGenerate getSqlGenerate(DataBaseType dataBaseType) {
@@ -181,13 +180,37 @@ public class SelectSqlBuilder {
     }
 
     @Getter
-    @AllArgsConstructor
     static class SqlGenerateMeta {
-        private final String schema;
-        private final String tableName;
-        private final String columns;
-        private final long start;
-        private final long offset;
+        private String schema;
+        private String tableName;
+        private String columns;
+        private String order;
+        private long start;
+        private long offset;
+
+        public SqlGenerateMeta(String schema, String tableName, String columns) {
+            this.schema = schema;
+            this.tableName = tableName;
+            this.columns = columns;
+        }
+
+        public SqlGenerateMeta(String schema, String tableName, String columns, long start, long offset) {
+            this.schema = schema;
+            this.tableName = tableName;
+            this.columns = columns;
+            this.order = "";
+            this.start = start;
+            this.offset = offset;
+        }
+
+        public SqlGenerateMeta(String schema, String tableName, String columns, String order, long start, long offset) {
+            this.schema = schema;
+            this.tableName = tableName;
+            this.columns = columns;
+            this.order = order;
+            this.start = start;
+            this.offset = offset;
+        }
     }
 
     @FunctionalInterface
@@ -199,6 +222,15 @@ public class SelectSqlBuilder {
          * @return Return fragment query SQL statement
          */
         String replace(SqlGenerateMeta sqlGenerateMeta);
+    }
+
+    @FunctionalInterface
+    interface SqlEscape {
+        /**
+         * @param key key
+         * @return Return
+         */
+        String escape(String key);
     }
 
     @FunctionalInterface

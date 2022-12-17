@@ -23,7 +23,7 @@ package org.opengauss.datachecker.common.util;
  * @since ：11
  */
 public class TaskUtil {
-    public static final int EXTRACT_MAX_ROW_COUNT = 10000;
+    public static final int EXTRACT_MAX_ROW_COUNT = 50000;
 
     /**
      * Calculate the number of segmented tasks according to the total number recorded in the table

@@ -56,10 +56,12 @@ public class Bucket implements Serializable {
      * bucket number
      */
     private Integer number;
+
+    private Integer bucketCount;
     /**
-     * Hash signature of bucket bucket. The initialization value of the signature is 0
+     * Hash signature of bucket bucket. The initialization value of the signature is 1
      */
-    private long signature = 0L;
+    private long signature = 1L;
 
     /**
      * Capacity initialization is required during barrel construction
@@ -71,12 +73,13 @@ public class Bucket implements Serializable {
     }
 
     /**
-     * 将行记录哈希对象添加到桶容器中。并计算桶的哈希签名。
+     * Add the row record hash object to the bucket container. And calculate the hash signature of the bucket.
      * <p>
-     * 桶的哈希签名算法为当前桶的哈希签名{@code signature}异或当前插入记录的行哈希值。
+     * The hash signature algorithm of the bucket is the hash signature {@code signature}
+     * of the current bucket or the row hash value of the currently inserted record.
      *
-     * @param rowDataHash 行记录哈希对象
-     * @return 返回插入集合结果
+     * @param rowDataHash Row record hash object
+     * @return Return Insert Collection Results
      */
     public RowDataHash put(@NotNull RowDataHash rowDataHash) {
         signature = signature ^ rowDataHash.getRowHash();
@@ -84,11 +87,22 @@ public class Bucket implements Serializable {
     }
 
     /**
-     * 获取当前桶的哈希签名
+     * Get the hash signature of the current bucket
      *
-     * @return 桶的哈希签名
+     * @return Hash signature of bucket
      */
     public byte[] getSignature() {
         return ByteUtil.toBytes(signature);
+    }
+
+    public int getBucketCount() {
+        bucketCount = bucket.size();
+        return bucketCount;
+    }
+
+    @Override
+    public String toString() {
+        return "Bucket{ number=" + number + ", count=" + getBucketCount() + ", signature=" + signature + ", bucket="
+            + bucket + '}';
     }
 }
