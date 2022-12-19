@@ -52,7 +52,7 @@ public interface QuerySqlTemplate {
      * Query SQL statement offset fragment: Fragment query offset
      */
     String OFFSET = ":offset";
-
+    String ORDER_BY = ":orderBy";
     /**
      * Query SQL statement joinOn fragment: Query SQL statement joinOn fragment
      */
@@ -66,7 +66,7 @@ public interface QuerySqlTemplate {
     /**
      * Query SQL statement fragment: SQL statement for fragment query using offset in single primary key scenario
      */
-    String QUERY_OFF_SET = "SELECT :columnsList FROM :schema.:tableName LIMIT :start,:offset";
+    String QUERY_OFF_SET = "SELECT :columnsList FROM :schema.:tableName :orderBy LIMIT :start,:offset";
 
     /**
      * Query SQL statement fragment: SQL statement for fragment query using offset in single primary key scenario
