@@ -78,11 +78,10 @@ public class DataCheckService {
      * @param process   process
      * @param dataLog   dataLog
      */
-    public void incrementCheckTableData(String tableName, String process, SourceDataLog dataLog) {
+    public Runnable incrementCheckTableData(String tableName, String process, SourceDataLog dataLog) {
         IncrementDataCheckParam checkParam = new IncrementDataCheckParam();
         checkParam.setSchema(getSinkSchema()).setTableName(tableName)
                   .setBucketCapacity(dataCheckConfig.getBucketCapacity()).setDataLog(dataLog).setProcess(process);
-        final IncrementCheckThread incrementCheck = new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
-        asyncCheckExecutor.submit(incrementCheck);
+        return new IncrementCheckThread(checkParam, dataCheckRunnableSupport);
     }
 }

@@ -150,10 +150,9 @@ public class ExtractTaskBuilder {
      */
     private String taskNameBuilder(@NonNull String tableName, int taskCount, int ordinal) {
         if (taskCount > 1) {
-            return TASK_NAME_PREFIX.concat(tableName.toUpperCase(Locale.ROOT)).concat("_")
-                                   .concat(String.valueOf(ordinal));
+            return TASK_NAME_PREFIX.concat(tableName).concat("_").concat(String.valueOf(ordinal));
         } else {
-            return TASK_NAME_PREFIX.concat(tableName.toUpperCase(Locale.ROOT));
+            return TASK_NAME_PREFIX.concat(tableName);
         }
     }
 
@@ -180,9 +179,10 @@ public class ExtractTaskBuilder {
     public List<ExtractIncrementTask> buildIncrementTask(String schema, List<SourceDataLog> sourceDataLogs) {
         List<ExtractIncrementTask> incrementTasks = new ArrayList<>();
         sourceDataLogs.forEach(datalog -> {
-            incrementTasks.add(new ExtractIncrementTask().setSchema(schema).setSourceDataLog(datalog)
-                                                         .setTableName(datalog.getTableName()).setTaskName(
-                    incrementTaskNameBuilder(datalog.getTableName())));
+            final ExtractIncrementTask incrementTask = new ExtractIncrementTask();
+            incrementTask.setSchema(schema).setSourceDataLog(datalog).setTableName(datalog.getTableName())
+                         .setTaskName(incrementTaskNameBuilder(datalog.getTableName()));
+            incrementTasks.add(incrementTask);
         });
         return incrementTasks;
     }

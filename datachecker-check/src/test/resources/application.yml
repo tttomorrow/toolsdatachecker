@@ -1,0 +1,53 @@
+server:
+  port: 9000
+  shutdown: graceful
+
+debug: true
+
+spring:
+  application:
+    name: datachecker-check
+  lifecycle:
+    timeout-per-shutdown-phase: 5
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: checkgroup
+      enable-auto-commit: true
+      auto-commit-interval: 100
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      fetch-min-size: 1
+      max-poll-records: 20000
+      request-timeout-ms: 300000
+      fetch-max-bytes: 536870912  # 512M
+
+feign:
+  okhttp:
+    enabled: true
+
+logging:
+  config: classpath:log4j2.xml
+
+data:
+  check:
+    bucket-expect-capacity: 10
+    health-check-api: /extract/health
+    statistical-enable: false
+    auto-clean-environment: true
+    check-with-sync-extracting: true
+    retry-fetch-record-times: 5
+    error-rate: 30
+    data-path: ./check_result
+    source-uri: http://127.0.0.1:9001 #  server.port=9001
+    sink-uri: http://127.0.0.1:9002 # server.port=9002
+    # Configure the black and white list startup mode of the checklist
+    # [black starts the black list verification,white starts the white list verification]
+    black-white-mode: BLACK
+    black-list:  #   like table1,table2
+
+
+
+
+

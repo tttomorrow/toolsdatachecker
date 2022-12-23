@@ -1,0 +1,41 @@
+server:
+  port: 9001
+  shutdown: graceful
+debug: false
+spring:
+  check:
+    server-uri: http://127.0.0.1:9000
+  extract:
+    schema: test
+    databaseType: MS
+    debezium-enable: false
+    debezium-topic: data_check_all # debezium topic
+    debezium-groupId: debezium-extract-group # debezium topic groupId
+    debezium-time-period: 1 # Debezium incremental migration verification time period: 24 * 60 unit: Min
+    debezium-num-period: 1000
+  lifecycle:
+    timeout-per-shutdown-phase: 5
+  kafka:
+    bootstrap-servers: localhost:9092
+    properties:
+      linger.ms: 10
+      max.in.flight.requests.per.connection: 5
+    producer:
+      retries: 1
+      acks: all
+      batch-size: 1048576
+      buffer-memory: 536870912
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+    consumer:
+      group-id: checkgroup
+      enable-auto-commit: true
+      auto-commit-interval: 100
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      fetch-min-size: 1
+      max-poll-records: 20000
+      fetch-max-bytes: 536870912  # 512M
+

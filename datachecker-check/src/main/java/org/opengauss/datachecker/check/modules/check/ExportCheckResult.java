@@ -17,8 +17,10 @@ package org.opengauss.datachecker.check.modules.check;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.JsonObjectUtil;
+import org.opengauss.datachecker.common.util.TopicUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +29,7 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 
@@ -46,14 +49,22 @@ public class ExportCheckResult {
     private static String ROOT_PATH = "";
 
     public static void export(CheckDiffResult result) {
-        String fileName = getCheckResultFileName(result.getTopic(), result.getPartitions());
+        String fileName = getCheckResultFileName(result);
         FileUtils.deleteFile(fileName);
         FileUtils.writeFile(fileName, JsonObjectUtil.format(result));
     }
 
-    private static String getCheckResultFileName(String topicName, int partitions) {
-        final String fileName = topicName.concat("_").concat(String.valueOf(partitions)).concat(".txt");
+    private static String getCheckResultFileName(CheckDiffResult result) {
+        String fileName = getBaseFileName(result);
+        if (Objects.equals(result.getCheckMode(), CheckMode.FULL)) {
+            fileName = fileName + "_" + result.getPartitions();
+        }
+        fileName = fileName + ".txt";
         return getResultPath().concat(fileName);
+    }
+
+    private static String getBaseFileName(CheckDiffResult result) {
+        return result.getProcess() + "_" + TopicUtil.getTableWithLetter(result.getTable());
     }
 
     /**

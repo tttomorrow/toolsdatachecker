@@ -28,7 +28,7 @@ public class TopicUtil {
     public static final int TOPIC_MAX_PARTITIONS = 16;
     public static final int TOPIC_MIN_PARTITIONS = 1;
 
-    private static final String TOPIC_TEMPLATE = "CHECK_%s_%s_%s";
+    private static final String TOPIC_TEMPLATE = "CHECK_%s_%s_%s_%s";
     private static final String UPPER_CODE = "1";
     private static final String LOWER_CODE = "0";
 
@@ -41,7 +41,7 @@ public class TopicUtil {
      * @return topicName
      */
     public static String buildTopicName(String process, Endpoint endpoint, String tableName) {
-        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName) + letterCaseEncoding(tableName);
+        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName, letterCaseEncoding(tableName));
     }
 
     /**
@@ -70,6 +70,10 @@ public class TopicUtil {
             }
         }
         final String encoding = builder.toString();
-        return Long.toHexString(Long.valueOf(encoding,2));
+        return Long.toHexString(Long.valueOf(encoding, 2));
+    }
+
+    public static String getTableWithLetter(String tableName) {
+        return tableName + "_" + letterCaseEncoding(tableName);
     }
 }

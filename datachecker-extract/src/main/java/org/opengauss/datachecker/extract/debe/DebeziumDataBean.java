@@ -15,6 +15,8 @@
 
 package org.opengauss.datachecker.extract.debe;
 
+import lombok.ToString;
+
 import java.util.Map;
 
 /**
@@ -24,6 +26,7 @@ import java.util.Map;
  * @date ：Created in 2022/7/1
  * @since ：11
  */
+@ToString
 public class DebeziumDataBean {
     private String table;
     private long offset;

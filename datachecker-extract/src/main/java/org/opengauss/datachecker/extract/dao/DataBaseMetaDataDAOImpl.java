@@ -17,22 +17,22 @@ package org.opengauss.datachecker.extract.dao;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.enums.DataBaseMeta;
-import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.util.EnumUtil;
+import org.opengauss.datachecker.common.util.SqlUtil;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCountCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -89,13 +89,22 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         } else if (Objects.equals(mode, CheckBlackWhiteMode.BLACK)) {
             BLACK_REF.set(tableList);
         } else {
-            WHITE_REF.getAcquire().clear();
-            BLACK_REF.getAcquire().clear();
+            if(CollectionUtils.isNotEmpty(WHITE_REF.get())){
+                WHITE_REF.get().clear();
+            }
+            if(CollectionUtils.isNotEmpty(BLACK_REF.get())){
+                BLACK_REF.get().clear();
+            }
         }
     }
 
     @Override
     public List<TableMetadata> queryTableMetadata() {
+        final List<String> tableNameList = queryAllTableNames();
+        return getAllTableCount(filterTableListByBlackWhite(tableNameList));
+    }
+
+    public List<String> queryAllTableNames() {
         final List<String> tableNameList = new ArrayList<>();
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
         JdbcTemplateOne.query(sql, ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
@@ -104,7 +113,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
                 tableNameList.add(rs.getString(1));
             }
         });
-        return getAllTableCount(filterTableListByBlackWhite(tableNameList));
+        return tableNameList;
     }
 
     private List<String> filterTableListByBlackWhite(List<String> tableNameList) {
@@ -165,24 +174,18 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         final List<TableMetadata> tableMetadata = new ArrayList<>();
         String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
         final String schema = getSchema();
-        final Boolean isConvertTableName = isOpenGauss();
         metadataLoadProcess.setTotal(tableNameList.size());
         tableNameList.forEach(tableName -> {
-            final Long rowCount = JdbcTemplateOne.queryForObject(
-                String.format(sqlQueryTableRowCount, schema, isConvertTableName ? convert(tableName) : tableName),
-                Long.class);
+            final Long rowCount = JdbcTemplateOne
+                .queryForObject(String.format(sqlQueryTableRowCount, escape(schema), escape(tableName)), Long.class);
             tableMetadata.add(new TableMetadata().setTableName(tableName).setTableRows(rowCount));
             metadataLoadProcess.setLoadCount(tableMetadata.size());
         });
         return tableMetadata;
     }
 
-    private Boolean isOpenGauss() {
-        return Objects.equals(extractProperties.getDatabaseType(), DataBaseType.OG);
-    }
-
-    private String convert(String tableName) {
-        return "\"" + tableName + "\"";
+    private String escape(String content) {
+        return SqlUtil.escape(content, extractProperties.getDatabaseType());
     }
 
     @Override
@@ -207,13 +210,11 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
 
             @Override
             public ColumnsMetaData mapRow(ResultSet rs, int rowNum) throws SQLException {
-                ColumnsMetaData columnsMetaData = new ColumnsMetaData().setTableName(rs.getString(++columnIndex))
-                                                                       .setColumnName(rs.getString(++columnIndex))
-                                                                       .setOrdinalPosition(rs.getInt(++columnIndex))
-                                                                       .setDataType(rs.getString(++columnIndex))
-                                                                       .setColumnType(rs.getString(++columnIndex))
-                                                                       .setColumnKey(EnumUtil.valueOf(ColumnKey.class,
-                                                                           rs.getString(++columnIndex)));
+                ColumnsMetaData columnsMetaData = new ColumnsMetaData();
+                columnsMetaData.setTableName(rs.getString(++columnIndex)).setColumnName(rs.getString(++columnIndex))
+                               .setOrdinalPosition(rs.getInt(++columnIndex)).setDataType(rs.getString(++columnIndex))
+                               .setColumnType(rs.getString(++columnIndex))
+                               .setColumnKey(EnumUtil.valueOf(ColumnKey.class, rs.getString(++columnIndex)));
                 columnIndex = COLUMN_INDEX_FIRST_ZERO;
                 return columnsMetaData;
             }

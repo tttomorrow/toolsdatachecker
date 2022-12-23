@@ -67,6 +67,9 @@ public class MetaDataService {
         return MetaDataCache.getAll();
     }
 
+    public List<String> queryAllTableNames() {
+        return dataBaseMetadataDAOImpl.queryAllTableNames();
+    }
     /**
      * Asynchronous loading of metadata cache information
      */

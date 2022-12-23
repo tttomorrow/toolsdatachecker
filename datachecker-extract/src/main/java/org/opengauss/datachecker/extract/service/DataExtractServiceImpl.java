@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.service;
 
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.constant.Constants;
@@ -143,6 +144,7 @@ public class DataExtractServiceImpl implements DataExtractService {
         }
         if (atomicProcessNo.compareAndSet(PROCESS_NO_RESET, processNo)) {
             Set<String> tableNames = MetaDataCache.getAllKeys();
+
             List<ExtractTask> taskList = extractTaskBuilder.builder(tableNames);
             if (CollectionUtils.isEmpty(taskList)) {
                 return taskList;
@@ -301,8 +303,7 @@ public class DataExtractServiceImpl implements DataExtractService {
 
     @Override
     public List<String> buildRepairStatementUpdateDml(String schema, String tableName, Set<String> diffSet) {
-        log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.REPLACE.getDescription(),
-            diffSet.size());
+        repairStatementLog(schema, tableName, DML.REPLACE, diffSet.size());
         if (CollectionUtils.isEmpty(diffSet)) {
             return new ArrayList<>();
         }
@@ -312,8 +313,7 @@ public class DataExtractServiceImpl implements DataExtractService {
 
     @Override
     public List<String> buildRepairStatementInsertDml(String schema, String tableName, Set<String> diffSet) {
-        log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.INSERT.getDescription(),
-            diffSet.size());
+        repairStatementLog(schema, tableName, DML.INSERT, diffSet.size());
         if (CollectionUtils.isEmpty(diffSet)) {
             return new ArrayList<>();
         }
@@ -323,8 +323,7 @@ public class DataExtractServiceImpl implements DataExtractService {
 
     @Override
     public List<String> buildRepairStatementDeleteDml(String schema, String tableName, Set<String> diffSet) {
-        log.info("check table[{}] repair [{}] diff-count={} build repair dml", schema, DML.DELETE.getDescription(),
-            diffSet.size());
+        repairStatementLog(schema, tableName, DML.DELETE, diffSet.size());
         final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         if (Objects.nonNull(metadata)) {
             final List<ColumnsMetaData> primaryMetas = metadata.getPrimaryMetas();
@@ -332,6 +331,10 @@ public class DataExtractServiceImpl implements DataExtractService {
         } else {
             throw new BuildRepairStatementException(tableName);
         }
+    }
+
+    private void repairStatementLog(String schema, String tableName, DML dml, int count) {
+        log.info("check table[{}.{}] repair [{}] diff-count={} build repair dml", schema, tableName, dml, count);
     }
 
     /**
@@ -381,13 +384,15 @@ public class DataExtractServiceImpl implements DataExtractService {
             List<String> tempCompositeKeys = new ArrayList<>();
             compositeKeys.forEach(key -> {
                 tempCompositeKeys.add(key);
-                if (cnt.incrementAndGet() == MAX_QUERY_PAGE_SIZE) {
+                if (cnt.incrementAndGet() % MAX_QUERY_PAGE_SIZE == 0) {
                     result
                         .addAll(dataManipulationService.queryColumnHashValues(tableName, tempCompositeKeys, metadata));
                     tempCompositeKeys.clear();
                 }
             });
-            result.addAll(dataManipulationService.queryColumnHashValues(tableName, tempCompositeKeys, metadata));
+            if (CollectionUtils.isNotEmpty(tempCompositeKeys)) {
+                result.addAll(dataManipulationService.queryColumnHashValues(tableName, tempCompositeKeys, metadata));
+            }
             return result;
         } else {
             return dataManipulationService.queryColumnHashValues(tableName, compositeKeys, metadata);

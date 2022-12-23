@@ -413,13 +413,13 @@ public class DataCheckRunnable implements Runnable {
     }
 
     private void checkResult() {
+        final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder(feignClient);
         CheckDiffResult result =
-            AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(sourceTopic).schema(sinkSchema)
-                                          .partitions(partitions).isTableStructureEquals(true)
-                                          .isExistTableMiss(false, null).rowCount(rowCount).errorRate(20)
-                                          .checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
-                                          .keyInsertSet(difference.getOnlyOnLeft().keySet())
-                                          .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
+            builder.process(checkParam.getProcess()).table(tableName).topic(sourceTopic).schema(sinkSchema)
+                   .partitions(partitions).isTableStructureEquals(true).isExistTableMiss(false, null).rowCount(rowCount)
+                   .errorRate(20).checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
+                   .keyInsertSet(difference.getOnlyOnLeft().keySet()).keyDeleteSet(difference.getOnlyOnRight().keySet())
+                   .build();
         ExportCheckResult.export(result);
         log.info("Complete the output of data verification results of table [{}-{}]", tableName, partitions);
     }

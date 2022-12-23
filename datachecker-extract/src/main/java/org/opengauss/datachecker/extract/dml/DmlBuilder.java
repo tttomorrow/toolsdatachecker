@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.dml;
 
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.util.SqlUtil;
 
 import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
@@ -26,6 +27,8 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
+ * DmlBuilder
+ *
  * @author ：wangchao
  * @date ：Created in 2022/6/13
  * @since ：11
@@ -69,6 +72,7 @@ public class DmlBuilder {
     protected static final List<String> DIGITAL =
         List.of("int", "integer", "tinyint", "smallint", "mediumint", "bit", "bigint", "double", "float", "decimal",
             "year");
+
     /**
      * columns
      */
@@ -99,13 +103,25 @@ public class DmlBuilder {
      */
     protected DataBaseType dataBaseType;
 
+    public DmlBuilder() {
+    }
+
+    public DmlBuilder(DataBaseType databaseType) {
+        this.dataBaseType = databaseType;
+    }
+
     /**
      * Build SQL column statement fragment
      *
      * @param columnsMetas Field Metadata
      */
     protected void buildColumns(@NotNull List<ColumnsMetaData> columnsMetas) {
-        columns = columnsMetas.stream().map(ColumnsMetaData::getColumnName).collect(Collectors.joining(DELIMITER));
+        columns = columnsMetas.stream().map(ColumnsMetaData::getColumnName).map(column -> escape(column, dataBaseType))
+                              .collect(Collectors.joining(DELIMITER));
+    }
+
+    private String escape(String content, DataBaseType dataBase_type) {
+        return SqlUtil.escape(content, dataBase_type);
     }
 
     protected void buildDataBaseType(@NotNull DataBaseType dataBaseType) {
@@ -118,7 +134,7 @@ public class DmlBuilder {
      * @param schema schema
      */
     protected void buildSchema(@NotNull String schema) {
-        this.schema = schema;
+        this.schema = escape(schema, dataBaseType);
     }
 
     /**
@@ -127,7 +143,7 @@ public class DmlBuilder {
      * @param tableName tableName
      */
     protected void buildTableName(@NotNull String tableName) {
-        this.tableName = isConvertTable() ? convert(tableName) : tableName;
+        this.tableName = escape(tableName, dataBaseType);
     }
 
     /**
@@ -137,16 +153,8 @@ public class DmlBuilder {
      * @return sql value fragment
      */
     protected String buildConditionCompositePrimary(List<ColumnsMetaData> primaryMetas) {
-        return primaryMetas.stream().map(ColumnsMetaData::getColumnName)
+        return primaryMetas.stream().map(ColumnsMetaData::getColumnName).map(name -> escape(name, dataBaseType))
                            .collect(Collectors.joining(DELIMITER, LEFT_BRACKET, RIGHT_BRACKET));
-    }
-
-    private boolean isConvertTable() {
-        return Objects.equals(dataBaseType, DataBaseType.OG);
-    }
-
-    private String convert(String tableName) {
-        return "\"" + tableName + "\"";
     }
 
     /**
