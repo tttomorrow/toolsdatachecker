@@ -15,86 +15,77 @@
 
 package org.opengauss.datachecker.extract.cache;
 
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
+import org.opengauss.datachecker.extract.util.TestJsonUtil;
 
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.opengauss.datachecker.extract.util.TestJsonUtil.KEY_META_DATA_13_TABLE;
 
-/**
- * MetaDataCacheTest
- *
- * @author ：wangchao
- * @date ：Created in 2022/5/14
- * @since ：11
- */
-@Slf4j
-@TestInstance(Lifecycle.PER_CLASS)
-@ActiveProfiles("source")
-@SpringBootTest
-public class MetaDataCacheTest {
-    @Autowired
-    private JdbcTemplate jdbcTemplateOne;
-
+class MetaDataCacheTest {
     @BeforeAll
-    private void createTable() {
-        createEnv_metacache();
+    static void setUp() {
+        HashMap<String, TableMetadata> result = TestJsonUtil.parseHashMap(KEY_META_DATA_13_TABLE, TableMetadata.class);
+        MetaDataCache.putMap(result);
     }
 
-    @AfterAll
-    private void cleanEnv() {
-        jdbcTemplateOne.execute(CreateTableSql.DROP);
-    }
-
-    private void createEnv_metacache() {
-        jdbcTemplateOne.execute(CreateTableSql.CREATE);
-    }
-
-    @SuppressWarnings("all")
-    interface CreateTableSql {
-        String DROP = "DROP table if EXISTS  t_data_checker_meta_cache_01; ";
-        String CREATE =
-            "CREATE TABLE `t_data_checker_meta_cache_01` (`id` INT(10) NOT NULL,PRIMARY KEY (`id`) USING BTREE)ENGINE=InnoDB;";
-
-    }
-
-    /**
-     * getTest
-     */
-    @DisplayName("add table t_data_checker_meta_cache_01")
     @Test
-    public void test_add_table_t_data_checker_meta_cache_01() {
-        final TableMetadata tableMetadata = MetaDataCache.get("t_data_checker_meta_cache_01");
-        assertEquals("t_data_checker_meta_cache_01", tableMetadata.getTableName());
+    void testGetAll() {
+        // Setup
+        final HashMap<String, TableMetadata> expectedResult =
+            TestJsonUtil.parseHashMap(TestJsonUtil.KEY_META_DATA_13_TABLE, TableMetadata.class);
+        // Run the test
+        final Map<String, TableMetadata> result = MetaDataCache.getAll();
+
+        // Verify the results
+        assertThat(result).isEqualTo(expectedResult);
     }
 
-    @DisplayName("remove table t_data_checker_meta_cache_01")
     @Test
-    public void test_remove_table_t_data_checker_meta_cache_01() {
-        String tableName = "t_data_checker_meta_cache_01";
-        TableMetadata tableMetadata = MetaDataCache.get(tableName);
-        assertEquals(tableName, tableMetadata.getTableName());
-        MetaDataCache.remove(tableName);
-        final Set<String> allKeys = MetaDataCache.getAllKeys();
-        assertEquals(false, allKeys.contains(tableName));
+    void testPutMap() {
+        // Setup
+        final HashMap<String, TableMetadata> expectedResult =
+            TestJsonUtil.parseHashMap(TestJsonUtil.KEY_META_DATA_13_TABLE, TableMetadata.class);
+        MetaDataCache.putMap(expectedResult);
     }
 
-    /**
-     * getAllKeysTest
-     */
     @Test
-    public void getAllKeysTest() {
-        log.info("" + MetaDataCache.getAllKeys());
+    void testGet() {
+        String table = "t_data_checker_0033_02";
+        final HashMap<String, TableMetadata> map =
+            TestJsonUtil.parseHashMap(TestJsonUtil.KEY_META_DATA_13_TABLE, TableMetadata.class);
+        // Run the test
+        final TableMetadata result = MetaDataCache.get(table);
+        // Verify the results
+        assertThat(result).isEqualTo(map.get(table));
     }
+
+    @Test
+    void testUpdateRowCount() {
+        // Setup
+        String table = "t_data_checker_0033_02";
+        // Run the test
+        MetaDataCache.updateRowCount(table, 10L);
+        final TableMetadata metadata = MetaDataCache.get(table);
+        // Verify the results
+        assertThat(metadata.getTableRows()).isEqualTo(10);
+    }
+
+    @Test
+    void testContainsKey() {
+        String table = "t_data_checker_0033_02";
+        assertThat(MetaDataCache.containsKey(table)).isTrue();
+    }
+
+    @Test
+    void testGetAllKeys() {
+        final HashMap<String, TableMetadata> map =
+            TestJsonUtil.parseHashMap(TestJsonUtil.KEY_META_DATA_13_TABLE, TableMetadata.class);
+        assertThat(MetaDataCache.getAllKeys()).isEqualTo(map.keySet());
+    }
+
 }

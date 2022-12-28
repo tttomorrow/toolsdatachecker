@@ -60,13 +60,6 @@ public interface MetaDataDAO {
     List<TableMetadata> queryTableMetadata();
 
     /**
-     * Quick query table metadata - directly from information_ Schema acquisition
-     *
-     * @return table metadata information
-     */
-    List<TableMetadata> queryTableMetadataFast();
-
-    /**
      * Query the metadata information of the corresponding column of the table
      *
      * @param tableName tableName

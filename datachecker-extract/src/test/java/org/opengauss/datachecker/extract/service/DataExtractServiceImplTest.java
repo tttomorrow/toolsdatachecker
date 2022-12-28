@@ -67,7 +67,6 @@ class DataExtractServiceImplTest {
 
     @BeforeAll
     static void setUp() {
-        MetaDataCache.initCache();
         HashMap<String, TableMetadata> result = TestJsonUtil.parseHashMap(KEY_META_DATA_13_TABLE, TableMetadata.class);
         MetaDataCache.putMap(result);
     }

@@ -15,14 +15,8 @@
 
 package org.opengauss.datachecker.extract.cache;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.RemovalListener;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
-import org.opengauss.datachecker.extract.service.MetaDataService;
-import org.opengauss.datachecker.extract.util.SpringUtil;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * MetaDataCache
@@ -41,33 +36,7 @@ import java.util.Set;
 @Slf4j
 @Component
 public class MetaDataCache {
-    private static LoadingCache<String, TableMetadata> CACHE = null;
-
-    /**
-     * Initializing the Metadata Cache Method
-     */
-    public static void initCache() {
-        if (CACHE == null) {
-            CACHE = CacheBuilder.newBuilder()
-                                //Set the concurrent read/write level based on the number of CPU cores;
-                                .concurrencyLevel(1)
-                                // Size of the buffer pool
-                                .maximumSize(Integer.MAX_VALUE)
-                                // Removing a Listener
-                                .removalListener((RemovalListener<String, TableMetadata>) remove -> log
-                                    .debug("cache: [{}], removed", remove.getKey())).recordStats().build(
-                    // Method of handing a Key that does not exist
-                    new CacheLoader<>() {
-                        @Override
-                        public TableMetadata load(String tableName) {
-                            log.info("cache: [{}], does not exist", tableName);
-                            MetaDataService metaDataService = SpringUtil.getBean(MetaDataService.class);
-                            return metaDataService.queryMetaDataOfSchema(tableName);
-                        }
-                    });
-        }
-        log.info("initialize table meta data cache");
-    }
+    private static Map<String, TableMetadata> TABLE_CACHE = new ConcurrentHashMap<>();
 
     /**
      * Save to the Cache k v
@@ -77,7 +46,7 @@ public class MetaDataCache {
      */
     public static void put(@NonNull String key, TableMetadata value) {
         try {
-            CACHE.put(key, value);
+            TABLE_CACHE.put(key, value);
         } catch (Exception exception) {
             log.error("put in cache exception ", exception);
         }
@@ -85,10 +54,7 @@ public class MetaDataCache {
 
     public static Map<String, TableMetadata> getAll() {
         try {
-            if (CACHE == null) {
-                initCache();
-            }
-            return CACHE.asMap();
+            return TABLE_CACHE;
         } catch (Exception exception) {
             log.error("put in cache exception ", exception);
         }
@@ -96,7 +62,7 @@ public class MetaDataCache {
     }
 
     public static boolean isEmpty() {
-        return CACHE == null || CACHE.size() == 0;
+        return TABLE_CACHE == null || TABLE_CACHE.size() == 0;
     }
 
     /**
@@ -106,7 +72,7 @@ public class MetaDataCache {
      */
     public static void putMap(@NonNull Map<String, TableMetadata> map) {
         try {
-            CACHE.putAll(map);
+            TABLE_CACHE.putAll(map);
         } catch (Exception exception) {
             log.error("batch storage cache exception", exception);
         }
@@ -119,10 +85,20 @@ public class MetaDataCache {
      */
     public static TableMetadata get(String key) {
         try {
-            return CACHE.get(key);
+            return TABLE_CACHE.get(key);
         } catch (Exception exception) {
             log.error("get cache exception", exception);
             return null;
+        }
+    }
+
+    public static void updateRowCount(String key, long rowCount) {
+        try {
+            if (TABLE_CACHE.containsKey(key)) {
+                TABLE_CACHE.get(key).setTableRows(rowCount);
+            }
+        } catch (Exception exception) {
+            log.error("update cache exception", exception);
         }
     }
 
@@ -134,7 +110,7 @@ public class MetaDataCache {
      */
     public static boolean containsKey(String key) {
         try {
-            return CACHE.asMap().containsKey(key);
+            return TABLE_CACHE.containsKey(key);
         } catch (Exception exception) {
             log.error("get cache exception", exception);
             return false;
@@ -148,7 +124,7 @@ public class MetaDataCache {
      */
     public static Set<String> getAllKeys() {
         try {
-            return getAll().keySet();
+            return TABLE_CACHE.keySet();
         } catch (Exception exception) {
             log.error("get cache exception", exception);
             return null;
@@ -159,9 +135,9 @@ public class MetaDataCache {
      * Clear all cache information
      */
     public static void removeAll() {
-        if (Objects.nonNull(CACHE) && CACHE.size() > 0) {
+        if (Objects.nonNull(TABLE_CACHE) && TABLE_CACHE.size() > 0) {
             log.info("clear cache information");
-            CACHE.cleanUp();
+            TABLE_CACHE.clear();
         }
     }
 
@@ -171,9 +147,9 @@ public class MetaDataCache {
      * @param key key values of the cache to be cleared
      */
     public static void remove(String key) {
-        if (Objects.nonNull(CACHE) && CACHE.size() > 0) {
+        if (Objects.nonNull(TABLE_CACHE) && TABLE_CACHE.size() > 0) {
             log.info("clear cache information");
-            CACHE.asMap().remove(key);
+            TABLE_CACHE.remove(key);
         }
     }
 }
