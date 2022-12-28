@@ -27,21 +27,21 @@ class TopicUtilTest {
     @Test
     void testBuildTopicName() {
         assertThat(TopicUtil.buildTopicName("process", Endpoint.SOURCE, "tableName"))
-            .isEqualTo("CHECK_process_1_tableName8");
+            .isEqualTo("CHECK_process_1_tableName_8");
     }
 
     @DisplayName("build topic table lower")
     @Test
     void testBuildTopicName2() {
         assertThat(TopicUtil.buildTopicName("process", Endpoint.SOURCE, "table_name"))
-            .isEqualTo("CHECK_process_1_table_name0");
+            .isEqualTo("CHECK_process_1_table_name_0");
     }
 
     @DisplayName("build topic table upper")
     @Test
     void testBuildTopicName3() {
         assertThat(TopicUtil.buildTopicName("process", Endpoint.SOURCE, "TABLE_NAME"))
-            .isEqualTo("CHECK_process_1_TABLE_NAME1ff");
+            .isEqualTo("CHECK_process_1_TABLE_NAME_1ff");
     }
 
     @DisplayName("calc partitions")

@@ -17,8 +17,8 @@ package org.opengauss.datachecker.check.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.opengauss.datachecker.check.BaseTest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
 /**
  * DataCheckConfigTest
@@ -28,8 +28,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @since ：11
  */
 @Slf4j
-@SpringBootTest
-class DataCheckConfigTest {
+class DataCheckConfigTest extends BaseTest {
     @Autowired
     private DataCheckConfig dataCheckConfig;
 

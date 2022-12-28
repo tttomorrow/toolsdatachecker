@@ -144,7 +144,7 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
      */
     private SelectDmlBuilder buildSelectSql(TableMetadata tableMetadata, String schema) {
         // Compound primary key table data query
-        SelectDmlBuilder dmlBuilder = new SelectDmlBuilder();
+        SelectDmlBuilder dmlBuilder = new SelectDmlBuilder(databaseType);
         final List<ColumnsMetaData> primaryMetas = tableMetadata.getPrimaryMetas();
         if (isSinglePrimaryKey) {
             final ColumnsMetaData primaryData = primaryMetas.get(0);

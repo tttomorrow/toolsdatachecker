@@ -187,44 +187,40 @@ public class IncrementCheckThread extends Thread {
 
     private void compareCommonMerkleTree() {
         // No Merkel tree verification algorithm scenario
-        final int sourceBucketCount = sourceBucketList.size();
-        final int sinkBucketCount = sinkBucketList.size();
-        if (checkNotMerkleCompare(sourceBucketCount, sinkBucketCount)) {
-            // If the constraint of Merkel tree is not satisfied,
-            // the sourceSize is equal to 0, that is, all buckets are empty
-            if (sourceBucketCount == sinkBucketCount && sinkBucketCount == 0) {
+        if (!shouldCheckMerkleTree(sourceBucketList.size(), sinkBucketList.size())) {
+            compareNoMerkleTree(sourceBucketList.size(), sinkBucketList.size());
+        } else {
+            // Construct Merkel tree constraint: bucketList cannot be empty, and size > =2
+            MerkleTree sourceTree = new MerkleTree(sourceBucketList);
+            MerkleTree sinkTree = new MerkleTree(sinkBucketList);
+
+            // Recursively compare two Merkel trees and return the difference record.
+            compareMerkleTree(sourceTree, sinkTree);
+        }
+    }
+
+    private void compareNoMerkleTree(int sourceBucketCount, int sinkBucketCount) {
+        // Comparison without Merkel tree constraint
+        if (sourceBucketCount == sinkBucketCount) {
+            // sourceSize == 0, that is, all buckets are empty
+            if (sourceBucketCount == 0) {
                 // Table is empty, verification succeeded!
-                log.info("table[{}] is an empty table,this check successful!", tableName);
+                log.info("table[{}.{}] is an empty table,this check successful!", sinkSchema, tableName);
             } else {
                 // sourceSize is less than thresholdMinBucketSize, that is, there is only one bucket. Compare
                 DifferencePair<Map, Map, Map> subDifference =
-                    compareBucket(getBucket(sourceBucketList), getBucket(sinkBucketList));
+                    compareBucket(sourceBucketList.get(0), sinkBucketList.get(0));
                 difference.getDiffering().putAll(subDifference.getDiffering());
                 difference.getOnlyOnLeft().putAll(subDifference.getOnlyOnLeft());
                 difference.getOnlyOnRight().putAll(subDifference.getOnlyOnRight());
             }
-            return;
-        }
-
-        // Construct Merkel tree constraint: bucketList cannot be empty, and size > =2
-        MerkleTree sourceTree = new MerkleTree(sourceBucketList);
-        MerkleTree sinkTree = new MerkleTree(sinkBucketList);
-
-        // Recursively compare two Merkel trees and return the difference record.
-        compareMerkleTree(sourceTree, sinkTree);
-    }
-
-    private Bucket getBucket(List<Bucket> bucketList) {
-        if (CollectionUtils.isNotEmpty(bucketList)) {
-            return bucketList.get(0);
-        } else {
-            return null;
         }
     }
 
     private void lastDataClean() {
         sourceBucketList.clear();
         sinkBucketList.clear();
+        bucketNumberDiffMap.clear();
         difference.getOnlyOnRight().clear();
         difference.getOnlyOnLeft().clear();
         difference.getDiffering().clear();
@@ -291,9 +287,8 @@ public class IncrementCheckThread extends Thread {
      * @param sinkBucketCount   sink bucket count
      * @return Whether it meets the Merkel verification scenario
      */
-    private boolean checkNotMerkleCompare(int sourceBucketCount, int sinkBucketCount) {
-        // Meet the constraints of constructing Merkel tree
-        return sourceBucketCount < THRESHOLD_MIN_BUCKET_SIZE || sinkBucketCount < THRESHOLD_MIN_BUCKET_SIZE;
+    private boolean shouldCheckMerkleTree(int sourceBucketCount, int sinkBucketCount) {
+        return sourceBucketCount >= THRESHOLD_MIN_BUCKET_SIZE && sinkBucketCount >= THRESHOLD_MIN_BUCKET_SIZE;
     }
 
     /**
@@ -464,22 +459,17 @@ public class IncrementCheckThread extends Thread {
     }
 
     private void checkResult() {
+        final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder(feignClient);
         CheckDiffResult result =
-            AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(buildResultFileName())
-                                          .beginOffset(dataLog.getBeginOffset()).schema(sinkSchema).partitions(0)
-                                          .rowCount(rowCount).isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
-                                          .checkMode(CheckMode.INCREMENT).isTableStructureEquals(isTableStructureEquals)
-                                          .keyUpdateSet(difference.getDiffering().keySet())
-                                          .keyInsertSet(difference.getOnlyOnLeft().keySet())
-                                          .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
+            builder.table(tableName).process(process).beginOffset(dataLog.getBeginOffset()).schema(sinkSchema)
+                   .partitions(0).rowCount(rowCount).isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
+                   .checkMode(CheckMode.INCREMENT).isTableStructureEquals(isTableStructureEquals)
+                   .keyUpdateSet(difference.getDiffering().keySet()).keyInsertSet(difference.getOnlyOnLeft().keySet())
+                   .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
         ExportCheckResult.export(result);
     }
 
     private String buildThreadName() {
         return THREAD_NAME_PRIFEX + tableName;
-    }
-
-    private String buildResultFileName() {
-        return process + "_" + tableName;
     }
 }

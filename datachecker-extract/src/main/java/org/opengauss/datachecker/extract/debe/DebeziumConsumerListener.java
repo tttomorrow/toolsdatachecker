@@ -43,10 +43,11 @@ public class DebeziumConsumerListener {
                 return;
             }
             final long offset = record.offset();
-            debeziumDataHandler.handler(offset,record.value(), DATA_LOG_QUEUE);
+            debeziumDataHandler.handler(offset, record.value(), DATA_LOG_QUEUE);
         } catch (DebeziumConfigException | JSONException | InterruptedException ex) {
             // Abnormal message structure, ignoring the current message
-            log.error("DebeziumConsumerListener Abnormal message , ignoring this message,{}", record.value(), ex);
+            log.error("DebeziumConsumerListener Abnormal message : [{}] {} ignoring this message : {}", ex.getMessage(),
+                System.getProperty("line.separator"), record.value());
         }
     }
 

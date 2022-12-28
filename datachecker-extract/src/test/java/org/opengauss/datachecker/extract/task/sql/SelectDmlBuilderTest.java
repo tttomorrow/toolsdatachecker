@@ -33,7 +33,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
  * @date ：Created in 2022/9/21
  * @since ：11
  */
-@ExtendWith(MockitoExtension.class)
 public class SelectDmlBuilderTest extends MockTableMeta {
     private TableMetadata mockTableMetadata;
     private SelectDmlBuilder selectDmlBuilder;
@@ -41,7 +40,7 @@ public class SelectDmlBuilderTest extends MockTableMeta {
     @BeforeEach
     void setUp() {
         mockTableMetadata = mockSingleTablePrimaryMetadata();
-        selectDmlBuilder = new SelectDmlBuilder();
+        selectDmlBuilder = new SelectDmlBuilder(DataBaseType.MS);
     }
 
     @DisplayName("openGauss no divisions single primary select SQL build")
@@ -53,7 +52,7 @@ public class SelectDmlBuilderTest extends MockTableMeta {
                                         .tableName(mockTableMetadata.getTableName()).build();
         // Verify the results
         assertThat(result).isEqualTo(
-            "select id,c_date_time,c_date_time_3,c_timestamp,c_date,c_time,c_year from test.\"t_data_checker_time_0018_01\" where id in ( :primaryKeys );");
+            "select `id`,`c_date_time`,`c_date_time_3`,`c_timestamp`,`c_date`,`c_time`,`c_year` from `test`.\"t_data_checker_time_0018_01\" where id in ( :primaryKeys );");
     }
 
 }

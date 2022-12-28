@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.common.web;
 
+import com.alibaba.fastjson.annotation.JSONType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
@@ -31,6 +32,7 @@ import org.opengauss.datachecker.common.entry.enums.ResultEnum;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JSONType(orders = {"code", "message", "data"})
 public class Result<T> {
 
     @Schema(name = "code", description = "Message response code")

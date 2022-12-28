@@ -15,22 +15,24 @@
 
 package org.opengauss.datachecker.check.controller;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.opengauss.datachecker.check.modules.task.TaskManagerService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verify;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * TaskStatusControllerTest
@@ -39,7 +41,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * @date ：Created in 2022/7/20
  * @since ：11
  */
-@ExtendWith(SpringExtension.class)
 @WebMvcTest(TaskStatusController.class)
 class TaskStatusControllerTest {
     @Autowired
@@ -48,17 +49,35 @@ class TaskStatusControllerTest {
     @MockBean
     private TaskManagerService taskManagerService;
 
+    @DisplayName("refresh table extract status source ")
     @Test
-    void testRefushTaskExtractStatus() throws Exception {
-        // Setup
+    void testRefreshTableExtractStatus() throws Exception {
+        this.taskManagerService.refreshTableExtractStatus("tableName", Endpoint.SOURCE, 1);
         // Run the test
-        final MockHttpServletResponse response = mockMvc.perform(
+        mockMvc.perform(
             post("/table/extract/status").param("tableName", "tableName").param("endpoint", Endpoint.SOURCE.name())
-                                         .accept(MediaType.APPLICATION_JSON)).andReturn().getResponse();
+                                         .param("status", "1").accept(MediaType.APPLICATION_JSON))
+               .andExpect(status().isOk());
+    }
 
-        // Verify the results
-        assertThat(response.getStatus()).isEqualTo(HttpStatus.OK.value());
-        assertThat(response.getContentAsString()).isEqualTo("");
-        verify(taskManagerService).refreshTableExtractStatus("tableName", Endpoint.SOURCE, 1);
+    @DisplayName("refresh table extract status sink ")
+    @Test
+    void testRefreshTableExtractStatus_Sink() throws Exception {
+
+        // Run the test
+        mockMvc.perform(
+            post("/table/extract/status").param("tableName", "tableName").param("endpoint", Endpoint.SINK.name())
+                                         .param("status", "1").accept(MediaType.APPLICATION_JSON))
+               .andExpect(status().isOk());
+    }
+
+    @DisplayName("query table extract status")
+    @Test
+    void testQueryTableCheckStatus() throws Exception {
+        final Map<String, Integer> tableStatus = new HashMap<>();
+        tableStatus.put("table1", 7);
+        given(this.taskManagerService.queryTableCheckStatus()).willReturn(tableStatus);
+        mockMvc.perform(get("/query/all/table/status").accept(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+               .andExpect(content().json("{table1=7}"));
     }
 }

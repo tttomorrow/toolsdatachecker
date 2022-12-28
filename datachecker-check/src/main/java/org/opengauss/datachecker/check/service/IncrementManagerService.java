@@ -28,8 +28,12 @@ import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.IdGenerator;
+import org.opengauss.datachecker.common.util.PhaserUtil;
+import org.opengauss.datachecker.common.util.ThreadUtil;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,6 +42,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -54,8 +60,11 @@ import java.util.stream.Collectors;
 public class IncrementManagerService {
     private static final int MAX_CHECK_DIFF_SIZE = 5000;
     private static final AtomicReference<String> PROCESS_SIGNATURE = new AtomicReference<>();
+    private static final BlockingQueue<List<SourceDataLog>> INC_LOG_QUEUE = new SynchronousQueue<>();
     @Resource
     private DataCheckService dataCheckService;
+    @Resource
+    private ThreadPoolTaskExecutor asyncCheckExecutor;
 
     /**
      * Incremental verification log notification
@@ -66,11 +75,39 @@ public class IncrementManagerService {
         if (CollectionUtils.isEmpty(dataLogList)) {
             return;
         }
-        PROCESS_SIGNATURE.set(IdGenerator.nextId36());
-        // Collect the last verification results and build an incremental verification log
-        mergeDataLogList(dataLogList, collectLastResults());
-        ExportCheckResult.backCheckResultDirectory();
-        incrementDataLogsChecking(dataLogList);
+        try {
+            log.info("put inc_log to queue, inc_log size={}", dataLogList.size());
+            INC_LOG_QUEUE.put(dataLogList);
+            log.info("source log tables : {}", getDataLogTables(dataLogList));
+        } catch (InterruptedException ex) {
+            log.error("notify inc data logs interrupted  ");
+        }
+    }
+
+    private List<String> getDataLogTables(List<SourceDataLog> dataLogList) {
+        return dataLogList.stream().map(SourceDataLog::getTableName).collect(Collectors.toList());
+    }
+
+//    @PostConstruct
+    public void startIncrementDataLogs() {
+        ThreadUtil.newSingleThreadExecutor().submit(this::checkingIncrementDataLogs);
+    }
+
+    public void checkingIncrementDataLogs() {
+        while (true) {
+            try {
+                final List<SourceDataLog> dataLogList = INC_LOG_QUEUE.take();
+                if (CollectionUtils.isNotEmpty(dataLogList)) {
+                    PROCESS_SIGNATURE.set(IdGenerator.nextId36());
+                    // Collect the last verification results and build an incremental verification log
+                    mergeDataLogList(dataLogList, collectLastResults());
+                    ExportCheckResult.backCheckResultDirectory();
+                    incrementDataLogsChecking(dataLogList);
+                }
+            } catch (InterruptedException ex) {
+                log.error("take inc log queue interrupted  ");
+            }
+        }
     }
 
     private void mergeDataLogList(List<SourceDataLog> dataLogList, Map<String, SourceDataLog> collectLastResults) {
@@ -100,12 +137,16 @@ public class IncrementManagerService {
 
     private void incrementDataLogsChecking(List<SourceDataLog> dataLogList) {
         String processNo = PROCESS_SIGNATURE.get();
-        log.debug("incrementDataLogsChecking datalog size= {}", dataLogList.size());
+        List<Runnable> taskList = new ArrayList<>();
         dataLogList.forEach(dataLog -> {
             log.debug("increment process=[{}] , tableName=[{}], begin offset =[{}], diffSize=[{}]", processNo,
                 dataLog.getTableName(), dataLog.getBeginOffset(), dataLog.getCompositePrimaryValues().size());
             // Verify the data according to the table name and Kafka partition
-            dataCheckService.incrementCheckTableData(dataLog.getTableName(), processNo, dataLog);
+            taskList.add(dataCheckService.incrementCheckTableData(dataLog.getTableName(), processNo, dataLog));
+        });
+        // Block the current thread until all thread pool tasks are executed.
+        PhaserUtil.submit(asyncCheckExecutor, taskList, () -> {
+            log.info("increment datalog {} is completed.", processNo);
         });
     }
 

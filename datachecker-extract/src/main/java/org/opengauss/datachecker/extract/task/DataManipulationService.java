@@ -88,19 +88,20 @@ public class DataManipulationService {
 
         Assert.isTrue(!CollectionUtils.isEmpty(primaryMetas),
             "The metadata information of the table primary key is abnormal, and the construction of select SQL failed");
-
+        final SelectDmlBuilder dmlBuilder = new SelectDmlBuilder(databaseType);
         // Single primary key table data query
         if (primaryMetas.size() == 1) {
             final ColumnsMetaData primaryData = primaryMetas.get(0);
-            String querySql =
-                new SelectDmlBuilder().schema(extractProperties.getSchema()).columns(tableMetadata.getColumnsMetas())
-                                      .tableName(tableName).conditionPrimary(primaryData).build();
+            String querySql = dmlBuilder.dataBaseType(databaseType).schema(extractProperties.getSchema())
+                                        .columns(tableMetadata.getColumnsMetas()).tableName(tableName)
+                                        .conditionPrimary(primaryData).build();
             return queryColumnValuesSinglePrimaryKey(querySql, compositeKeys, tableMetadata);
         } else {
             // Compound primary key table data query
-            final SelectDmlBuilder dmlBuilder = new SelectDmlBuilder();
-            String querySql = dmlBuilder.schema(extractProperties.getSchema()).columns(tableMetadata.getColumnsMetas())
-                                        .tableName(tableName).conditionCompositePrimary(primaryMetas).build();
+
+            String querySql = dmlBuilder.dataBaseType(databaseType).schema(extractProperties.getSchema())
+                                        .columns(tableMetadata.getColumnsMetas()).tableName(tableName)
+                                        .conditionCompositePrimary(primaryMetas).build();
             List<Object[]> batchParam = dmlBuilder.conditionCompositePrimaryValue(primaryMetas, compositeKeys);
             return queryColumnValuesByCompositePrimary(querySql, batchParam, tableMetadata);
         }
@@ -121,17 +122,15 @@ public class DataManipulationService {
 
         Assert.isTrue(!CollectionUtils.isEmpty(primaryMetas),
             "The metadata information of the table primary key is abnormal, and the construction of select SQL failed");
-
+        final SelectDmlBuilder dmlBuilder = new SelectDmlBuilder(databaseType);
         // Single primary key table data query
         if (primaryMetas.size() == 1) {
             final ColumnsMetaData primaryData = primaryMetas.get(0);
-            String querySql =
-                new SelectDmlBuilder().schema(extractProperties.getSchema()).columns(metadata.getColumnsMetas())
-                                      .tableName(tableName).conditionPrimary(primaryData).build();
+            String querySql = dmlBuilder.schema(extractProperties.getSchema()).columns(metadata.getColumnsMetas())
+                                        .tableName(tableName).conditionPrimary(primaryData).build();
             return queryColumnValuesSinglePrimaryKey(querySql, compositeKeys);
         } else {
             // Compound primary key table data query
-            final SelectDmlBuilder dmlBuilder = new SelectDmlBuilder();
             String querySql = dmlBuilder.schema(extractProperties.getSchema()).columns(metadata.getColumnsMetas())
                                         .tableName(tableName).conditionCompositePrimary(primaryMetas).build();
             List<Object[]> batchParam = dmlBuilder.conditionCompositePrimaryValue(primaryMetas, compositeKeys);
@@ -357,10 +356,12 @@ public class DataManipulationService {
      * @return Table structure hash
      */
     public TableMetadataHash queryTableMetadataHash(String tableName) {
-        final TableMetadataHash tableMetadataHash = new TableMetadataHash().setTableName(tableName);
-        final List<ColumnsMetaData> columnsMetaData = metaDataService.queryTableColumnMetaDataOfSchema(tableName);
-        StringBuffer buffer = new StringBuffer();
-        if (CollectionUtils.isNotEmpty(columnsMetaData)) {
+        final TableMetadataHash tableMetadataHash = new TableMetadataHash();
+        final List<String> allTableNames = metaDataService.queryAllTableNames();
+        tableMetadataHash.setTableName(tableName);
+        if (allTableNames.contains(tableName)) {
+            final List<ColumnsMetaData> columnsMetaData = metaDataService.queryTableColumnMetaDataOfSchema(tableName);
+            StringBuffer buffer = new StringBuffer();
             columnsMetaData.sort(Comparator.comparing(ColumnsMetaData::getOrdinalPosition));
             columnsMetaData.forEach(column -> {
                 buffer.append(column.getColumnName()).append(column.getOrdinalPosition());

@@ -43,6 +43,7 @@ import java.util.Set;
     ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml"})
 public class CheckDiffResult {
     public static final String FAILED_RESULT = "failed";
+    private String process;
     private String schema;
     private String table;
     private String topic;
@@ -77,6 +78,7 @@ public class CheckDiffResult {
         beginOffset = builder.getBeginOffset();
         topic = Objects.isNull(builder.getTopic()) ? "" : builder.getTopic();
         schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
+        process = Objects.isNull(builder.getProcess()) ? "" : builder.getProcess();
         createTime = builder.getCreateTime();
         checkMode = builder.getCheckMode();
         if (builder.isExistTableMiss()) {
@@ -114,9 +116,7 @@ public class CheckDiffResult {
 
     private void resultTableNotExist(Endpoint onlyExistEndpoint) {
         result = FAILED_RESULT;
-        message =
-            "table [".concat(table).concat("] , ").concat(" only exist in ").concat(onlyExistEndpoint.getDescription())
-                     .concat("!");
+        message = "table [" + table + "] , " + " only exist in " + onlyExistEndpoint.getDescription() + "!";
     }
 
     private void resultAnalysis(boolean isNotLargeDiffKeys) {

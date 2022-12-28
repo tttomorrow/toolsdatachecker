@@ -29,7 +29,6 @@ import org.springframework.boot.test.context.SpringBootTest;
  * @since ：11
  */
 @Slf4j
-@SpringBootTest
 public class EnumTest {
     @Test
     void testEnum() {
