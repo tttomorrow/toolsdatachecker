@@ -29,13 +29,13 @@ spring:
         username: xxxxx
         password: xxxxxxxx
         type: com.alibaba.druid.pool.DruidDataSource
-        initialSize: 50
+        initialSize: 100
         minIdle: 5
-        maxActive: 200
+        maxActive: 500
         maxWait: 60000
         timeBetweenEvictionRunsMillis: 60000
         minEvictableIdleTimeMillis: 300000
-        testWhileIdle: true
+        testWhileIdle: false
         testOnBorrow: false
         testOnReturn: false
         poolPreparedStatements: true

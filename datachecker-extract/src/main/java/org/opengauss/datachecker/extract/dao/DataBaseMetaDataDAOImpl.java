@@ -27,6 +27,7 @@ import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.util.EnumUtil;
 import org.opengauss.datachecker.common.util.SqlUtil;
+import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCountCallbackHandler;
@@ -41,6 +42,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -89,10 +92,10 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         } else if (Objects.equals(mode, CheckBlackWhiteMode.BLACK)) {
             BLACK_REF.set(tableList);
         } else {
-            if(CollectionUtils.isNotEmpty(WHITE_REF.get())){
+            if (CollectionUtils.isNotEmpty(WHITE_REF.get())) {
                 WHITE_REF.get().clear();
             }
-            if(CollectionUtils.isNotEmpty(BLACK_REF.get())){
+            if (CollectionUtils.isNotEmpty(BLACK_REF.get())) {
                 BLACK_REF.get().clear();
             }
         }
@@ -100,8 +103,12 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
 
     @Override
     public List<TableMetadata> queryTableMetadata() {
-        final List<String> tableNameList = queryAllTableNames();
-        return getAllTableCount(filterTableListByBlackWhite(tableNameList));
+        final List<String> tableNameList = filterTableListByBlackWhite(queryAllTableNames());
+        if (CollectionUtils.isEmpty(tableNameList)) {
+            return new ArrayList<>();
+        }
+        return tableNameList.stream().map(tableName -> new TableMetadata().setTableName(tableName).setTableRows(-1))
+                            .collect(Collectors.toList());
     }
 
     public List<String> queryAllTableNames() {
@@ -154,34 +161,18 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         }
     }
 
-    @Override
-    public List<TableMetadata> queryTableMetadataFast() {
-        List<TableMetadata> tableMetadata = new ArrayList<>();
-        String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
-        JdbcTemplateOne.query(sql, ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
-            @Override
-            protected void processRow(ResultSet rs, int rowNum) throws SQLException {
-                final TableMetadata metadata =
-                    new TableMetadata().setTableName(rs.getString(1)).setTableRows(rs.getLong(2));
-                log.debug("queryTableMetadataFast {}", metadata.toString());
-                tableMetadata.add(metadata);
-            }
-        });
-        return filterBlackWhiteList(tableMetadata);
-    }
-
-    private List<TableMetadata> getAllTableCount(List<String> tableNameList) {
-        final List<TableMetadata> tableMetadata = new ArrayList<>();
+    public void getAllTableCount(Set<String> tableNameList) {
+        final AtomicInteger tableCount = new AtomicInteger(0);
         String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
         final String schema = getSchema();
         metadataLoadProcess.setTotal(tableNameList.size());
-        tableNameList.forEach(tableName -> {
+        tableNameList.parallelStream().forEach(tableName -> {
             final Long rowCount = JdbcTemplateOne
                 .queryForObject(String.format(sqlQueryTableRowCount, escape(schema), escape(tableName)), Long.class);
-            tableMetadata.add(new TableMetadata().setTableName(tableName).setTableRows(rowCount));
-            metadataLoadProcess.setLoadCount(tableMetadata.size());
+            MetaDataCache.updateRowCount(tableName, rowCount);
+            log.debug("load table [{}]row count={}  total={} ", tableName, rowCount, tableCount.incrementAndGet());
+            metadataLoadProcess.setLoadCount(tableCount.get());
         });
-        return tableMetadata;
     }
 
     private String escape(String content) {

@@ -17,22 +17,22 @@ package org.opengauss.datachecker.extract.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
+import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.dao.DataBaseMetaDataDAOImpl;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
-import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -48,14 +48,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MetaDataService {
     private final DataBaseMetaDataDAOImpl dataBaseMetadataDAOImpl;
-    private boolean isQueryTableRowCount = true;
 
     /**
      * Metadata cache load
      */
-    @PostConstruct
     public void init() {
-        MetaDataCache.initCache();
+
     }
 
     /**
@@ -70,14 +68,20 @@ public class MetaDataService {
     public List<String> queryAllTableNames() {
         return dataBaseMetadataDAOImpl.queryAllTableNames();
     }
+
     /**
      * Asynchronous loading of metadata cache information
      */
-    @Async
     public void loadMetaDataOfSchemaCache() {
         if (MetaDataCache.isEmpty()) {
             Map<String, TableMetadata> metaDataMap = queryMetaDataOfSchema();
             MetaDataCache.putMap(metaDataMap);
+            final Set<String> allTables = MetaDataCache.getAllKeys();
+            if (CollectionUtils.isNotEmpty(allTables)) {
+                ThreadUtil.newSingleThreadExecutor().submit(() -> {
+                    dataBaseMetadataDAOImpl.getAllTableCount(allTables);
+                });
+            }
             log.debug("load meta data cache");
         }
     }
@@ -163,16 +167,12 @@ public class MetaDataService {
 
     private TableMetadata queryTableMetadataByTableName(String tableName) {
         final List<TableMetadata> tableMetadatas = queryTableMetadata();
-        return tableMetadatas.stream().filter(meta -> StringUtils.equals(meta.getTableName(), tableName))
-                             .findFirst().orElse(null);
+        return tableMetadatas.stream().filter(meta -> StringUtils.equals(meta.getTableName(), tableName)).findFirst()
+                             .orElse(null);
     }
 
     private List<TableMetadata> queryTableMetadata() {
-        if (isQueryTableRowCount) {
-            return dataBaseMetadataDAOImpl.queryTableMetadata();
-        } else {
-            return dataBaseMetadataDAOImpl.queryTableMetadataFast();
-        }
+        return dataBaseMetadataDAOImpl.queryTableMetadata();
     }
 
     private List<ColumnsMetaData> getTablePrimaryColumn(List<ColumnsMetaData> columnsMetaData) {

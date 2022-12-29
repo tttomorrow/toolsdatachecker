@@ -52,9 +52,9 @@ public class ExtractDatabaseLoader extends AbstractExtractLoader {
         while (!metadataLoadProcess.isLoadSuccess()) {
             log.info("extract service load  table meta ={}", metadataLoadProcess.getLoadCount());
             ThreadUtil.sleepOneSecond();
+            metadataLoadProcess = metaDataService.getMetadataLoadProcess();
         }
         extractEnvironment.setLoadSuccess(metadataLoadProcess.isLoadSuccess());
-        System.out.println(JSONObject.toJSONString(MetaDataCache.getAll()));
         log.info("extract service load table meta ={} , success", metadataLoadProcess.getLoadCount());
     }
 }
