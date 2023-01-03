@@ -203,7 +203,7 @@ public class CheckServiceImpl implements CheckService {
     private void startCheckTableThread(String tableName) {
         final TableMetadata tableMetadata = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
         if (Objects.nonNull(tableMetadata)) {
-            int taskCount = TaskUtil.calcTaskCount(tableMetadata.getTableRows());
+            int taskCount = TaskUtil.calcAutoTaskCount(tableMetadata.getTableRows());
             final int partitions = TopicUtil.calcPartitions(taskCount);
             final int tablePartitionRowCount =
                 TaskUtil.calcTablePartitionRowCount(tableMetadata.getTableRows(), partitions);

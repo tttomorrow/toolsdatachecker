@@ -15,49 +15,49 @@
 
 package org.opengauss.datachecker.extract.task;
 
-import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
-import org.opengauss.datachecker.extract.service.MetaDataService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.opengauss.datachecker.extract.util.TestJsonUtil;
 
-import javax.annotation.PostConstruct;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
-/**
- * ExtractTaskBuilderTest
- *
- * @author ：wangchao
- * @date ：Created in 2022/5/14
- * @since ：11
- */
-@Slf4j
-@SpringBootTest
-public class ExtractTaskBuilderTest {
-    @Autowired
-    private ExtractTaskBuilder extractTaskBuilder;
-    @Autowired
-    private MetaDataService metadataService;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.opengauss.datachecker.extract.util.TestJsonUtil.KEY_META_DATA_13_TABLE;
 
-    /**
-     * init
-     */
-    public void init() {
-        MetaDataCache.putMap(metadataService.queryMetaDataOfSchema());
+class ExtractTaskBuilderTest {
+
+    private ExtractTaskBuilder extractTaskBuilderUnderTest;
+
+    @BeforeEach
+    void setUp() {
+        HashMap<String, TableMetadata> result = TestJsonUtil.parseHashMap(KEY_META_DATA_13_TABLE, TableMetadata.class);
+        MetaDataCache.putMap(result);
+        extractTaskBuilderUnderTest = new ExtractTaskBuilder();
     }
 
-    /**
-     * builderTest
-     */
+    @DisplayName("build task table empty")
     @Test
-    public void builderTest() {
-        Set<String> tables = MetaDataCache.getAllKeys();
-        List<ExtractTask> extractTasks = extractTaskBuilder.builder(tables);
-        for (ExtractTask task : extractTasks) {
-            log.info("" + task);
-        }
+    void testBuilder_empty_table_exception() {
+        assertThatThrownBy(() -> extractTaskBuilderUnderTest.builder(Set.of()))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @DisplayName("build task table")
+    @Test
+    void testBuilder() {
+        String tableName = "t_data_checker_0033_02";
+        final List<ExtractTask> taskBuilderResult = extractTaskBuilderUnderTest.builder(Set.of(tableName));
+        final ExtractTask resultTask = taskBuilderResult.get(0);
+        final ExtractTask expectTask = new ExtractTask();
+        expectTask.setTableName(tableName).setTaskName("extract_task_" + tableName).setDivisionsTotalNumber(1)
+                  .setDivisionsOrdinal(1).setOffset(10).setStart(0).setTableMetadata(MetaDataCache.get(tableName));
+        assertThat(resultTask).isEqualTo(expectTask);
     }
 }

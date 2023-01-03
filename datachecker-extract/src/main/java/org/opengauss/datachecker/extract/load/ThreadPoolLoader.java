@@ -39,7 +39,6 @@ import java.util.concurrent.ExecutorService;
 @Order(101)
 @Service
 public class ThreadPoolLoader extends AbstractExtractLoader {
-
     @Resource
     private MetaDataService metaDataService;
 
@@ -48,7 +47,6 @@ public class ThreadPoolLoader extends AbstractExtractLoader {
      */
     @Override
     public void load(ExtractEnvironment extractEnvironment) {
-
         int retryTime = 0;
         while (metaDataService.queryMetaDataOfSchemaCache().isEmpty()) {
             ThreadUtil.sleepHalfSecond();
@@ -58,10 +56,7 @@ public class ThreadPoolLoader extends AbstractExtractLoader {
             }
         }
         final Map<String, TableMetadata> metadataMap = metaDataService.queryMetaDataOfSchemaCache();
-        final Integer taskCount =
-            metadataMap.values().stream().map(TableMetadata::getTableRows).map(TaskUtil::calcTaskCount)
-                       .reduce(Integer::sum).orElse(metadataMap.size());
-        final ExecutorService threadPool = ThreadPoolFactory.newThreadPool("extract", taskCount);
+        final ExecutorService threadPool = ThreadPoolFactory.newThreadPool("extract", metadataMap.size());
         extractEnvironment.setExtractThreadPool(threadPool);
         log.info("extract service load thread pool success");
     }

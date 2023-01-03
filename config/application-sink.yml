@@ -8,6 +8,12 @@ spring:
   extract:
     schema: jack
     databaseType: OG
+    query-dop: 8 # openGauss database Parallel Query session config
+    debezium-enable: false # no need config,but not delete
+    debezium-topic:  # no need config,but not delete
+    debezium-groupId: # no need config,but not delete
+    debezium-time-period: 1 # no need config,but not delete
+    debezium-num-period: 1000 # no need config,but not delete
   kafka:
     bootstrap-servers: localhost:9092
   datasource:

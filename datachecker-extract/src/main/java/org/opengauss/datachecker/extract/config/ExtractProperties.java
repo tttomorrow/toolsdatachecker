@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.config;
 
 import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
+import org.hibernate.validator.constraints.Range;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -73,8 +74,11 @@ public class ExtractProperties {
     private String debeziumGroupId;
 
     /**
-     * Partitions parameter setting for the debezium incremental migration verification topic
+     * openGauss query dop config
      */
+    @Range(min = 1, max = 64, message = "invalid openGauss query dop config 1~64 , please check it.")
+    private int queryDop = 8;
+
     private int debeziumTopicPartitions = 1;
     /**
      * incremental migration table name list

@@ -15,27 +15,31 @@
 
 package org.opengauss.datachecker.extract.task;
 
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.Topic;
-import org.opengauss.datachecker.common.exception.ExtractException;
-import org.opengauss.datachecker.common.util.ThreadUtil;
-import org.opengauss.datachecker.extract.cache.TableExtractStatusCache;
+import org.opengauss.datachecker.common.util.TaskUtil;
 import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.kafka.KafkaProducerWapper;
 import org.opengauss.datachecker.extract.task.sql.SelectSqlBuilder;
 import org.opengauss.datachecker.extract.util.MetaDataUtil;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 
-import java.util.HashMap;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Data extraction thread class
@@ -46,9 +50,6 @@ import java.util.List;
  **/
 @Slf4j
 public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable {
-    private static final String EXTRACT_THREAD_NAME_PREFIX = "EXTRACT_";
-    private static final String EXTRACT_STATUS_THREAD_NAME_PREFIX = "EXTRACT_STATUS_";
-
     private final Topic topic;
     private final ExtractTask task;
     private final Endpoint endpoint;
@@ -77,85 +78,73 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         resultSetFactory = new ResultSetHandlerFactory();
     }
 
-    /**
-     * Core logic of data extraction task execution
-     */
-    public void executeTask() {
-        TableMetadata tableMetadata = task.getTableMetadata();
-        // Construct query SQL according to the metadata information of the table in the current task
-        final SelectSqlBuilder sqlBuilder = new SelectSqlBuilder(tableMetadata, schema);
-        String sql = sqlBuilder.dataBaseType(databaseType).isDivisions(task.isDivisions())
-                               .offset(task.getStart(), task.getOffset()).builder();
-        log.debug("selectSql {}", sql);
-        // Query data through JDBC SQL and Hash the queried data results ,
-        // then package data into RowDataHash type Objects
-        List<RowDataHash> recordHashList = queryAndConvertColumnValues(sql, tableMetadata);
-        log.info("task {} query data completed, size = {} , send topic={}, partitions={}", task.getTaskName(),
-            recordHashList.size(), topic.getTopicName(), topic.getPartitions());
-
-        // Push the data to Kafka according to the fragmentation order
-        syncSend(topic, recordHashList);
-
-        new Thread(extractStatusRunnable()).start();
-    }
-
-    private Runnable extractStatusRunnable() {
-        return () -> {
-            Thread.currentThread().setName(EXTRACT_STATUS_THREAD_NAME_PREFIX.concat(task.getTaskName()));
-            String tableName = task.getTableName();
-            // When the push is completed, the extraction status of the current task will be updated
-            TableExtractStatusCache.update(tableName, task.getDivisionsOrdinal());
-            if (!task.isDivisions()) {
-                // Notify the verification service that the task data extraction corresponding to
-                // the current table has been completed
-                checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, endpoint.getCode());
-                log.info("refresh table extract status tableName={} status completed", task.getTaskName());
-            }
-            if (task.isDivisions() && task.getDivisionsOrdinal() == task.getDivisionsTotalNumber()) {
-                // The data extraction task of the current table is completed (all subtasks are completed)
-                // Notify the verification service that the task data extraction corresponding to
-                // the current table has been completed
-                while (!TableExtractStatusCache.checkCompleted(tableName, task.getDivisionsOrdinal())) {
-                    ThreadUtil.sleep(1000);
-                    if (TableExtractStatusCache.hasErrorOccurred(tableName)) {
-                        break;
-                    }
-                }
-                if (TableExtractStatusCache.hasErrorOccurred(tableName)) {
-                    checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, -1);
-                    log.error("refresh table=[{}] extract status error,task=[{}]", tableName, task.getTaskName());
-                } else {
-                    checkingFeignClient.refreshTableExtractStatus(tableName, endpoint, endpoint.getCode());
-                    log.info("refresh table=[{}] extract status completed,task=[{}]", tableName, task.getTaskName());
-                }
-            }
-        };
-    }
-
-    private List<RowDataHash> queryAndConvertColumnValues(String sql, TableMetadata tableMetadata) {
-        List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);
-        List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
-        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(jdbcTemplate);
-        ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
-        ResultSetHandler resultSetHandler = resultSetFactory.createHandler(databaseType);
-        return jdbc.query(sql, new HashMap<>(InitialCapacity.EMPTY),
-            (rs, rowNum) -> resultSetHashHandler.handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)));
-    }
-
+    @SneakyThrows
     @Override
     public void run() {
         Thread.currentThread().setName(task.getTaskName() + "_" + Thread.currentThread().getId());
-        final String tableName = task.getTableName();
-        log.info("Data extraction task {} is starting", tableName);
-        try {
-            if (TableExtractStatusCache.hasErrorOccurred(tableName)) {
-                log.error("table:[{}] has some error,current task=[{}] is canceled", tableName, task.getTaskName());
-                return;
+        TableMetadata tableMetadata = task.getTableMetadata();
+        // Construct query SQL according to the metadata information of the table in the current task
+        List<String> querySqlList = buildQuerySqlList(tableMetadata);
+        executeTask(querySqlList, tableMetadata);
+        checkingFeignClient.refreshTableExtractStatus(task.getTableName(), endpoint, endpoint.getCode());
+    }
+
+    private List<String> buildQuerySqlList(TableMetadata tableMetadata) {
+        List<String> queryList = new ArrayList<>();
+        final int[][] taskOffset = TaskUtil.calcAutoTaskOffset(tableMetadata.getTableRows());
+        final int taskCount = taskOffset.length;
+        final SelectSqlBuilder sqlBuilder = new SelectSqlBuilder(tableMetadata, schema);
+        IntStream.range(0, taskCount).forEach(idx -> {
+            final String querySql = sqlBuilder.dataBaseType(databaseType).isDivisions(task.isDivisions())
+                                              .offset(taskOffset[idx][0], taskOffset[idx][1]).builder();
+            log.info("query table[{}] sql: [{}]", tableMetadata.getTableName(), querySql);
+            queryList.add(querySql);
+        });
+        return queryList;
+    }
+
+    private void executeTask(List<String> querySqlList, TableMetadata tableMetadata) throws InterruptedException {
+        final String tableName = tableMetadata.getTableName();
+        final LocalDateTime start = LocalDateTime.now();
+
+        ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
+        ResultSetHandler resultSetHandler = resultSetFactory.createHandler(databaseType);
+        List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);
+        List<String> primary = MetaDataUtil.getTablePrimaryColumns(tableMetadata);
+        if (querySqlList.size() > 1) {
+            try {
+                CountDownLatch countDownLatch = new CountDownLatch(querySqlList.size());
+                querySqlList.parallelStream().forEach(sql -> {
+                    try (final Stream<RowDataHash> resultStream = jdbcTemplate.queryForStream(sql,
+                        (RowMapper<RowDataHash>) (rs, rowNum) -> resultSetHashHandler
+                            .handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)))) {
+                        // Push the data to Kafka according to the fragmentation order
+                        syncSend(topic, resultStream.collect(Collectors.toList()));
+                    } catch (DataAccessException exception) {
+                        log.error("jdbc query stream [{}] error : {}", sql, exception.getMessage());
+                    } finally {
+                        countDownLatch.countDown();
+                        if (countDownLatch.getCount() > 0) {
+                            log.info("extract table [{}] remaining [{}] tasks", tableName, countDownLatch.getCount());
+                        }
+                    }
+                });
+                countDownLatch.await();
+            } catch (InterruptedException ex) {
+                log.error("jdbc query stream count latch error [{}] : {}", tableName, ex.getMessage());
             }
-            executeTask();
-        } catch (RuntimeException exp) {
-            log.error("Data extraction task {} has some exception,{}", task.getTaskName(), exp.getMessage());
-            TableExtractStatusCache.addErrorList(tableName);
+        } else if (querySqlList.size() == 1) {
+            String queryAllTables = querySqlList.get(0);
+            try (Stream<RowDataHash> resultStream = jdbcTemplate.queryForStream(queryAllTables,
+                (RowMapper<RowDataHash>) (rs, rowNum) -> resultSetHashHandler
+                    .handler(primary, columns, resultSetHandler.putOneResultSetToMap(rs)))) {
+                // Push the data to Kafka according to the fragmentation order
+                syncSend(topic, resultStream.collect(Collectors.toList()));
+            } catch (DataAccessException exception) {
+                log.error("jdbc query stream [{}] error : {}", queryAllTables, exception.getMessage());
+            }
         }
+        final LocalDateTime end = LocalDateTime.now();
+        log.info("extract table[{}] cost [{}] millis", tableName, Duration.between(start, end).toMillis());
     }
 }
