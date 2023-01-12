@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#nohup java -jar datachecker-check-0.0.1.jar  -Dspring.config.additional-location=config/application.yml >/dev/null 2>&1 &
+#nohup java  -Dspring.config.additional-location=config/application.yml -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
 APP_NAME=datachecker-check-0.0.1.jar
-
+CONFIG_PATH=config
 #使用说明，用来提示输入参数
 usage() {
 echo "Usage: sh 脚本名.sh [start|stop|restart|status]"
@@ -11,7 +11,7 @@ exit 1
 
 #检查程序是否在运行
 is_exist(){
-pid=`ps -ef|grep $APP_NAME|grep -v grep|awk '{print $2}' `
+pid=`ps -ef|grep $APP_NAME | grep $CONFIG_PATH |grep -v grep|awk '{print $2}' `
 #如果不存在返回1，存在返回0
 if [ -z "${pid}" ]; then
 return 1
@@ -26,7 +26,7 @@ is_exist
 if [ $? -eq "0" ]; then
 echo "${APP_NAME} is already running. pid=${pid} ."
 else
-nohup java -Xmx10880M -Xms10880M -XX:MaxMetaspaceSize=1024M -XX:MetaspaceSize=1024M -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled -jar $APP_NAME  -Dspring.config.additional-location=config/application.yml >/dev/null 2>&1 &
+nohup java -Xmx5G -Xms5G -XX:MaxMetaspaceSize=1G -XX:MetaspaceSize=1G -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled  -Dspring.config.additional-location=$CONFIG_PATH/application.yml -jar $APP_NAME  >/dev/null 2>&1 &
 echo "${APP_NAME} start success"
 fi
 }
@@ -35,7 +35,7 @@ fi
 stop(){
 is_exist
 if [ $? -eq "0" ]; then
-kill -9 $pid
+kill -15 $pid
 else
 echo "${APP_NAME} is not running"
 fi
