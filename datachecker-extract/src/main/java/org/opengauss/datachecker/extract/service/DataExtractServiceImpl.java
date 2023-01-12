@@ -15,7 +15,6 @@
 
 package org.opengauss.datachecker.extract.service;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.constant.Constants;
@@ -111,8 +110,6 @@ public class DataExtractServiceImpl implements DataExtractService {
     private MetaDataService metaDataService;
     @Autowired
     private DataManipulationService dataManipulationService;
-    @Value("${spring.extract.sync-extract}")
-    private boolean isSyncExtract = true;
     @Value("${server.port}")
     private int serverPort = 0;
     @Resource
@@ -269,7 +266,7 @@ public class DataExtractServiceImpl implements DataExtractService {
     @Async
     @Override
     public void execExtractTaskAllTables(String processNo) throws TaskNotFoundException {
-        Thread.currentThread().setName("invoke-extract-task-" + serverPort + "-process-" + processNo.toLowerCase());
+        Thread.currentThread().setName("invoke-extract-" + serverPort + "-" + processNo.toLowerCase());
         if (Objects.equals(atomicProcessNo.get(), processNo)) {
             int sleepCount = 0;
             while (CollectionUtils.isEmpty(taskReference.get())) {

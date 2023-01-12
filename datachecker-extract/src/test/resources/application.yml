@@ -8,6 +8,7 @@ spring:
   extract:
     schema: test
     databaseType: MS
+    query-dop: 9
     debezium-enable: false
     debezium-topic: data_check_all # debezium topic
     debezium-groupId: debezium-extract-group # debezium topic groupId

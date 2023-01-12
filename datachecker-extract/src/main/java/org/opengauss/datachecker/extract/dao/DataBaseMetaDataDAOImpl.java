@@ -22,6 +22,7 @@ import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.enums.DataBaseMeta;
+import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
@@ -65,7 +66,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         new AtomicReference<>(CheckBlackWhiteMode.NONE);
     private static final AtomicReference<List<String>> WHITE_REF = new AtomicReference<>();
     private static final AtomicReference<List<String>> BLACK_REF = new AtomicReference<>();
-
+    private static final String OPEN_GAUSS_PARALLEL_QUERY = "set query_dop to %s;";
     protected final JdbcTemplate JdbcTemplateOne;
 
     private final ExtractProperties extractProperties;
@@ -167,12 +168,19 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         final String schema = getSchema();
         metadataLoadProcess.setTotal(tableNameList.size());
         tableNameList.parallelStream().forEach(tableName -> {
+            enableDatabaseParallelQuery();
             final Long rowCount = JdbcTemplateOne
                 .queryForObject(String.format(sqlQueryTableRowCount, escape(schema), escape(tableName)), Long.class);
             MetaDataCache.updateRowCount(tableName, rowCount);
             log.debug("load table [{}]row count={}  total={} ", tableName, rowCount, tableCount.incrementAndGet());
             metadataLoadProcess.setLoadCount(tableCount.get());
         });
+    }
+
+    private void enableDatabaseParallelQuery() {
+        if (Objects.equals(DataBaseType.OG, extractProperties.getDatabaseType())) {
+            JdbcTemplateOne.execute(String.format(OPEN_GAUSS_PARALLEL_QUERY, extractProperties.getQueryDop()));
+        }
     }
 
     private String escape(String content) {

@@ -125,13 +125,10 @@ public class EndpointMetaDataManager {
      * @return the number of verification tasks
      */
     public int getCheckTaskCount() {
-        final Integer checkTaskCount =
-            SOURCE_METADATA.values().stream().map(TableMetadata::getTableRows).map(TaskUtil::calcTaskCount)
-                           .map(TopicUtil::calcPartitions).reduce(Integer::sum).orElse(SOURCE_METADATA.size());
-        return checkTaskCount;
+        return SOURCE_METADATA.size();
     }
 
-    private void clearCache() {
+    public void clearCache() {
         CHECK_TABLE_LIST.clear();
         MISS_TABLE_LIST.clear();
         SOURCE_METADATA.clear();

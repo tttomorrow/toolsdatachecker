@@ -70,7 +70,7 @@ public class KafkaProducerWapper {
             kafkaTemplate.send(producerRecord);
         });
         kafkaTemplate.flush();
-        log.info("send topic={}, record size :{}", topicName, recordHashList.size());
+        log.debug("send topic={}, record size :{}", topicName, recordHashList.size());
     }
 
     private void sendMultiPartitionTopic(List<RowDataHash> recordHashList, String topicName, int partitions) {
