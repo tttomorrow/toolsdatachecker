@@ -31,7 +31,8 @@ import javax.annotation.Resource;
  */
 @Slf4j
 public abstract class AbstractCheckLoader implements CheckLoader {
-    protected static final int RETRY_TIMES = 3;
+    protected static final int RETRY_TIMES = 10;
+    protected static final int HEARTH_RETRY_TIMES = 60;
 
     private static ConfigurableApplicationContext applicationContext;
     @Resource
@@ -62,8 +63,7 @@ public abstract class AbstractCheckLoader implements CheckLoader {
      * @param message shutdown message
      */
     public void shutdown(String message) {
-        log.error("The check server will be shutdown , {}", message);
-        log.error("check server exited .");
+        log.error("The check server will be shutdown , {} . check server exited .", message);
         System.exit(SpringApplication.exit(applicationContext));
     }
 }

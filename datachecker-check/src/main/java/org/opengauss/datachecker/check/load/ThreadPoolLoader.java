@@ -41,7 +41,7 @@ public class ThreadPoolLoader extends AbstractCheckLoader {
     @Override
     public void load(CheckEnvironment checkEnvironment) {
         final int checkTaskCount = endpointMetaDataManager.getCheckTaskCount();
-        final ExecutorService threadPool = ThreadPoolFactory.newCheckThreadPool("check", checkTaskCount);
+        final ExecutorService threadPool = ThreadPoolFactory.newThreadPool("check", checkTaskCount);
         checkEnvironment.setCheckExecutorService(threadPool);
         log.info("check service load thread pool success");
     }

@@ -20,6 +20,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
@@ -33,7 +34,6 @@ import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -60,11 +60,13 @@ import java.util.stream.Collectors;
 public class IncrementManagerService {
     private static final int MAX_CHECK_DIFF_SIZE = 5000;
     private static final AtomicReference<String> PROCESS_SIGNATURE = new AtomicReference<>();
-    private static final BlockingQueue<List<SourceDataLog>> INC_LOG_QUEUE = new SynchronousQueue<>();
+    private static final BlockingQueue<List<SourceDataLog>> INC_LOG_QUEUE = new LinkedBlockingQueue<>();
     @Resource
     private DataCheckService dataCheckService;
     @Resource
     private ThreadPoolTaskExecutor asyncCheckExecutor;
+    @Resource
+    private FeignClientService feignClientService;
 
     /**
      * Incremental verification log notification
@@ -76,9 +78,9 @@ public class IncrementManagerService {
             return;
         }
         try {
-            log.info("put inc_log to queue, inc_log size={}", dataLogList.size());
             INC_LOG_QUEUE.put(dataLogList);
-            log.info("source log tables : {}", getDataLogTables(dataLogList));
+            log.info("add {} data_log to the inc_log_queue,tables they contain : {}", dataLogList.size(),
+                getDataLogTables(dataLogList));
         } catch (InterruptedException ex) {
             log.error("notify inc data logs interrupted  ");
         }
@@ -88,12 +90,18 @@ public class IncrementManagerService {
         return dataLogList.stream().map(SourceDataLog::getTableName).collect(Collectors.toList());
     }
 
-//    @PostConstruct
     public void startIncrementDataLogs() {
-        ThreadUtil.newSingleThreadExecutor().submit(this::checkingIncrementDataLogs);
+        if (feignClientService.startIncrementMonitor()) {
+            log.info("started source increment monitor");
+            ThreadUtil.newSingleThreadExecutor().submit(this::checkingIncrementDataLogs);
+        } else {
+            throw new CheckingException("start increment monitor failed");
+        }
     }
 
-    public void checkingIncrementDataLogs() {
+    private void checkingIncrementDataLogs() {
+        Thread.currentThread().setName("inc-queue-process-loop");
+        log.info("started process increment data logs thread");
         while (true) {
             try {
                 final List<SourceDataLog> dataLogList = INC_LOG_QUEUE.take();
@@ -104,7 +112,7 @@ public class IncrementManagerService {
                     ExportCheckResult.backCheckResultDirectory();
                     incrementDataLogsChecking(dataLogList);
                 }
-            } catch (InterruptedException ex) {
+            } catch (Exception ex) {
                 log.error("take inc log queue interrupted  ");
             }
         }

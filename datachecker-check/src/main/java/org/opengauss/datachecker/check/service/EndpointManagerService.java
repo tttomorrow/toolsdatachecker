@@ -19,9 +19,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.config.DataCheckProperties;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
@@ -50,30 +50,40 @@ public class EndpointManagerService {
         return endpointStatusManager.isEndpointHealth();
     }
 
+    public void heartBeat() {
+        ThreadUtil.newSingleThreadExecutor().submit(this::endpointHealthCheck);
+    }
+
     /**
      * Endpoint health check
      */
-    @Scheduled(cron = "0/5 * * * * ?")
     public void endpointHealthCheck() {
-        Thread.currentThread().setName("heart-beat-heath-" + Thread.currentThread().getId());
-        checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "source endpoint service check");
-        checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "sink endpoint service check");
+        Thread.currentThread().setName("heart-beat-heath");
+        while (true) {
+            checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "source endpoint service check");
+            checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "sink endpoint service check");
+            ThreadUtil.sleepOneSecond();
+        }
+    }
+
+    public boolean checkEndpointHealth(Endpoint endpoint) {
+        return endpointStatusManager.getHealthStatus(endpoint);
     }
 
     private void checkEndpoint(String requestUri, Endpoint endpoint, String message) {
         // service network check ping
         try {
             // service check: service database check
-            Result healthStatus = feignClientService.getClient(endpoint).health();
+            Result healthStatus = feignClientService.health(endpoint);
             if (healthStatus.isSuccess()) {
                 endpointStatusManager.resetStatus(endpoint, Boolean.TRUE);
-                log.debug("{}：{} current state health", message, requestUri);
+                log.debug("{} ：{} current state health", message, requestUri);
             } else {
                 endpointStatusManager.resetStatus(endpoint, Boolean.FALSE);
-                log.error("{}:{} current service status is abnormal", message, requestUri);
+                log.debug("{} : {} current service status is abnormal", message, requestUri);
             }
         } catch (Exception ce) {
-            log.error("{}:{} service unreachable", message, ce.getMessage());
+            log.debug("{} : {} service unreachable", message, ce.getMessage());
             endpointStatusManager.resetStatus(endpoint, Boolean.FALSE);
         }
     }

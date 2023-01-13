@@ -139,6 +139,16 @@ public class FeignClientService {
         }
     }
 
+    public boolean startIncrementMonitor() {
+        Result<Void> result = getClient(Endpoint.SOURCE).startIncrementMonitor();
+        if (result.isSuccess()) {
+            return result.isSuccess();
+        } else {
+            // Scheduling extraction service execution task failed
+            throw new DispatchClientException(Endpoint.SOURCE, "start increment monitor failed," + result.getMessage());
+        }
+    }
+
     /**
      * Clean up the opposite environment
      *

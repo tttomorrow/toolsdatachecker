@@ -150,13 +150,17 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
 
         @Override
         public Result<ExtractConfig> getEndpointConfig() {
-            return Result
-                .error("Remote call,  Get the current endpoint configuration information, abnormal“");
+            return Result.error("Remote call,  Get the current endpoint configuration information, abnormal“");
         }
 
         @Override
         public void refreshBlackWhiteList(CheckBlackWhiteMode mode, List<String> tableList) {
 
+        }
+
+        @Override
+        public Result<Void> startIncrementMonitor() {
+            return Result.error("Remote call,  start increment monitor failed ");
         }
     }
 }

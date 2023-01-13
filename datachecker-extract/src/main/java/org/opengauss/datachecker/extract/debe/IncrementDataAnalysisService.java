@@ -69,10 +69,9 @@ public class IncrementDataAnalysisService {
     /**
      * Start the initialization load to verify the topic offset
      */
-    @PostConstruct
     public void startIncrDataAnalysis() {
-        SCHEDULED_EXECUTOR = ThreadUtil.newSingleThreadScheduledExecutor();
         if (extractProperties.isDebeziumEnable() && consolidationService.isSourceEndpoint()) {
+            SCHEDULED_EXECUTOR = ThreadUtil.newSingleThreadScheduledExecutor();
             log.info("Start incremental verification analysis");
             verificationConfiguration();
             // Start the initialization load to verify the topic offset
@@ -95,7 +94,7 @@ public class IncrementDataAnalysisService {
     /**
      * Incremental log data record extraction scheduling task
      */
-    public void dataAnalysis() {
+    private void dataAnalysis() {
         log.info("Start the incremental verification data analysis thread");
         SCHEDULED_EXECUTOR
             .scheduleWithFixedDelay(peekDebeziumTopicRecordOffset(), DataNumAnalysisThreadConstant.INITIAL_DELAY,
@@ -127,7 +126,7 @@ public class IncrementDataAnalysisService {
     /**
      * Incremental log data extraction and time latitude management
      */
-    public void dataTimeAnalysis() {
+    private void dataTimeAnalysis() {
         long time = System.currentTimeMillis();
         final int debeziumTimePeriod = extractProperties.getDebeziumTimePeriod();
         if ((time - lastTimestamp) >= debeziumTimePeriod * DEBEZIUM_TIME_PERIOD_UNIT) {
@@ -147,7 +146,7 @@ public class IncrementDataAnalysisService {
     /**
      * Incremental log data extraction, quantity and latitude management
      */
-    public void dataNumAnalysis() {
+    private void dataNumAnalysis() {
         final int offset = consolidationService.getDebeziumTopicRecordEndOffSet();
         // Verify whether the data volume threshold dimension scenario trigger conditions are met
         if ((offset - lastOffSetAtomic.get()) >= extractProperties.getDebeziumNumPeriod()) {

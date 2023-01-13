@@ -190,4 +190,12 @@ public interface ExtractFeignClient {
      */
     @PostMapping("/extract/refresh/black/white/list")
     void refreshBlackWhiteList(@RequestParam CheckBlackWhiteMode mode, @RequestBody List<String> tableList);
+
+    /**
+     * start source increment monitor
+     *
+     * @return void
+     */
+    @PostMapping("/start/source/increment/monitor")
+    Result<Void> startIncrementMonitor();
 }
