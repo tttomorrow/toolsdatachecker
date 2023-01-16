@@ -15,12 +15,13 @@
 
 package org.opengauss.datachecker.check.service;
 
-import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Data extraction endpoint state management
@@ -29,10 +30,10 @@ import java.util.Objects;
  * @date ：Created in 2022/5/26
  * @since ：11
  */
-@Slf4j
 @Service
 public class EndpointStatusManager {
     private static final Pair<Boolean, Boolean> STATUS = Pair.of(false, false);
+    private static Lock LOCK = new ReentrantLock();
 
     /**
      * Reset the health state of the endpoint
@@ -41,11 +42,21 @@ public class EndpointStatusManager {
      * @param isHealth endpoint health status
      */
     public void resetStatus(Endpoint endpoint, boolean isHealth) {
-        if (Objects.equals(endpoint, Endpoint.SOURCE)) {
-            Pair.of(isHealth, STATUS);
-        } else {
-            Pair.of(STATUS, isHealth);
+        LOCK.lock();
+        try {
+            if (Objects.equals(endpoint, Endpoint.SOURCE)) {
+                Pair.of(isHealth, STATUS);
+            } else {
+                Pair.of(STATUS, isHealth);
+            }
+        } finally {
+            LOCK.unlock();
         }
+    }
+
+    private void reset() {
+        Pair.of(false, STATUS);
+        Pair.of(STATUS, false);
     }
 
     /**
@@ -55,5 +66,9 @@ public class EndpointStatusManager {
      */
     public boolean isEndpointHealth() {
         return Objects.equals(STATUS.getSink(), Boolean.TRUE) && Objects.equals(STATUS.getSource(), Boolean.TRUE);
+    }
+
+    public boolean getHealthStatus(Endpoint endpoint) {
+        return Objects.equals(Endpoint.SOURCE, endpoint) ? STATUS.getSource() : STATUS.getSink();
     }
 }

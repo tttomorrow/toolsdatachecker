@@ -36,67 +36,47 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @Slf4j
 public class ThreadPoolFactory {
-    private static final double TARGET_UTILIZATION = 0.7;
-    private static final double IO_WAIT_TIME = 4.0;
+    private static final double TARGET_UTILIZATION = 0.5;
+    private static final double IO_WAIT_TIME = 1.0;
     private static final double CPU_TIME = 1.0;
     private static final double POOL_QUEUE_EXPANSION_RATIO = 1.2;
-    private static final double CHECK_POOL_QUEUE_EXPANSION_RATIO = 0.5;
     private static final double CORE_POOL_SIZE_RATIO = 2.0;
+    private static final int DEFAULT_QUEUE_SIZE = 1000;
 
     /**
      * Initialize the extract service thread pool
      *
      * @param threadName threadName
-     * @param threadSize threadSize
+     * @param queueSize  queueSize
      * @return ExecutorService
      */
-    public static ExecutorService newThreadPool(String threadName, int threadSize) {
-        return createThreadPool(threadName, threadSize);
+    public static ExecutorService newThreadPool(String threadName, int queueSize) {
+        return createThreadPool(threadName, queueSize);
     }
 
-    /**
-     * Initialize the verification service thread pool
-     *
-     * @param threadName threadName
-     * @param threadSize threadSize
-     * @return ExecutorService
-     */
-    public static ExecutorService newCheckThreadPool(String threadName, int threadSize) {
-        return createCheckThreadPool(threadName, threadSize);
-    }
-
-    private static ExecutorService createCheckThreadPool(String threadName, int size) {
+    private static ExecutorService createThreadPool(String threadName, int size) {
         int queueSize = calculateCheckQueueCapacity(size);
         int threadNum = calculateOptimalThreadCount(CPU_TIME, IO_WAIT_TIME, TARGET_UTILIZATION);
         int corePoolSize = calculateCorePoolSize(threadNum);
         return createThreadPool(threadName, corePoolSize, threadNum, queueSize);
     }
 
-    private static ExecutorService createThreadPool(String threadName, int size) {
-        int queueSize = calculateCheckQueueCapacity(size);
-        int threadNum = calculateOptimalThreadCount(CPU_TIME, IO_WAIT_TIME, TARGET_UTILIZATION);
-        return createThreadPool(threadName, threadNum, threadNum, queueSize);
-    }
-
     private static ExecutorService createThreadPool(String threadName, int corePoolSize, int threadNum, int queueSize) {
-
-        log.info("Thread name is {}, corePoolSize is : {}, size is {}, queueSize is {}", threadName, corePoolSize,
-            threadNum, queueSize);
+        if (queueSize <= 0) {
+            queueSize = DEFAULT_QUEUE_SIZE;
+        }
         BlockingQueue<Runnable> blockingQueue = new LinkedBlockingQueue<>(queueSize);
-
         ThreadPoolExecutor threadPoolExecutor =
             new ThreadPoolExecutor(corePoolSize, threadNum, 60L, TimeUnit.SECONDS, blockingQueue,
                 new CheckThreadFactory("check", threadName, false), new DiscardOldestPolicy(log, threadName));
         threadPoolExecutor.allowCoreThreadTimeOut(true);
+        log.info("Thread name is {},cpu={} corePoolSize is : {}, size is {}, queueSize is {}", threadName,
+            getNumberOfCpu(), corePoolSize, threadNum, queueSize);
         return threadPoolExecutor;
     }
 
-    private static int calculateQueueCapacity(int size) {
-        return (int) Math.ceil(size * POOL_QUEUE_EXPANSION_RATIO);
-    }
-
     private static int calculateCheckQueueCapacity(int size) {
-        return (int) Math.ceil(size * CHECK_POOL_QUEUE_EXPANSION_RATIO);
+        return (int) Math.ceil(size * POOL_QUEUE_EXPANSION_RATIO);
     }
 
     private static int calculateCorePoolSize(int threadNum) {
@@ -104,8 +84,12 @@ public class ThreadPoolFactory {
     }
 
     private static int calculateOptimalThreadCount(double computeTime, double waitTime, double targetUtilization) {
-        int numberOfCpu = Runtime.getRuntime().availableProcessors();
+        int numberOfCpu = getNumberOfCpu();
         return (int) Math.ceil(numberOfCpu * targetUtilization * (Math.round(waitTime / computeTime) + 1));
+    }
+
+    private static int getNumberOfCpu() {
+        return Runtime.getRuntime().availableProcessors();
     }
 
     public static class CheckThreadFactory implements ThreadFactory {

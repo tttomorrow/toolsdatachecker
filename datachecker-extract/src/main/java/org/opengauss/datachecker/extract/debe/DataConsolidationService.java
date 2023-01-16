@@ -35,7 +35,12 @@ public interface DataConsolidationService {
      * @return topic records
      */
     List<SourceDataLog> getDebeziumTopicRecords(int fetchOffset);
-    
+
+    /**
+     * initIncrementConfig
+     */
+    void initIncrementConfig();
+
     /**
      * Get the debezium listening table and record the offset information of the message corresponding to the topic
      *

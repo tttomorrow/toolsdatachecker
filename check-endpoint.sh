@@ -26,6 +26,7 @@ is_exist
 if [ $? -eq "0" ]; then
 echo "${APP_NAME} is already running. pid=${pid} ."
 else
+sleep 3s
 nohup java -Xmx5G -Xms5G -XX:MaxMetaspaceSize=1G -XX:MetaspaceSize=1G -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled  -Dspring.config.additional-location=$CONFIG_PATH/application.yml -jar $APP_NAME  >/dev/null 2>&1 &
 echo "${APP_NAME} start success"
 fi
@@ -36,6 +37,7 @@ stop(){
 is_exist
 if [ $? -eq "0" ]; then
 kill -15 $pid
+sleep 3s
 else
 echo "${APP_NAME} is not running"
 fi

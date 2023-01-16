@@ -74,7 +74,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     /**
      * initIncrementConfig
      */
-    @PostConstruct
+    @Override
     public void initIncrementConfig() {
         if (extractProperties.isDebeziumEnable()) {
             metaDataService.init();
