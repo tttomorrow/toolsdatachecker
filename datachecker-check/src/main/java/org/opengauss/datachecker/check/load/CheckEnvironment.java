@@ -15,12 +15,15 @@
 
 package org.opengauss.datachecker.check.load;
 
+import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.enums.RuleType;
 import org.opengauss.datachecker.common.entry.extract.Database;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
@@ -36,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class CheckEnvironment {
     private static final Map<Endpoint, Database> EXTRACT_DATABASE = new HashMap<>();
     private static final AtomicReference<CheckMode> CHECK_MODE_REF = new AtomicReference<>();
+    private static final Map<RuleType, List<Rule>> RULES = new HashMap<>();
 
     private static String exportCheckPath = "";
     private static boolean metaLoading = false;
@@ -130,5 +134,9 @@ public class CheckEnvironment {
      */
     public ExecutorService getCheckExecutorService() {
         return threadPoolExecutor;
+    }
+
+    public void addRules(Map<RuleType, List<Rule>> rules) {
+        RULES.putAll(rules);
     }
 }

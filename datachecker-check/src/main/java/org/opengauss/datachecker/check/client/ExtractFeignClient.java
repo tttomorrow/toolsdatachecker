@@ -15,7 +15,9 @@
 
 package org.opengauss.datachecker.check.client;
 
-import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
+import org.opengauss.datachecker.common.entry.common.Rule;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
+import org.opengauss.datachecker.common.entry.enums.RuleType;
 import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
@@ -183,19 +185,20 @@ public interface ExtractFeignClient {
     Result<ExtractConfig> getEndpointConfig();
 
     /**
-     * Update black and white list
-     *
-     * @param mode      Black and white list mode enumeration{@linkplain CheckBlackWhiteMode}
-     * @param tableList Black and white list - table name set
-     */
-    @PostMapping("/extract/refresh/black/white/list")
-    void refreshBlackWhiteList(@RequestParam CheckBlackWhiteMode mode, @RequestBody List<String> tableList);
-
-    /**
      * start source increment monitor
      *
      * @return void
      */
     @PostMapping("/start/source/increment/monitor")
     Result<Void> startIncrementMonitor();
+
+    /**
+     * Distribution Data Extraction Filter Rules
+     *
+     * @param rules rules
+     * @return void
+     */
+    @PostMapping("/extract/rules/distribute")
+    Result<Void> distributeRules(@RequestParam(name = "checkMode") CheckMode checkMode,@RequestBody Map<RuleType, List<Rule>> rules);
+
 }

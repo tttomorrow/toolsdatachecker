@@ -15,33 +15,30 @@
 
 package org.opengauss.datachecker.extract.load;
 
-import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.extract.util.SpringUtil;
-import org.springframework.boot.SpringApplication;
+import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
+import java.util.Map;
 
 /**
- * AbstractCheckLoader
+ * EnvironmentLoader
  *
  * @author ：wangchao
- * @date ：Created in 2022/11/9
+ * @date ：Created in 2022/12/2
  * @since ：11
  */
-@Slf4j
-public abstract class AbstractExtractLoader implements ExtractLoader {
-    /**
-     * Verification environment global information loader
-     */
-    @Override
-    public abstract void load(ExtractEnvironment extractEnvironment);
+@Service
+public class EnvironmentLoader {
+    @Resource
+    private ExtractEnvironment extractEnvironment;
 
-    /**
-     * shutdown app
-     *
-     * @param message shutdown message
-     */
-    public void shutdown(String message) {
-        log.error("The check server will be shutdown , {}", message);
-        log.error("check server exited .");
-        System.exit(SpringApplication.exit(SpringUtil.getApplicationContext()));
+    public void load(CheckMode checkMode) {
+        extractEnvironment.setCheckMode(checkMode);
+        final Map<String, ExtractLoader> beans = SpringUtil.getBeans(ExtractLoader.class);
+        beans.values().forEach(loader -> {
+            loader.load(extractEnvironment);
+        });
     }
 }

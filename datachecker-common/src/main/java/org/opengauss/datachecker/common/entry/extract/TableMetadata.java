@@ -53,4 +53,6 @@ public class TableMetadata {
      * Table column properties
      */
     private List<ColumnsMetaData> columnsMetas;
+
+    private ConditionLimit conditionLimit;
 }

@@ -18,6 +18,7 @@ package org.opengauss.datachecker.extract.task.sql;
 import lombok.Getter;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.ConditionLimit;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.lang.NonNull;
 import org.springframework.util.Assert;
@@ -136,11 +137,26 @@ public class SelectSqlBuilder {
         Assert.isTrue(Objects.nonNull(tableMetadata), Message.TABLE_METADATA_NULL_NOT_TO_BUILD_SQL);
         List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
         Assert.notEmpty(columnsMetas, Message.COLUMN_METADATA_EMPTY_NOT_TO_BUILD_SQL);
-        if (offset == OFF_SET_ZERO || !isDivisions) {
+        final ConditionLimit conditionLimit = tableMetadata.getConditionLimit();
+        if (Objects.nonNull(conditionLimit)) {
+            return buildSelectSqlConditionLimit(tableMetadata, conditionLimit);
+        } else if (offset == OFF_SET_ZERO || !isDivisions) {
             return buildSelectSqlOffsetZero(columnsMetas, tableMetadata.getTableName());
         } else {
             return buildSelectSqlOffset(tableMetadata, start, offset);
         }
+    }
+
+    private String buildSelectSqlConditionLimit(TableMetadata tableMetadata, ConditionLimit conditionLimit) {
+        List<ColumnsMetaData> columnsMetas = tableMetadata.getColumnsMetas();
+        String columnNames = getColumnNameList(columnsMetas, dataBaseType);
+        final String schemaEscape = escape(schema, dataBaseType);
+        final String tableName = escape(tableMetadata.getTableName(), dataBaseType);
+        final String orderBy = getOrderBy(tableMetadata.getPrimaryMetas(), dataBaseType);
+        SqlGenerateMeta sqlGenerateMeta =
+            new SqlGenerateMeta(schemaEscape, tableName, columnNames, orderBy, conditionLimit.getStart(),
+                conditionLimit.getOffset());
+        return getSqlGenerate(dataBaseType).replace(sqlGenerateMeta);
     }
 
     private String getOrderBy(List<ColumnsMetaData> primaryMetas, DataBaseType dataBaseType) {
@@ -155,7 +171,8 @@ public class SelectSqlBuilder {
         String tableName = escape(tableMetadata.getTableName(), dataBaseType);
         String columnNames = getColumnNameList(columnsMetas, dataBaseType);
         final String orderBy = getOrderBy(tableMetadata.getPrimaryMetas(), dataBaseType);
-        SqlGenerateMeta sqlGenerateMeta = new SqlGenerateMeta(schemaEscape, tableName, columnNames, orderBy, start, offset);
+        SqlGenerateMeta sqlGenerateMeta =
+            new SqlGenerateMeta(schemaEscape, tableName, columnNames, orderBy, start, offset);
         return getSqlGenerate(dataBaseType).replace(sqlGenerateMeta);
     }
 
@@ -166,7 +183,8 @@ public class SelectSqlBuilder {
     private String buildSelectSqlOffsetZero(List<ColumnsMetaData> columnsMetas, String tableName) {
         String columnNames = getColumnNameList(columnsMetas, dataBaseType);
         String schemaEscape = escape(schema, dataBaseType);
-        SqlGenerateMeta sqlGenerateMeta = new SqlGenerateMeta(schemaEscape, escape(tableName, dataBaseType), columnNames);
+        SqlGenerateMeta sqlGenerateMeta =
+            new SqlGenerateMeta(schemaEscape, escape(tableName, dataBaseType), columnNames);
         return NO_OFFSET_GENERATE.replace(sqlGenerateMeta);
     }
 

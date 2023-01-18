@@ -34,7 +34,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
-import javax.annotation.PostConstruct;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -77,7 +76,6 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     @Override
     public void initIncrementConfig() {
         if (extractProperties.isDebeziumEnable()) {
-            metaDataService.init();
             ThreadUtil.newSingleThreadExecutor().submit(new DebeziumWorker(debeziumListener, kafkaConfig));
         }
     }
@@ -91,7 +89,6 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     public List<SourceDataLog> getDebeziumTopicRecords(int fetchOffset) {
         checkIncrementCheckEnvironment();
         int begin = 0;
-
         DebeziumDataLogs debeziumDataLogs = new DebeziumDataLogs(metaDataService);
         while (begin <= fetchOffset) {
             DebeziumDataBean debeziumDataBean = debeziumListener.poll();

@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.constant.Constants;
-import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.enums.DataBaseMeta;
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
@@ -30,6 +29,7 @@ import org.opengauss.datachecker.common.util.EnumUtil;
 import org.opengauss.datachecker.common.util.SqlUtil;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
+import org.opengauss.datachecker.extract.service.RuleAdapterService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCountCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.opengauss.datachecker.extract.constants.ExtConstants.COLUMN_INDEX_FIRST_ZERO;
@@ -61,14 +60,9 @@ import static org.opengauss.datachecker.extract.constants.ExtConstants.COLUMN_IN
 @Component
 @RequiredArgsConstructor
 public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
-
-    private static final AtomicReference<CheckBlackWhiteMode> MODE_REF =
-        new AtomicReference<>(CheckBlackWhiteMode.NONE);
-    private static final AtomicReference<List<String>> WHITE_REF = new AtomicReference<>();
-    private static final AtomicReference<List<String>> BLACK_REF = new AtomicReference<>();
     private static final String OPEN_GAUSS_PARALLEL_QUERY = "set query_dop to %s;";
     protected final JdbcTemplate JdbcTemplateOne;
-
+    private final RuleAdapterService ruleAdapterService;
     private final ExtractProperties extractProperties;
     private volatile MetadataLoadProcess metadataLoadProcess = new MetadataLoadProcess();
 
@@ -86,30 +80,23 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     }
 
     @Override
-    public void resetBlackWhite(CheckBlackWhiteMode mode, List<String> tableList) {
-        MODE_REF.set(mode);
-        if (Objects.equals(mode, CheckBlackWhiteMode.WHITE)) {
-            WHITE_REF.set(tableList);
-        } else if (Objects.equals(mode, CheckBlackWhiteMode.BLACK)) {
-            BLACK_REF.set(tableList);
-        } else {
-            if (CollectionUtils.isNotEmpty(WHITE_REF.get())) {
-                WHITE_REF.get().clear();
-            }
-            if (CollectionUtils.isNotEmpty(BLACK_REF.get())) {
-                BLACK_REF.get().clear();
-            }
-        }
-    }
-
-    @Override
     public List<TableMetadata> queryTableMetadata() {
-        final List<String> tableNameList = filterTableListByBlackWhite(queryAllTableNames());
+        final List<String> tableNameList = filterByTableRules(queryAllTableNames());
         if (CollectionUtils.isEmpty(tableNameList)) {
             return new ArrayList<>();
         }
-        return tableNameList.stream().map(tableName -> new TableMetadata().setTableName(tableName).setTableRows(-1))
-                            .collect(Collectors.toList());
+        final List<TableMetadata> tableMetadataList =
+            tableNameList.stream().map(tableName -> new TableMetadata().setTableName(tableName).setTableRows(-1))
+                         .collect(Collectors.toList());
+        matchRowRules(tableMetadataList);
+        return tableMetadataList;
+    }
+
+    private void matchRowRules(List<TableMetadata> tableMetadataList) {
+        if (CollectionUtils.isEmpty(tableMetadataList)) {
+            return;
+        }
+        ruleAdapterService.executeRowRule(tableMetadataList);
     }
 
     public List<String> queryAllTableNames() {
@@ -124,42 +111,8 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         return tableNameList;
     }
 
-    private List<String> filterTableListByBlackWhite(List<String> tableNameList) {
-        if (Objects.equals(MODE_REF.get(), CheckBlackWhiteMode.WHITE)) {
-            final List<String> whiteList = WHITE_REF.get();
-            if (CollectionUtils.isEmpty(whiteList)) {
-                return tableNameList;
-            }
-            return tableNameList.stream().filter(whiteList::contains).collect(Collectors.toList());
-        } else if (Objects.equals(MODE_REF.get(), CheckBlackWhiteMode.BLACK)) {
-            final List<String> blackList = BLACK_REF.get();
-            if (CollectionUtils.isEmpty(blackList)) {
-                return tableNameList;
-            }
-            return tableNameList.stream().filter(table -> !blackList.contains(table)).collect(Collectors.toList());
-        } else {
-            return tableNameList;
-        }
-    }
-
-    private List<TableMetadata> filterBlackWhiteList(List<TableMetadata> tableMetaList) {
-        if (Objects.equals(MODE_REF.get(), CheckBlackWhiteMode.WHITE)) {
-            final List<String> whiteList = WHITE_REF.get();
-            if (CollectionUtils.isEmpty(whiteList)) {
-                return tableMetaList;
-            }
-            return tableMetaList.stream().filter(table -> whiteList.contains(table.getTableName()))
-                                .collect(Collectors.toList());
-        } else if (Objects.equals(MODE_REF.get(), CheckBlackWhiteMode.BLACK)) {
-            final List<String> blackList = BLACK_REF.get();
-            if (CollectionUtils.isEmpty(blackList)) {
-                return tableMetaList;
-            }
-            return tableMetaList.stream().filter(table -> !blackList.contains(table.getTableName()))
-                                .collect(Collectors.toList());
-        } else {
-            return tableMetaList;
-        }
+    private List<String> filterByTableRules(List<String> tableNameList) {
+        return ruleAdapterService.executeTableRule(tableNameList);
     }
 
     public void getAllTableCount(Set<String> tableNameList) {
@@ -204,7 +157,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         map.put("databaseSchema", getSchema());
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.COLUMN);
-        return jdbc.query(sql, map, new RowMapper<>() {
+        List<ColumnsMetaData> columns = jdbc.query(sql, map, new RowMapper<>() {
             int columnIndex = COLUMN_INDEX_FIRST_ZERO;
 
             @Override
@@ -218,6 +171,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
                 return columnsMetaData;
             }
         });
+        return ruleAdapterService.executeColumnRule(columns);
     }
 
     /**

@@ -97,7 +97,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         IntStream.range(0, taskCount).forEach(idx -> {
             final String querySql = sqlBuilder.dataBaseType(databaseType).isDivisions(task.isDivisions())
                                               .offset(taskOffset[idx][0], taskOffset[idx][1]).builder();
-            log.info("query table[{}] sql: [{}]", tableMetadata.getTableName(), querySql);
+            log.debug("query table[{}] sql: [{}]", tableMetadata.getTableName(), querySql);
             queryList.add(querySql);
         });
         return queryList;
