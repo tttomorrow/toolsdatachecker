@@ -15,7 +15,10 @@
 
 package org.opengauss.datachecker.check.client;
 
+import org.opengauss.datachecker.common.entry.common.Rule;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.enums.RuleType;
 import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
@@ -243,5 +246,9 @@ public class FeignClientService {
         } catch (Exception exception) {
             return null;
         }
+    }
+
+    public void distributeRules(Endpoint endpoint, CheckMode checkMode, Map<RuleType, List<Rule>> rules) {
+        getClient(endpoint).distributeRules(checkMode, rules);
     }
 }

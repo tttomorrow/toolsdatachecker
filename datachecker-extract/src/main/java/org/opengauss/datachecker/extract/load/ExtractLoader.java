@@ -15,9 +15,6 @@
 
 package org.opengauss.datachecker.extract.load;
 
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
-
 /**
  * ExtractLoader After the Check service is started, load the verification environment information
  *
@@ -25,7 +22,7 @@ import org.springframework.context.ApplicationListener;
  * @date ：Created in 2022/10/31
  * @since ：11
  */
-public interface ExtractLoader extends ApplicationListener<ApplicationReadyEvent> {
+public interface ExtractLoader{
     /**
      * Verification environment global information loader
      *

@@ -200,8 +200,7 @@ public class DataCheckRunnable implements Runnable {
         alignAllBuckets();
         sortBuckets(sourceBucketList);
         sortBuckets(sinkBucketList);
-        log.info("Initialize the verification data and the bucket construction is currently completed of table [{}-{}]",
-            tableName, partitions);
+        log.debug("initialize bucket construction is currently completed of table [{}-{}]", tableName, partitions);
     }
 
     /**
@@ -241,7 +240,7 @@ public class DataCheckRunnable implements Runnable {
         if (CollectionUtils.isEmpty(dataList)) {
             return;
         }
-        log.info("Initialize the verification data, and pull the total number of [{}-{}-{}] data records to {}",
+        log.debug("initialize the verification data, and pull the total number of [{}-{}-{}] data records to {}",
             endpoint.getDescription(), tableName, partitions, dataList.size());
         BuilderBucketHandler bucketBuilder = new BuilderBucketHandler(bucketCapacity);
 
@@ -421,7 +420,7 @@ public class DataCheckRunnable implements Runnable {
                    .keyInsertSet(difference.getOnlyOnLeft().keySet()).keyDeleteSet(difference.getOnlyOnRight().keySet())
                    .build();
         ExportCheckResult.export(result);
-        log.info("Complete the output of data verification results of table [{}-{}]", tableName, partitions);
+        log.info("completed data check and export results of table [{}-{}]", tableName, partitions);
     }
 
     private void resetThreadName(String tableName, int partitions) {

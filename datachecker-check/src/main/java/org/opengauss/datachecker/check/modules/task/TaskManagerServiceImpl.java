@@ -49,8 +49,8 @@ public class TaskManagerServiceImpl implements TaskManagerService {
      */
     @Override
     public void refreshTableExtractStatus(String tableName, Endpoint endpoint, int status) {
-        log.info("check server refresh endpoint=[{}]  extract tableName=[{}] status=[{}]  ", endpoint.getDescription(),
-            tableName, status);
+        log.info("the [{}] refreshes data extract status of table [{}] to [{}]  ", endpoint.getDescription(), tableName,
+            status);
         tableStatusRegister.update(tableName, status);
     }
 

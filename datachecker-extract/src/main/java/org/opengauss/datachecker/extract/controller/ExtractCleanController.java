@@ -20,7 +20,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.opengauss.datachecker.common.web.Result;
 import org.opengauss.datachecker.extract.kafka.KafkaManagerService;
 import org.opengauss.datachecker.extract.service.DataExtractService;
-import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,10 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Clearing the environment at the extraction endpoint")
 @RestController
 public class ExtractCleanController {
-
-    @Autowired
-    private MetaDataService metaDataService;
-
     @Autowired
     private DataExtractService dataExtractService;
 
@@ -54,7 +49,6 @@ public class ExtractCleanController {
     @Operation(summary = "clear the endpoint information and reinitialize the environment")
     @PostMapping("/extract/clean/environment")
     Result<Void> cleanEnvironment(@RequestParam(name = "processNo") String processNo) {
-        metaDataService.init();
         dataExtractService.cleanBuildTask();
         kafkaManagerService.cleanKafka(processNo);
         return Result.success();

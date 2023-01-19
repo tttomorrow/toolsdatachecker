@@ -14,7 +14,7 @@ rules:
   # There are three types of filtering rules: table-level rules, row-level rules, and column-level rules.
   # Rules are configured in the form of List collection.
   # filter rule switch: enable=true enables the filter rule, and enable=false closes the filter rule
-  enable: true
+  enable: false
   # Table level verification and filtering: filter the current database table by configuring a black and white list.
   # The black and white list configuration is mutually exclusive, that is, the black and white list cannot be configured at the same time.
   # If the black and white list is configured at the same time, only the white list will take effect.

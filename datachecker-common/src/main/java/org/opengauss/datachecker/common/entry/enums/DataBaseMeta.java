@@ -31,6 +31,10 @@ public enum DataBaseMeta implements IEnum {
      */
     HEALTH("HealthMeta", "DataBaseHealth"),
     /**
+     * COUNT
+     */
+    COUNT("COUNT", "COUNT"),
+    /**
      * TableMetaData
      */
     TABLE("TableMetaData", "TableMetaData"),

@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.load;
 
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.springframework.stereotype.Service;
 import java.util.concurrent.ExecutorService;
 
@@ -29,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 public class ExtractEnvironment {
     private boolean loadSuccess = false;
     private ExecutorService threadPoolExecutor = null;
-
+    private CheckMode checkMode;
     public void setLoadSuccess(boolean loadSuccess) {
         this.loadSuccess = loadSuccess;
     }
@@ -40,5 +41,13 @@ public class ExtractEnvironment {
 
     public ExecutorService getExtractThreadPool() {
         return threadPoolExecutor;
+    }
+
+    public void setCheckMode(CheckMode checkMode) {
+        this.checkMode = checkMode;
+    }
+
+    public CheckMode getCheckMode() {
+        return checkMode;
     }
 }

@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
@@ -48,13 +47,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MetaDataService {
     private final DataBaseMetaDataDAOImpl dataBaseMetadataDAOImpl;
-
-    /**
-     * Metadata cache load
-     */
-    public void init() {
-
-    }
 
     /**
      * Return database metadata information through cache
@@ -113,18 +105,6 @@ public class MetaDataService {
             });
         }
         return tableMetadata.stream().collect(Collectors.toMap(TableMetadata::getTableName, Function.identity()));
-    }
-
-    /**
-     * refresh black or white list
-     *
-     * @param mode      mode{@value CheckBlackWhiteMode#API_DESCRIPTION }
-     * @param tableList tableList
-     */
-    public void refreshBlackWhiteList(CheckBlackWhiteMode mode, List<String> tableList) {
-        dataBaseMetadataDAOImpl.resetBlackWhite(mode, tableList);
-        init();
-        log.info("refresh black or white list ,mode=[{}],list=[{}]", mode.getDescription(), tableList);
     }
 
     /**

@@ -15,7 +15,9 @@
 
 package org.opengauss.datachecker.check.client;
 
-import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
+import org.opengauss.datachecker.common.entry.common.Rule;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
+import org.opengauss.datachecker.common.entry.enums.RuleType;
 import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
@@ -154,13 +156,14 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
         }
 
         @Override
-        public void refreshBlackWhiteList(CheckBlackWhiteMode mode, List<String> tableList) {
-
-        }
-
-        @Override
         public Result<Void> startIncrementMonitor() {
             return Result.error("Remote call,  start increment monitor failed ");
+        }
+
+
+        @Override
+        public Result<Void> distributeRules(CheckMode checkMode,Map<RuleType, List<Rule>> rules) {
+            return Result.error("Remote call,  Distribution Filter Rules exception");
         }
     }
 }

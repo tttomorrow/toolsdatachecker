@@ -18,7 +18,6 @@ package org.opengauss.datachecker.check.config;
 import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
 import org.hibernate.validator.constraints.Range;
-import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.exception.CheckingAddressConflictException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -76,11 +75,6 @@ public class DataCheckProperties {
      */
     @NotEmpty(message = "The root directory of data verification results cannot be empty")
     private String dataPath;
-
-    /**
-     * Add black and white list configuration
-     */
-    private CheckBlackWhiteMode blackWhiteMode;
     /**
      * statistical-enable : Configure whether to perform verification time statistics.
      * If true, the execution time of the verification process will be statistically analyzed automatically.

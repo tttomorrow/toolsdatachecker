@@ -18,7 +18,6 @@ package org.opengauss.datachecker.extract.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.opengauss.datachecker.common.entry.enums.CheckBlackWhiteMode;
 import org.opengauss.datachecker.common.entry.extract.ExtractConfig;
 import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
@@ -68,18 +67,6 @@ public class ExtractController {
     public Result<Map<String, TableMetadata>> queryMetaDataOfSchema() {
         Map<String, TableMetadata> metaDataMap = metaDataService.queryMetaDataOfSchemaCache();
         return Result.success(metaDataMap);
-    }
-
-    /**
-     * refreshing the block list and trust list
-     *
-     * @param mode      {@value CheckBlackWhiteMode#API_DESCRIPTION}
-     * @param tableList tableList
-     */
-    @Operation(summary = "refreshing the block list and trust list")
-    @PostMapping("/extract/refresh/black/white/list")
-    void refreshBlackWhiteList(@RequestParam CheckBlackWhiteMode mode, @RequestBody List<String> tableList) {
-        metaDataService.refreshBlackWhiteList(mode, tableList);
     }
 
     /**
