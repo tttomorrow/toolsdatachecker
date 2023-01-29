@@ -251,4 +251,18 @@ public class FeignClientService {
     public void distributeRules(Endpoint endpoint, CheckMode checkMode, Map<RuleType, List<Rule>> rules) {
         getClient(endpoint).distributeRules(checkMode, rules);
     }
+
+    public void shutdown(String message) {
+        List.of(Endpoint.SOURCE, Endpoint.SINK).parallelStream().forEach(endpoint -> {
+            shutdown(endpoint, message);
+        });
+    }
+
+    private void shutdown(Endpoint endpoint, String message) {
+        try {
+            getClient(endpoint).shutdown(message);
+        } catch (Exception ignored) {
+
+        }
+    }
 }

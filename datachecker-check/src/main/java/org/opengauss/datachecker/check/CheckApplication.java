@@ -15,10 +15,10 @@
 
 package org.opengauss.datachecker.check;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
+import org.springframework.context.annotation.ComponentScan;
 
 /**
  * DatacheckerCheckApplication
@@ -27,11 +27,11 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  * @date 2022/5/8 19:27
  * @since 11
  **/
-@Slf4j
 @EnableFeignClients(basePackages = {"org.opengauss.datachecker.check.client"})
 @SpringBootApplication
-public class DatacheckerCheckApplication {
+@ComponentScan(value = {"org.opengauss.datachecker.check", "org.opengauss.datachecker.common"})
+public class CheckApplication {
     public static void main(String[] args) {
-       SpringApplication.run(DatacheckerCheckApplication.class, args);
+       SpringApplication.run(CheckApplication.class, args);
     }
 }

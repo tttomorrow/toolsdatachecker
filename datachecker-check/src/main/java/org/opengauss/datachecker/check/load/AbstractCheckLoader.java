@@ -16,9 +16,8 @@
 package org.opengauss.datachecker.check.load;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.SpringApplication;
+import org.opengauss.datachecker.common.service.ShutdownService;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ConfigurableApplicationContext;
 
 import javax.annotation.Resource;
 
@@ -34,9 +33,10 @@ public abstract class AbstractCheckLoader implements CheckLoader {
     protected static final int RETRY_TIMES = 10;
     protected static final int HEARTH_RETRY_TIMES = 60;
 
-    private static ConfigurableApplicationContext applicationContext;
     @Resource
     private CheckEnvironment checkEnvironment;
+    @Resource
+    private ShutdownService shutdownService;
 
     /**
      * Verification environment global information loader
@@ -53,7 +53,6 @@ public abstract class AbstractCheckLoader implements CheckLoader {
      */
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
-        applicationContext = event.getApplicationContext();
         load(checkEnvironment);
     }
 
@@ -63,7 +62,6 @@ public abstract class AbstractCheckLoader implements CheckLoader {
      * @param message shutdown message
      */
     public void shutdown(String message) {
-        log.error("The check server will be shutdown , {} . check server exited .", message);
-        System.exit(SpringApplication.exit(applicationContext));
+        shutdownService.shutdown(message);
     }
 }

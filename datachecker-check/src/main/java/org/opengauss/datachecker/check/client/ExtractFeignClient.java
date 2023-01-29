@@ -195,10 +195,14 @@ public interface ExtractFeignClient {
     /**
      * Distribution Data Extraction Filter Rules
      *
-     * @param rules rules
+     * @param checkMode checkMode
+     * @param rules     rules
      * @return void
      */
     @PostMapping("/extract/rules/distribute")
-    Result<Void> distributeRules(@RequestParam(name = "checkMode") CheckMode checkMode,@RequestBody Map<RuleType, List<Rule>> rules);
+    Result<Void> distributeRules(@RequestParam(name = "checkMode") CheckMode checkMode,
+        @RequestBody Map<RuleType, List<Rule>> rules);
 
+    @PostMapping("/extract/shutdown")
+    Result<Void> shutdown(@RequestBody String message);
 }

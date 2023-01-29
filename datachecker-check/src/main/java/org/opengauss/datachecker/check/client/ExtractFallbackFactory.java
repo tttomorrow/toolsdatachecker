@@ -165,5 +165,10 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
         public Result<Void> distributeRules(CheckMode checkMode,Map<RuleType, List<Rule>> rules) {
             return Result.error("Remote call,  Distribution Filter Rules exception");
         }
+
+        @Override
+        public Result<Void> shutdown(String message) {
+            return null;
+        }
     }
 }

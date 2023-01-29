@@ -16,7 +16,7 @@
 package org.opengauss.datachecker.extract.load;
 
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
-import org.opengauss.datachecker.extract.util.SpringUtil;
+import org.opengauss.datachecker.common.util.SpringUtil;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
