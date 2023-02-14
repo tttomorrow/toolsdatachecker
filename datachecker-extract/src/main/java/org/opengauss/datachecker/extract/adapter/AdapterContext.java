@@ -16,8 +16,8 @@
 package org.opengauss.datachecker.extract.adapter;
 
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
+import org.opengauss.datachecker.common.util.SpringUtil;
 import org.opengauss.datachecker.extract.adapter.service.CheckRowRule;
-import org.opengauss.datachecker.extract.util.SpringUtil;
 
 import java.util.HashMap;
 import java.util.Map;

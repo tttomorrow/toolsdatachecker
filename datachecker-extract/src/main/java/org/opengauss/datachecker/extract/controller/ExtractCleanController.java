@@ -16,14 +16,16 @@
 package org.opengauss.datachecker.extract.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import org.opengauss.datachecker.common.service.ShutdownService;
 import org.opengauss.datachecker.common.web.Result;
 import org.opengauss.datachecker.extract.kafka.KafkaManagerService;
 import org.opengauss.datachecker.extract.service.DataExtractService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
 
 /**
  * Clearing the environment at the extraction endpoint
@@ -32,14 +34,14 @@ import org.springframework.web.bind.annotation.RestController;
  * @date ：Created in 2022/6/23
  * @since ：11
  */
-@Tag(name = "Clearing the environment at the extraction endpoint")
 @RestController
 public class ExtractCleanController {
-    @Autowired
+    @Resource
     private DataExtractService dataExtractService;
-
-    @Autowired
+    @Resource
     private KafkaManagerService kafkaManagerService;
+    @Resource
+    private ShutdownService shutdownService;
 
     /**
      * clear the endpoint information and reinitialize the environment.
@@ -65,6 +67,12 @@ public class ExtractCleanController {
     @PostMapping("/extract/clean/kafka")
     Result<Void> cleanKafka() {
         kafkaManagerService.cleanKafka();
+        return Result.success();
+    }
+
+    @PostMapping("/extract/shutdown")
+    Result<Void> shutdown(@RequestBody String message) {
+        shutdownService.shutdown(message);
         return Result.success();
     }
 }

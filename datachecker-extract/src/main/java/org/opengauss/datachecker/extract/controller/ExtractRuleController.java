@@ -42,10 +42,12 @@ public class ExtractRuleController {
     private RuleAdapterService ruleAdapterService;
     @Resource
     private EnvironmentLoader environmentLoader;
+
     /**
      * Distribution Data Extraction Filter Rules
      *
-     * @param rules rules
+     * @param checkMode checkMode
+     * @param rules     rules
      */
     @PostMapping("/extract/rules/distribute")
     public void distributeRules(@RequestParam(name = "checkMode") CheckMode checkMode,

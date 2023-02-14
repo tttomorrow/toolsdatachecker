@@ -16,8 +16,9 @@
 package org.opengauss.datachecker.extract.load;
 
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.extract.util.SpringUtil;
-import org.springframework.boot.SpringApplication;
+import org.opengauss.datachecker.common.service.ShutdownService;
+
+import javax.annotation.Resource;
 
 /**
  * AbstractCheckLoader
@@ -28,6 +29,9 @@ import org.springframework.boot.SpringApplication;
  */
 @Slf4j
 public abstract class AbstractExtractLoader implements ExtractLoader {
+    @Resource
+    private ShutdownService shutdownService;
+
     /**
      * Verification environment global information loader
      */
@@ -40,8 +44,6 @@ public abstract class AbstractExtractLoader implements ExtractLoader {
      * @param message shutdown message
      */
     public void shutdown(String message) {
-        log.error("The check server will be shutdown , {}", message);
-        log.error("check server exited .");
-        System.exit(SpringApplication.exit(SpringUtil.getApplicationContext()));
+        shutdownService.shutdown(message);
     }
 }

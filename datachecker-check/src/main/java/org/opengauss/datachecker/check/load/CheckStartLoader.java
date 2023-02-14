@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.check.load;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.service.CheckService;
 import org.opengauss.datachecker.check.service.IncrementManagerService;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
@@ -38,10 +39,13 @@ import java.util.Objects;
 @Order(199)
 @Service
 public class CheckStartLoader extends AbstractCheckLoader {
+    private static final String FULL_CHECK_COMPLETED = "full check completed";
     @Resource
     private CheckService checkService;
     @Resource
     private IncrementManagerService incrementManagerService;
+    @Resource
+    private FeignClientService feignClient;
 
     @Override
     public void load(CheckEnvironment checkEnvironment) {
@@ -55,5 +59,8 @@ public class CheckStartLoader extends AbstractCheckLoader {
         checkService.start(CheckMode.FULL);
         final LocalDateTime endTime = LocalDateTime.now();
         log.info("check task execute success ,cost time ={}", Duration.between(startTime, endTime).toSeconds());
+
+        feignClient.shutdown(FULL_CHECK_COMPLETED);
+        shutdown(FULL_CHECK_COMPLETED);
     }
 }

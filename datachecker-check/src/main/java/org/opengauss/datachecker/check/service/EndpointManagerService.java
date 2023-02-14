@@ -19,10 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.config.DataCheckProperties;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.service.ShutdownService;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import javax.annotation.Resource;
 
 /**
  * Data Extraction Service Endpoint Management
@@ -40,6 +43,8 @@ public class EndpointManagerService {
     private DataCheckProperties dataCheckProperties;
     @Autowired
     private EndpointStatusManager endpointStatusManager;
+    @Resource
+    private ShutdownService shutdownService;
 
     /**
      * View the health status of all endpoints
@@ -59,10 +64,17 @@ public class EndpointManagerService {
      */
     public void endpointHealthCheck() {
         Thread.currentThread().setName("heart-beat-heath");
-        while (true) {
-            checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "source endpoint service check");
-            checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "sink endpoint service check");
-            ThreadUtil.sleepOneSecond();
+        shutdownService.addMonitor();
+        try {
+            while (!shutdownService.isShutdown()) {
+                checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "source endpoint service check");
+                checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "sink endpoint service check");
+                ThreadUtil.sleepOneSecond();
+            }
+        } catch (Exception ignore) {
+            log.error("we will exit current process, ignore this exception!");
+        } finally {
+            shutdownService.releaseMonitor();
         }
     }
 

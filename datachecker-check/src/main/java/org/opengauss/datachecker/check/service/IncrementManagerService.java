@@ -27,6 +27,7 @@ import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
+import org.opengauss.datachecker.common.service.ShutdownService;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.IdGenerator;
 import org.opengauss.datachecker.common.util.PhaserUtil;
@@ -67,6 +68,8 @@ public class IncrementManagerService {
     private ThreadPoolTaskExecutor asyncCheckExecutor;
     @Resource
     private FeignClientService feignClientService;
+    @Resource
+    private ShutdownService shutdownService;
 
     /**
      * Incremental verification log notification
@@ -102,19 +105,25 @@ public class IncrementManagerService {
     private void checkingIncrementDataLogs() {
         Thread.currentThread().setName("inc-queue-process-loop");
         log.info("started process increment data logs thread");
-        while (true) {
-            try {
-                final List<SourceDataLog> dataLogList = INC_LOG_QUEUE.take();
-                if (CollectionUtils.isNotEmpty(dataLogList)) {
-                    PROCESS_SIGNATURE.set(IdGenerator.nextId36());
-                    // Collect the last verification results and build an incremental verification log
-                    mergeDataLogList(dataLogList, collectLastResults());
-                    ExportCheckResult.backCheckResultDirectory();
-                    incrementDataLogsChecking(dataLogList);
-                }
-            } catch (Exception ex) {
-                log.error("take inc log queue interrupted  ");
+        shutdownService.addMonitor();
+        while (!shutdownService.isShutdown()) {
+            consumerIncLogQueue();
+        }
+        shutdownService.releaseMonitor();
+    }
+
+    private void consumerIncLogQueue() {
+        try {
+            final List<SourceDataLog> dataLogList = INC_LOG_QUEUE.take();
+            if (CollectionUtils.isNotEmpty(dataLogList)) {
+                PROCESS_SIGNATURE.set(IdGenerator.nextId36());
+                // Collect the last verification results and build an incremental verification log
+                mergeDataLogList(dataLogList, collectLastResults());
+                ExportCheckResult.backCheckResultDirectory();
+                incrementDataLogsChecking(dataLogList);
             }
+        } catch (Exception ex) {
+            log.error("take inc log queue interrupted  ");
         }
     }
 
