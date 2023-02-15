@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -45,10 +45,10 @@ public class DebeziumWorker implements Runnable {
     public void run() {
         Thread.currentThread().setName(NAME);
         log.info("The Debezium message listener task has started");
-        final KafkaConsumer<String, String> consumer = kafkaConsumerConfig.getDebeziumConsumer();
+        final KafkaConsumer<String, Object> consumer = kafkaConsumerConfig.getDebeziumConsumer();
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(50));
-            for (ConsumerRecord<String, String> record : records) {
+            ConsumerRecords<String, Object> records = consumer.poll(Duration.ofMillis(50));
+            for (ConsumerRecord<String, Object> record : records) {
                 try {
                     debeziumConsumerListener.listen(record);
                 } catch (Exception ex) {

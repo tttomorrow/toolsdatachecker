@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,6 @@ import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
-import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;

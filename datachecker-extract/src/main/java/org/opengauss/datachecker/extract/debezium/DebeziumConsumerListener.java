@@ -13,15 +13,17 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import com.alibaba.fastjson.JSONException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.opengauss.datachecker.common.exception.DebeziumConfigException;
+import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -35,19 +37,26 @@ import java.util.concurrent.LinkedBlockingQueue;
 @Service
 public class DebeziumConsumerListener {
     private static final LinkedBlockingQueue<DebeziumDataBean> DATA_LOG_QUEUE = new LinkedBlockingQueue<>();
-    private final DebeziumDataHandler debeziumDataHandler = new DebeziumDataHandler();
+    private DeserializerAdapter adapter = new DeserializerAdapter();
+    private DebeziumDataHandler debeziumDataHandler;
 
-    public void listen(ConsumerRecord<String, String> record) {
+    @Resource
+    private ExtractProperties extractProperties;
+
+    @PostConstruct
+    public void initDebeziumDataHandler() {
+        debeziumDataHandler = adapter.getHandler(extractProperties.getDebeziumSerializer());
+    }
+
+    public void listen(ConsumerRecord<String, Object> record) {
         try {
-            if (StringUtils.isEmpty(record.value())) {
-                return;
-            }
+
             final long offset = record.offset();
             debeziumDataHandler.handler(offset, record.value(), DATA_LOG_QUEUE);
-        } catch (DebeziumConfigException | JSONException | InterruptedException ex) {
+        } catch (DebeziumConfigException | JSONException ex) {
             // Abnormal message structure, ignoring the current message
             log.error("DebeziumConsumerListener Abnormal message : [{}] {} ignoring this message : {}", ex.getMessage(),
-                System.getProperty("line.separator"), record.value());
+                System.getProperty("line.separator"), record);
         }
     }
 

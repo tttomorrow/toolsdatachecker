@@ -19,6 +19,8 @@ spring:
     debezium-enable: false
     debezium-topic:
     debezium-groupId:
+    debezium-serializer: AvroSerializer # StringSerializer or AvroSerializer
+    debezium-avro-registry: http://localhost:8081 # avro schema registry
     sync-extract: true
 
   datasource:

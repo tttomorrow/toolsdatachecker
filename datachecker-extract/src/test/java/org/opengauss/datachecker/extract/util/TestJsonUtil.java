@@ -19,9 +19,11 @@ public class TestJsonUtil {
     public static final String KEY_UPDATE_DML_BUILDER_TEST = "update_dml_builder_test";
     public static final String KEY_META_DATA_13_TABLE = "meta_data_13_table";
     public static final String KEY_DEBEZIUM_ONE_TABLE_RECORD = "debezium_one_table_record";
+    public static final String KEY_DEBEZIUM_AVRO_ONE_TABLE_RECORD = "debezium_avro_one_table_record";
 
     private static final String RESOURCE_META_JSON = "data/update_dml_builder_test/metadata.json";
     private static final String RESOURCE_DEBEZIUM_ONE_TABLE_RECORD = "data/debezium_data/one_table_record.json";
+    private static final String RESOURCE_DEBEZIUM_AVRO_ONE_TABLE_RECORD = "data/debezium_avro/one_record.json";
     private static final String RESOURCE_META_DATA_13_TABLE = "data/meta_data/metadata_table_13.json";
 
     private static final Map<String, String> JSON_RESOURCE = new HashMap<>();
@@ -30,6 +32,7 @@ public class TestJsonUtil {
         JSON_RESOURCE.put(KEY_UPDATE_DML_BUILDER_TEST, RESOURCE_META_JSON);
         JSON_RESOURCE.put(KEY_META_DATA_13_TABLE, RESOURCE_META_DATA_13_TABLE);
         JSON_RESOURCE.put(KEY_DEBEZIUM_ONE_TABLE_RECORD, RESOURCE_DEBEZIUM_ONE_TABLE_RECORD);
+        JSON_RESOURCE.put(KEY_DEBEZIUM_AVRO_ONE_TABLE_RECORD, RESOURCE_DEBEZIUM_AVRO_ONE_TABLE_RECORD);
     }
 
     public static String getJsonText(String key) {

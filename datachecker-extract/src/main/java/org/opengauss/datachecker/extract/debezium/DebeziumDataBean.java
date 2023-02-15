@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import lombok.ToString;
 
