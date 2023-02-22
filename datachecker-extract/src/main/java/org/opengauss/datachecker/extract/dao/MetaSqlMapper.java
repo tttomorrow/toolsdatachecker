@@ -81,10 +81,10 @@ public class MetaSqlMapper {
         /**
          * Table metadata query SQL
          */
-        String TABLE_METADATA_SQL =
-            "select distinct info.table_name tableName , info.table_rows tableRows from information_schema.tables info "
-                + "left join information_schema.columns col on info.table_schema=col.table_schema "
-                + "and info.table_name=col.table_name where info.table_schema=? and col.column_key='PRI'";
+        String TABLE_METADATA_SQL = "select info.table_name tableName , info.table_rows tableRows from "
+            + " information_schema.tables info where info.table_schema=:databaseSchema "
+            + " and info.table_name in ( "
+            + " select table_name from information_schema.columns where table_schema=:databaseSchema and  column_key='PRI' )";
 
         /**
          * column metadata query SQL
@@ -107,7 +107,7 @@ public class MetaSqlMapper {
         String TABLE_METADATA_SQL = "select distinct kcu.table_name tableName , 0 tableRows"
             + " from information_schema.key_column_usage kcu WHERE kcu.constraint_name in ("
             + " select constraint_name from information_schema.table_constraints tc"
-            + " where tc.constraint_schema=? and tc.constraint_type='PRIMARY KEY')";
+            + " where tc.constraint_schema=:databaseSchema and tc.constraint_type='PRIMARY KEY')";
 
         /**
          * column metadata query SQL
