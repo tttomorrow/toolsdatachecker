@@ -20,6 +20,7 @@ import lombok.Data;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.extract.ConditionLimit;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
@@ -28,6 +29,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.CHECKED_DIFF_TOO_LARGE;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.CHECKED_PARTITIONS;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.CHECKED_ROW_CONDITION;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.FAILED_MESSAGE;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.RESULT_FAILED;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.RESULT_SUCCESS;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.STRUCTURE_NOT_EQUALS;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.TABLE_NOT_EXISTS;
 
 /**
  * CheckDiffResult
@@ -38,11 +48,10 @@ import java.util.Set;
  */
 @Data
 @JSONType(
-    orders = {"schema", "table", "topic", "partitions", "beginOffset", "checkMode", "result", "message", "createTime",
-        "keyInsertSet", "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
-    ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml"})
+    orders = {"process", "schema", "table", "topic", "partitions", "beginOffset", "checkMode", "result", "message",
+        "createTime", "keyInsertSet", "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
+    ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml", "rowCondition"})
 public class CheckDiffResult {
-    public static final String FAILED_RESULT = "failed";
     private String process;
     private String schema;
     private String table;
@@ -54,6 +63,7 @@ public class CheckDiffResult {
     private LocalDateTime createTime;
     private String result;
     private String message;
+    private ConditionLimit rowCondition;
     private Set<String> keyInsertSet;
     private Set<String> keyUpdateSet;
     private Set<String> keyDeleteSet;
@@ -80,6 +90,7 @@ public class CheckDiffResult {
         schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
         process = Objects.isNull(builder.getProcess()) ? "" : builder.getProcess();
         createTime = builder.getCreateTime();
+        rowCondition = builder.getConditionLimit();
         checkMode = builder.getCheckMode();
         if (builder.isExistTableMiss()) {
             initEmptyCollections();
@@ -110,29 +121,31 @@ public class CheckDiffResult {
     }
 
     private void resultTableStructureNotEquals() {
-        result = FAILED_RESULT;
-        message = "table structure is not equals , please check the database sync !";
+        result = RESULT_FAILED;
+        message = STRUCTURE_NOT_EQUALS;
     }
 
     private void resultTableNotExist(Endpoint onlyExistEndpoint) {
-        result = FAILED_RESULT;
-        message = "table [" + table + "] , " + " only exist in " + onlyExistEndpoint.getDescription() + "!";
+        result = RESULT_FAILED;
+        message = String.format(TABLE_NOT_EXISTS, table, onlyExistEndpoint.getDescription());
     }
 
     private void resultAnalysis(boolean isNotLargeDiffKeys) {
-        message = schema + "." + table + "_[" + partitions + "] check ";
+        if (Objects.nonNull(rowCondition)) {
+            message =
+                String.format(CHECKED_ROW_CONDITION, schema, table, rowCondition.getStart(), rowCondition.getOffset());
+        } else {
+            message = String.format(CHECKED_PARTITIONS, schema, table, partitions);
+        }
         if (CollectionUtils.isEmpty(keyInsertSet) && CollectionUtils.isEmpty(keyUpdateSet) && CollectionUtils
             .isEmpty(keyDeleteSet)) {
-            result = "success";
+            result = RESULT_SUCCESS;
             message += result;
         } else {
-            result = FAILED_RESULT;
-            message += result;
-            message +=
-                "( insert=" + keyInsertSet.size() + " update=" + keyUpdateSet.size() + " delete=" + keyDeleteSet.size()
-                    + " )";
+            result = RESULT_FAILED;
+            message += String.format(FAILED_MESSAGE, keyInsertSet.size(), keyUpdateSet.size(), keyDeleteSet.size());
             if (totalRepair > 0 && !isNotLargeDiffKeys) {
-                message += " data error is too large , please check the database sync !";
+                message += CHECKED_DIFF_TOO_LARGE;
             }
         }
     }

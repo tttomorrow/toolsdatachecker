@@ -18,10 +18,12 @@ package org.opengauss.datachecker.check.modules.check;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.config.DataCheckConfig;
 import org.opengauss.datachecker.check.load.CheckEnvironment;
+import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
 import org.opengauss.datachecker.common.entry.check.DataCheckParam;
 import org.opengauss.datachecker.common.entry.check.IncrementDataCheckParam;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -48,6 +50,8 @@ public class DataCheckService {
     private CheckEnvironment checkEnvironment;
     @Resource
     private ThreadPoolTaskExecutor asyncCheckExecutor;
+    @Resource
+    private EndpointMetaDataManager endpointMetaDataManager;
 
     /**
      * submit check table data runnable
@@ -60,8 +64,9 @@ public class DataCheckService {
     public void checkTableData(String process, String tableName, int partitions, int tablePartitionRowCount) {
         final int bucketCapacity = dataCheckConfig.getBucketCapacity();
         final int errorRate = dataCheckConfig.getDataCheckProperties().getErrorRate();
+        final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
         DataCheckParam checkParam = new DataCheckParam();
-        checkParam.setProcess(process).setTableName(tableName).setSchema(getSinkSchema())
+        checkParam.setProcess(process).setTableName(tableName).setSchema(getSinkSchema()).setSourceMetadata(sourceMeta)
                   .setTablePartitionRowCount(tablePartitionRowCount).setBucketCapacity(bucketCapacity)
                   .setPartitions(partitions).setProperties(kafkaProperties).setErrorRate(errorRate);
         asyncCheckExecutor.submit(new DataCheckRunnable(checkParam, dataCheckRunnableSupport));

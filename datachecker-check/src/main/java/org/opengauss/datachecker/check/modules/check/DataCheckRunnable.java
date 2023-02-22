@@ -31,6 +31,7 @@ import org.opengauss.datachecker.common.entry.check.DifferencePair;
 import org.opengauss.datachecker.common.entry.check.Pair;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.extract.ConditionLimit;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.exception.MerkleTreeDepthException;
@@ -62,7 +63,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class DataCheckRunnable implements Runnable {
     private static final int THRESHOLD_MIN_BUCKET_SIZE = 2;
-    private static final String THREAD_NAME_PRIFEX = "DATA_CHECK_";
 
     private final LocalDateTime start;
     private final List<Bucket> sourceBucketList = Collections.synchronizedList(new ArrayList<>());
@@ -75,7 +75,6 @@ public class DataCheckRunnable implements Runnable {
     private final TableStatusRegister tableStatusRegister;
     private final DataCheckParam checkParam;
     private final KafkaConsumerHandler kafkaConsumerHandler;
-
     private String sinkSchema;
     private String sourceTopic;
     private String sinkTopic;
@@ -123,13 +122,15 @@ public class DataCheckRunnable implements Runnable {
         try {
             paramInit();
             checkTableData();
-        } catch (Exception ex) {
-            log.error("happen before some error,", ex);
+            log.debug("check table {} complete!", tableName);
+        } catch (Exception ignore) {
+            log.error("check table has some error,", ignore);
         } finally {
             checkResult();
             statisticalService.statistics(getStatisticsName(tableName, partitions), start);
             cleanCheckThreadEnvironment();
             refreshCheckStatus();
+            log.debug("check table result {} complete!", tableName);
         }
     }
 
@@ -415,12 +416,16 @@ public class DataCheckRunnable implements Runnable {
         final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder(feignClient);
         CheckDiffResult result =
             builder.process(checkParam.getProcess()).table(tableName).topic(sourceTopic).schema(sinkSchema)
-                   .partitions(partitions).isTableStructureEquals(true).isExistTableMiss(false, null).rowCount(rowCount)
-                   .errorRate(20).checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
-                   .keyInsertSet(difference.getOnlyOnLeft().keySet()).keyDeleteSet(difference.getOnlyOnRight().keySet())
-                   .build();
+                   .conditionLimit(getConditionLimit()).partitions(partitions).isTableStructureEquals(true)
+                   .isExistTableMiss(false, null).rowCount(rowCount).errorRate(20).checkMode(CheckMode.FULL)
+                   .keyUpdateSet(difference.getDiffering().keySet()).keyInsertSet(difference.getOnlyOnLeft().keySet())
+                   .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
         ExportCheckResult.export(result);
         log.info("completed data check and export results of table [{}-{}]", tableName, partitions);
+    }
+
+    private ConditionLimit getConditionLimit() {
+        return checkParam.getSourceMetadata().getConditionLimit();
     }
 
     private void resetThreadName(String tableName, int partitions) {
