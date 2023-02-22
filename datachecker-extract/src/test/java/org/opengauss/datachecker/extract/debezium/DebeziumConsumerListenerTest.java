@@ -1,4 +1,4 @@
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +21,7 @@ class DebeziumConsumerListenerTest {
     @Test
     void test_listen_record_value_empty() {
         // Setup
-        final ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "key", "");
+        final ConsumerRecord<String, Object> record = new ConsumerRecord<>("topic", 0, 0L, "key", "");
         // Run the test
         debeziumConsumerListenerUnderTest.listen(record);
         // Verify the results
@@ -31,7 +31,7 @@ class DebeziumConsumerListenerTest {
     @Test
     void test_listen_record_value_parse_error() {
         // Setup
-        final ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "key", "value");
+        final ConsumerRecord<String, Object> record = new ConsumerRecord<>("topic", 0, 0L, "key", "value");
         // Run the test
         debeziumConsumerListenerUnderTest.listen(record);
         // Verify the results
@@ -42,7 +42,7 @@ class DebeziumConsumerListenerTest {
     void test_listen_record_value_parse_success() {
         // Setup
         String value = TestJsonUtil.getJsonText(TestJsonUtil.KEY_DEBEZIUM_ONE_TABLE_RECORD);
-        final ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "key", value);
+        final ConsumerRecord<String, Object> record = new ConsumerRecord<>("topic", 0, 0L, "key", value);
         // Run the test
         debeziumConsumerListenerUnderTest.listen(record);
         // Verify the results
@@ -58,7 +58,7 @@ class DebeziumConsumerListenerTest {
     @Test
     void test_listen_record_value_parse_success_poll() {
         String value = TestJsonUtil.getJsonText(TestJsonUtil.KEY_DEBEZIUM_ONE_TABLE_RECORD);
-        final ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "key", value);
+        final ConsumerRecord<String, Object> record = new ConsumerRecord<>("topic", 0, 0L, "key", value);
         // Run the test
         debeziumConsumerListenerUnderTest.listen(record);
         final DebeziumDataBean result = debeziumConsumerListenerUnderTest.poll();

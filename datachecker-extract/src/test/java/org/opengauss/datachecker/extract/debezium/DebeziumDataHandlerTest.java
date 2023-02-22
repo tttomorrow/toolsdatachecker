@@ -1,4 +1,4 @@
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import com.alibaba.fastjson.JSONException;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,11 +16,11 @@ class DebeziumDataHandlerTest {
 
     @BeforeEach
     void setUp() {
-        debeziumDataHandlerUnderTest = new DebeziumDataHandler();
+        debeziumDataHandlerUnderTest = new DebeziumStringHandler();
     }
 
     @Test
-    void testHandler() throws Exception {
+    void testHandler() {
         // Setup
         final LinkedBlockingQueue<DebeziumDataBean> queue = new LinkedBlockingQueue<>(10);
         String message = TestJsonUtil.getJsonText(TestJsonUtil.KEY_DEBEZIUM_ONE_TABLE_RECORD);

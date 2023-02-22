@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -113,7 +113,12 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
                                                   .map(ColumnsMetaData::getColumnName).collect(Collectors.toList());
         final Map<String, String> valueMap = debeziumDataBean.getData();
         dateList.forEach(dateField -> {
-            valueMap.put(dateField, decompressLocalDate(Integer.valueOf(valueMap.get(dateField))));
+            final String time = valueMap.get(dateField);
+            if (Objects.isNull(time)) {
+                valueMap.put(dateField, null);
+            } else {
+                valueMap.put(dateField, decompressLocalDate(Integer.parseInt(time)));
+            }
         });
     }
 

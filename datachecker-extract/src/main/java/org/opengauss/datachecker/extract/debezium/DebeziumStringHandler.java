@@ -13,7 +13,7 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.debe;
+package org.opengauss.datachecker.extract.debezium;
 
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
@@ -27,28 +27,32 @@ import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * DebeziumDataHandler
+ * DebeziumStringHandler
  *
  * @author ：wangchao
  * @date ：Created in 2022/6/24
  * @since ：11
  */
 @Slf4j
-public class DebeziumDataHandler {
+public class DebeziumStringHandler implements DebeziumDataHandler<String> {
     /**
      * Debezium message parsing and adding the parsing result to the {@code DebeziumDataLogs.class} result set
      *
-     * @param offset offset
+     * @param offset  offset
      * @param message message
      * @param queue   debeziumDataLogs
      */
-    public void handler(long offset, @NotEmpty String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue)
-        throws InterruptedException {
-        final DebeziumData debeziumData = JSONObject.parseObject(message, DebeziumData.class);
-        final DebeziumPayload payload = debeziumData.getPayload();
-        final Map<String, String> before = payload.getBefore();
-        final Map<String, String> after = payload.getAfter();
-        final PayloadSource source = payload.getSource();
-        queue.put(new DebeziumDataBean(source.getTable(),offset, after != null ? after : before));
+    @Override
+    public void handler(long offset, @NotEmpty String message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue) {
+        try {
+            final DebeziumData debeziumData = JSONObject.parseObject(message, DebeziumData.class);
+            final DebeziumPayload payload = debeziumData.getPayload();
+            final Map<String, String> before = payload.getBefore();
+            final Map<String, String> after = payload.getAfter();
+            final PayloadSource source = payload.getSource();
+            queue.put(new DebeziumDataBean(source.getTable(), offset, after != null ? after : before));
+        } catch (InterruptedException ex) {
+            log.error("put message at the tail of this queue, waiting if necessary for space to become available.");
+        }
     }
 }

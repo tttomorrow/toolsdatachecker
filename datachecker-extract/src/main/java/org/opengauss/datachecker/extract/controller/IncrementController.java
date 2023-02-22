@@ -19,8 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.web.Result;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
-import org.opengauss.datachecker.extract.debe.DataConsolidationService;
-import org.opengauss.datachecker.extract.debe.IncrementDataAnalysisService;
+import org.opengauss.datachecker.extract.debezium.DataConsolidationService;
+import org.opengauss.datachecker.extract.debezium.IncrementDataAnalysisService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 

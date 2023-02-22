@@ -11,7 +11,9 @@ spring:
     databaseType: MS
     query-dop: 8 # openGauss database Parallel Query session config
     debezium-enable: false
-    debezium-topic: data_check_all # debezium topic
+    debezium-topic: data_check_avro_inc_topic_w1 # debezium topic
+    debezium-serializer: AvroSerializer # StringSerializer or AvroSerializer
+    debezium-avro-registry: http://localhost:8081 # avro schema registry
     debezium-groupId: debezium-extract-group # debezium topic groupId
     debezium-time-period: 1 # Debezium incremental migration verification time period: 24 * 60 unit: Min
     # debezium-num-period: Debezium incremental migration verification is the threshold value of the number

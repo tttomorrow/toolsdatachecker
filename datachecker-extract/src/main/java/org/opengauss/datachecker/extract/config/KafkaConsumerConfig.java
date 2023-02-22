@@ -20,12 +20,13 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.opengauss.datachecker.extract.constants.ExtConstants;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.opengauss.datachecker.extract.debezium.DeserializerAdapter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -50,8 +51,11 @@ public class KafkaConsumerConfig {
     private String debeziumGroupId;
     @Value("${spring.extract.debezium-topic}")
     private String debeziumTopic;
-    @Autowired
+    @Resource
+    private ExtractProperties extractProperties;
+    @Resource
     private KafkaProperties properties;
+    private DeserializerAdapter adapter = new DeserializerAdapter();
 
     /**
      * Obtaining a specified consumer client based on topic.
@@ -80,17 +84,29 @@ public class KafkaConsumerConfig {
      *
      * @return consumer client.
      */
-    public KafkaConsumer<String, String> getDebeziumConsumer() {
+    public KafkaConsumer<String, Object> getDebeziumConsumer() {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
             String.join(ExtConstants.DELIMITER, properties.getBootstrapServers()));
         props.put(ConsumerConfig.GROUP_ID_CONFIG, debeziumGroupId);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, properties.getConsumer().getAutoOffsetReset());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        final KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        adapterValueDeserializer(props, extractProperties);
+        adapterAvroRegistry(props, extractProperties);
+        final KafkaConsumer<String, Object> consumer = new KafkaConsumer<>(props);
         consumer.subscribe(List.of(debeziumTopic));
         return consumer;
+    }
+
+    private void adapterValueDeserializer(Properties props, ExtractProperties extractProperties) {
+        final Class deserializer = adapter.getDeserializer(extractProperties.getDebeziumSerializer());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializer);
+    }
+
+    private void adapterAvroRegistry(Properties props, ExtractProperties extractProperties) {
+        if (adapter.isAvro(extractProperties.getDebeziumSerializer())) {
+            props.put(adapter.getAvroSchemaRegistryUrlKey(), extractProperties.getDebeziumAvroRegistry());
+        }
     }
 
     private KafkaConsumer<String, String> buildKafkaConsumer() {

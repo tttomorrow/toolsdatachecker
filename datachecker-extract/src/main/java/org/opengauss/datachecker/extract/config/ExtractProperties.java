@@ -34,7 +34,8 @@ import java.util.List;
 @Data
 @Component
 @ConfigurationProperties(prefix = "spring.extract")
-@JSONType(orders = {"schema", "databaseType", "endpoint", "debeziumTopic", "debeziumTables"})
+@JSONType(orders = {"schema", "databaseType", "endpoint", "isDebeziumEnable", "debeziumTopic", "debeziumGroupId",
+    "debeziumSerializer", "debeziumAvroRegistry"})
 public class ExtractProperties {
 
     /**
@@ -54,6 +55,9 @@ public class ExtractProperties {
      */
     @NotNull(message = Endpoint.API_DESCRIPTION + ",endpoint type configuration, cannot be empty")
     private Endpoint endpoint;
+
+    private String debeziumSerializer;
+    private String debeziumAvroRegistry;
 
     /**
      * Indicates whether to enable incremental debezium configuration.
