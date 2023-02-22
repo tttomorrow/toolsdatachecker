@@ -41,7 +41,46 @@ public class TopicUtil {
      * @return topicName
      */
     public static String buildTopicName(String process, Endpoint endpoint, String tableName) {
-        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), tableName, letterCaseEncoding(tableName));
+        return String.format(TOPIC_TEMPLATE, process, endpoint.getCode(), formatTableName(tableName),
+            letterCaseEncoding(tableName));
+    }
+
+    /**
+     * Format tableName , Because ,
+     * The maximum length of topic name is 249 ,
+     * The maximum length of table name is 64 ,
+     * so, When the character is not a number or English character, convert it to the corresponding ascii code value
+     *
+     * @param tableName tableName
+     * @return format tableName
+     */
+    public static String formatTableName(String tableName) {
+        final char[] nameChars = tableName.toCharArray();
+        StringBuilder sb = new StringBuilder();
+        for (char nameChar : nameChars) {
+            if (isAlphanumerics(nameChar) || isKafkaTopicAlpha(nameChar)) {
+                sb.append(nameChar);
+            } else {
+                sb.append((int) nameChar);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static boolean isNumeric(char aChar) {
+        return aChar >= '0' && aChar <= '9';
+    }
+
+    private static boolean isKafkaTopicAlpha(char aChar) {
+        return aChar == '-' || aChar == '_';
+    }
+
+    private static boolean isAlphanumerics(char aChar) {
+        return isEnglishLetters(aChar) || isNumeric(aChar);
+    }
+
+    private static boolean isEnglishLetters(char aChar) {
+        return (aChar >= 'a' && aChar <= 'z') || (aChar >= 'A' && aChar <= 'Z');
     }
 
     /**

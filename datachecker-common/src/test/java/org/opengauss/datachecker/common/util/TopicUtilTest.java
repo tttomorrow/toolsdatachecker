@@ -49,4 +49,11 @@ class TopicUtilTest {
     void testCalcPartitions() {
         assertThat(TopicUtil.calcPartitions(1)).isEqualTo(1);
     }
+
+    @DisplayName("test formatTableName")
+    @Test
+    void testFormatTableName() {
+        assertThat(TopicUtil.formatTableName("Asdddfs@##$")).isEqualTo("Asdddfs64353536");
+        assertThat(TopicUtil.formatTableName("Asdddfs_-#$")).isEqualTo("Asdddfs_-3536");
+    }
 }
