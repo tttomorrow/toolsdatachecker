@@ -21,6 +21,7 @@ import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
+import org.opengauss.datachecker.common.entry.extract.ConditionLimit;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     private boolean isExistTableMiss;
     private Endpoint onlyExistEndpoint;
     private CheckMode checkMode;
+    private ConditionLimit conditionLimit;
     private LocalDateTime createTime;
     private Set<String> keyUpdateSet;
     private Set<String> keyInsertSet;
@@ -95,10 +97,29 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
         this.table = table;
         return self();
     }
+
+    /**
+     * Set the process properties of the builder
+     *
+     * @param process process
+     * @return CheckDiffResultBuilder
+     */
     public B process(String process) {
         this.process = process;
         return self();
     }
+
+    /**
+     * Set the conditionLimit properties of the builder
+     *
+     * @param conditionLimit conditionLimit
+     * @return CheckDiffResultBuilder
+     */
+    public B conditionLimit(ConditionLimit conditionLimit) {
+        this.conditionLimit = conditionLimit;
+        return self();
+    }
+
     /**
      * Set the table is TableStructureEquals
      *

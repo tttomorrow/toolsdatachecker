@@ -17,6 +17,7 @@ package org.opengauss.datachecker.common.entry.check;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 
 /**
@@ -37,4 +38,5 @@ public class DataCheckParam {
     private int tablePartitionRowCount;
     private String schema;
     private KafkaProperties properties;
+    private TableMetadata sourceMetadata;
 }

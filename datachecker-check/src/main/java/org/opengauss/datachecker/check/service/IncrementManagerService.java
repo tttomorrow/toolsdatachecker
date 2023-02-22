@@ -49,6 +49,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.RESULT_FAILED;
+
 /**
  * IncrementManagerService
  *
@@ -193,7 +195,7 @@ public class IncrementManagerService {
     private Map<String, SourceDataLog> parseCheckResult(List<CheckDiffResult> historyDataList) {
         Map<String, SourceDataLog> dataLogMap = new HashMap<>();
         historyDataList.forEach(dataLog -> {
-            if (StringUtils.equals(dataLog.getResult(), CheckDiffResult.FAILED_RESULT)) {
+            if (StringUtils.equals(dataLog.getResult(), RESULT_FAILED)) {
                 final Set<String> diffKeyValues = getDiffKeyValues(dataLog);
                 final String tableName = dataLog.getTable();
                 if (dataLogMap.containsKey(tableName)) {
