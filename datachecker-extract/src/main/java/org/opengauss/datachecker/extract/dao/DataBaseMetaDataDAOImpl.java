@@ -31,6 +31,7 @@ import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.opengauss.datachecker.extract.service.RuleAdapterService;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowCountCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -60,6 +61,8 @@ import static org.opengauss.datachecker.extract.constants.ExtConstants.COLUMN_IN
 @Component
 @RequiredArgsConstructor
 public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
+    public static final String TABLE_NAMES = "tableNames";
+    public static final String DATABASE_SCHEMA = "databaseSchema";
     private static final String OPEN_GAUSS_PARALLEL_QUERY = "set query_dop to %s;";
     protected final JdbcTemplate JdbcTemplateOne;
     private final RuleAdapterService ruleAdapterService;
@@ -70,7 +73,7 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     public boolean health() {
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.HEALTH);
         List<String> result = new ArrayList<>();
-        JdbcTemplateOne.query(sql, ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
+        JdbcTemplateOne.query(sql, (PreparedStatementSetter) ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
             @Override
             protected void processRow(ResultSet rs, int rowNum) throws SQLException {
                 result.add(rs.getString(1));
@@ -100,15 +103,11 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     }
 
     public List<String> queryAllTableNames() {
-        final List<String> tableNameList = new ArrayList<>();
+        Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.EMPTY);
+        map.put(DATABASE_SCHEMA, getSchema());
+        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
-        JdbcTemplateOne.query(sql, ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
-            @Override
-            protected void processRow(ResultSet rs, int rowNum) throws SQLException {
-                tableNameList.add(rs.getString(1));
-            }
-        });
-        return tableNameList;
+        return jdbc.query(sql, map, (rs, rowNum) -> rs.getString(1));
     }
 
     private List<String> filterByTableRules(List<String> tableNameList) {
@@ -153,8 +152,8 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     @Override
     public List<ColumnsMetaData> queryColumnMetadata(List<String> tableNames) {
         Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.EMPTY);
-        map.put("tableNames", tableNames);
-        map.put("databaseSchema", getSchema());
+        map.put(TABLE_NAMES, tableNames);
+        map.put(DATABASE_SCHEMA, getSchema());
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.COLUMN);
         List<ColumnsMetaData> columns = jdbc.query(sql, map, new RowMapper<>() {
