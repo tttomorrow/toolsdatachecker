@@ -49,7 +49,7 @@ import static org.opengauss.datachecker.check.modules.check.CheckResultConstants
 @Data
 @JSONType(
     orders = {"process", "schema", "table", "topic", "partitions", "beginOffset", "checkMode", "result", "message",
-        "createTime", "keyInsertSet", "keyUpdateSet", "keyDeleteSet", "repairInsert", "repairUpdate", "repairDelete"},
+        "startTime", "endTime", "keyInsertSet", "keyUpdateSet", "keyDeleteSet"},
     ignores = {"totalRepair", "buildRepairDml", "isBuildRepairDml", "rowCondition"})
 public class CheckDiffResult {
     private String process;
@@ -60,16 +60,14 @@ public class CheckDiffResult {
     private long beginOffset;
     private int totalRepair;
     private CheckMode checkMode;
-    private LocalDateTime createTime;
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
     private String result;
     private String message;
     private ConditionLimit rowCondition;
     private Set<String> keyInsertSet;
     private Set<String> keyUpdateSet;
     private Set<String> keyDeleteSet;
-    private List<String> repairInsert;
-    private List<String> repairUpdate;
-    private List<String> repairDelete;
 
     /**
      * constructor
@@ -89,7 +87,8 @@ public class CheckDiffResult {
         topic = Objects.isNull(builder.getTopic()) ? "" : builder.getTopic();
         schema = Objects.isNull(builder.getSchema()) ? "" : builder.getSchema();
         process = Objects.isNull(builder.getProcess()) ? "" : builder.getProcess();
-        createTime = builder.getCreateTime();
+        startTime = builder.getStartTime();
+        endTime = builder.getEndTime();
         rowCondition = builder.getConditionLimit();
         checkMode = builder.getCheckMode();
         if (builder.isExistTableMiss()) {
@@ -99,11 +98,6 @@ public class CheckDiffResult {
             keyUpdateSet = builder.getKeyUpdateSet();
             keyInsertSet = builder.getKeyInsertSet();
             keyDeleteSet = builder.getKeyDeleteSet();
-            if (builder.isNotLargeDiffKeys()) {
-                repairUpdate = builder.getRepairUpdate();
-                repairInsert = builder.getRepairInsert();
-                repairDelete = builder.getRepairDelete();
-            }
             resultAnalysis(builder.isNotLargeDiffKeys());
         } else {
             initEmptyCollections();
@@ -115,9 +109,6 @@ public class CheckDiffResult {
         keyUpdateSet = new HashSet<>(InitialCapacity.EMPTY);
         keyInsertSet = new HashSet<>(InitialCapacity.EMPTY);
         keyDeleteSet = new HashSet<>(InitialCapacity.EMPTY);
-        repairUpdate = new ArrayList<>(InitialCapacity.EMPTY);
-        repairInsert = new ArrayList<>(InitialCapacity.EMPTY);
-        repairDelete = new ArrayList<>(InitialCapacity.EMPTY);
     }
 
     private void resultTableStructureNotEquals() {

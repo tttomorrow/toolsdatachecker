@@ -18,7 +18,7 @@ class ExportCheckResultTest {
     void testExport() {
         // Setup
         final CheckDiffResult result =
-            new CheckDiffResult(AbstractCheckDiffResultBuilder.builder(new FeignClientService()));
+            new CheckDiffResult(AbstractCheckDiffResultBuilder.builder());
         // Run the test
         ExportCheckResult.export(result);
         // Verify the results

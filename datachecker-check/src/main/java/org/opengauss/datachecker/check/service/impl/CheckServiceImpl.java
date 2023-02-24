@@ -157,7 +157,7 @@ public class CheckServiceImpl implements CheckService {
         // Sink endpoint task construction
         feignClientService.buildExtractTaskAllTables(Endpoint.SINK, processNo, extractTasks);
         log.info("check full mode : build extract task sink {}", processNo);
-        checkTableStructureService.check();
+        checkTableStructureService.check(processNo);
         // Perform all tasks
         feignClientService.execExtractTaskAllTables(Endpoint.SOURCE, processNo);
         feignClientService.execExtractTaskAllTables(Endpoint.SINK, processNo);

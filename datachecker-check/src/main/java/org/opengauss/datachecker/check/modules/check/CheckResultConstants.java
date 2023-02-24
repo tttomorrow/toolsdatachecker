@@ -23,12 +23,12 @@ package org.opengauss.datachecker.check.modules.check;
  * @since ：11
  */
 public interface CheckResultConstants {
-    String RESULT_FAILED = " failed";
-    String RESULT_SUCCESS = " success";
+    String RESULT_FAILED = "failed";
+    String RESULT_SUCCESS = "success";
     String FAILED_MESSAGE = " failed (insert=%d update=%d delete=%d)";
     String STRUCTURE_NOT_EQUALS = "table structure is not equals , please check the database sync !";
     String TABLE_NOT_EXISTS = "table [%s] , only exist in %s !";
-    String CHECKED_ROW_CONDITION = "%s.%s checked, row limit %s,%s";
-    String CHECKED_PARTITIONS = "%s.%s_[%s] checked";
+    String CHECKED_ROW_CONDITION = "%s.%s checked, row limit %s,%s ";
+    String CHECKED_PARTITIONS = "%s.%s_[%s] checked ";
     String CHECKED_DIFF_TOO_LARGE = " data error is too large , please check the database sync !";
 }
