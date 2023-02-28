@@ -24,6 +24,7 @@ import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
+import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
@@ -72,6 +73,8 @@ public class IncrementManagerService {
     private FeignClientService feignClientService;
     @Resource
     private ShutdownService shutdownService;
+    @Resource
+    private CheckResultManagerService checkResultManagerService;
 
     /**
      * Incremental verification log notification
@@ -167,6 +170,7 @@ public class IncrementManagerService {
         PhaserUtil.submit(asyncCheckExecutor, taskList, () -> {
             log.info("increment datalog {} is completed.", processNo);
         });
+        checkResultManagerService.summaryCheckResult();
     }
 
     /**

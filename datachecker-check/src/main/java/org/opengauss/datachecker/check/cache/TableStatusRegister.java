@@ -174,7 +174,7 @@ public class TableStatusRegister implements Cache<String, Integer> {
      *
      * @return table has check completed count
      */
-    private int checkCompletedCount() {
+    public int checkCompletedCount() {
         return (int) TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_CONSUMER_VALUE)
                                        .count();
     }

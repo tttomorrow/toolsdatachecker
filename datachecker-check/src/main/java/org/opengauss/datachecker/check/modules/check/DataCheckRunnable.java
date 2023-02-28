@@ -24,8 +24,10 @@ import org.opengauss.datachecker.check.modules.bucket.Bucket;
 import org.opengauss.datachecker.check.modules.bucket.BuilderBucketHandler;
 import org.opengauss.datachecker.check.modules.merkle.MerkleTree;
 import org.opengauss.datachecker.check.modules.merkle.MerkleTree.Node;
+import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.check.service.StatisticalService;
 import org.opengauss.datachecker.common.constant.Constants;
+import org.opengauss.datachecker.common.entry.check.CheckPartition;
 import org.opengauss.datachecker.common.entry.check.DataCheckParam;
 import org.opengauss.datachecker.common.entry.check.DifferencePair;
 import org.opengauss.datachecker.common.entry.check.Pair;
@@ -64,7 +66,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataCheckRunnable implements Runnable {
     private static final int THRESHOLD_MIN_BUCKET_SIZE = 2;
 
-    private final LocalDateTime start;
     private final List<Bucket> sourceBucketList = Collections.synchronizedList(new ArrayList<>());
     private final List<Bucket> sinkBucketList = Collections.synchronizedList(new ArrayList<>());
     private final DifferencePair<Map<String, RowDataHash>, Map<String, RowDataHash>, Map<String, Pair<Node, Node>>>
@@ -75,6 +76,7 @@ public class DataCheckRunnable implements Runnable {
     private final TableStatusRegister tableStatusRegister;
     private final DataCheckParam checkParam;
     private final KafkaConsumerHandler kafkaConsumerHandler;
+    private final CheckResultManagerService checkResultManagerService;
     private String sinkSchema;
     private String sourceTopic;
     private String sinkTopic;
@@ -84,6 +86,8 @@ public class DataCheckRunnable implements Runnable {
     private int tablePartitionRowCount;
     private int errorRate;
     private int bucketCapacity;
+    private LocalDateTime startTime;
+    private CheckPartition checkPartition;
 
     /**
      * DataCheckRunnable
@@ -93,10 +97,11 @@ public class DataCheckRunnable implements Runnable {
      */
     public DataCheckRunnable(@NonNull DataCheckParam checkParam, @NonNull DataCheckRunnableSupport support) {
         this.checkParam = checkParam;
-        start = LocalDateTime.now();
+        startTime = LocalDateTime.now();
         feignClient = support.getFeignClientService();
         statisticalService = support.getStatisticalService();
         tableStatusRegister = support.getTableStatusRegister();
+        checkResultManagerService = support.getCheckResultManagerService();
         kafkaConsumerHandler = buildKafkaHandler(support);
     }
 
@@ -126,10 +131,10 @@ public class DataCheckRunnable implements Runnable {
         } catch (Exception ignore) {
             log.error("check table has some error,", ignore);
         } finally {
-            checkResult();
-            statisticalService.statistics(getStatisticsName(tableName, partitions), start);
-            cleanCheckThreadEnvironment();
+            statisticalService.statistics(getStatisticsName(tableName, partitions), startTime);
             refreshCheckStatus();
+            checkResult();
+            cleanCheckThreadEnvironment();
             log.debug("check table result {} complete!", tableName);
         }
     }
@@ -169,6 +174,7 @@ public class DataCheckRunnable implements Runnable {
         errorRate = checkParam.getErrorRate();
         bucketCapacity = checkParam.getBucketCapacity();
         resetThreadName(tableName, partitions);
+        checkPartition = new CheckPartition(tableName, partitions);
     }
 
     private void refreshCheckStatus() {
@@ -413,15 +419,16 @@ public class DataCheckRunnable implements Runnable {
     }
 
     private void checkResult() {
-        final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder(feignClient);
+        final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder();
         CheckDiffResult result =
             builder.process(checkParam.getProcess()).table(tableName).topic(sourceTopic).schema(sinkSchema)
                    .conditionLimit(getConditionLimit()).partitions(partitions).isTableStructureEquals(true)
-                   .isExistTableMiss(false, null).rowCount(rowCount).errorRate(20).checkMode(CheckMode.FULL)
-                   .keyUpdateSet(difference.getDiffering().keySet()).keyInsertSet(difference.getOnlyOnLeft().keySet())
-                   .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
-        ExportCheckResult.export(result);
-        log.info("completed data check and export results of table [{}-{}]", tableName, partitions);
+                   .startTime(startTime).endTime(LocalDateTime.now()).isExistTableMiss(false, null).rowCount(rowCount)
+                   .errorRate(20).checkMode(CheckMode.FULL).keyUpdateSet(difference.getDiffering().keySet())
+                   .keyInsertSet(difference.getOnlyOnLeft().keySet()).keyDeleteSet(difference.getOnlyOnRight().keySet())
+                   .build();
+        log.info("completed data check and export results of {}", checkPartition);
+        checkResultManagerService.addResult(checkPartition, result);
     }
 
     private ConditionLimit getConditionLimit() {

@@ -20,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.opengauss.datachecker.check.cache.TableStatusRegister;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.config.DataCheckConfig;
+import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.check.service.StatisticalService;
 import org.springframework.stereotype.Service;
 
@@ -39,4 +40,5 @@ public class DataCheckRunnableSupport {
     private final DataCheckConfig dataCheckConfig;
     private final StatisticalService statisticalService;
     private final KafkaConsumerService kafkaConsumerService;
+    private final CheckResultManagerService checkResultManagerService;
 }

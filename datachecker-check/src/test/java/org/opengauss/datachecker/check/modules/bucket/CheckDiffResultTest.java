@@ -5,7 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.modules.check.AbstractCheckDiffResultBuilder;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.common.entry.extract.Topic;
@@ -23,7 +22,6 @@ import java.util.Set;
  */
 @ExtendWith(MockitoExtension.class)
 public class CheckDiffResultTest {
-    private FeignClientService feignClient;
     private Topic topic;
     private String tableName;
     private String sinkSchema;
@@ -35,7 +33,6 @@ public class CheckDiffResultTest {
 
     @BeforeEach
     void setUp() {
-        feignClient = new FeignClientService();
         topic = new Topic().setTopicName("topic_t_check_test");
         tableName = "t_check_test";
         sinkSchema = "test";
@@ -53,7 +50,7 @@ public class CheckDiffResultTest {
     @Test
     void testSelectNoDivisionsSqlBuilder() {
         CheckDiffResult result =
-                AbstractCheckDiffResultBuilder.builder(feignClient).table(tableName).topic(topic.getTopicName())
+                AbstractCheckDiffResultBuilder.builder().table(tableName).topic(topic.getTopicName())
                         .schema(sinkSchema).partitions(partitions).isTableStructureEquals(true)
                         .isExistTableMiss(false, null)
                         .rowCount(rowCount).errorRate(20)

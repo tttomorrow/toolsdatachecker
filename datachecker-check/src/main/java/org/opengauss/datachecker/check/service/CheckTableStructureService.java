@@ -18,15 +18,14 @@ package org.opengauss.datachecker.check.service;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.modules.check.AbstractCheckDiffResultBuilder.CheckDiffResultBuilder;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
-import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
+import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.check.modules.task.TaskManagerService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -41,10 +40,12 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class CheckTableStructureService {
-    @Autowired
+    @Resource
     private TaskManagerService taskManagerService;
-    @Autowired
+    @Resource
     private EndpointMetaDataManager endpointMetaDataManager;
+    @Resource
+    private CheckResultManagerService checkResultManagerService;
 
     private final CompareTableStructure tableStructureCompare = (source, sink) -> {
         if (source.size() == sink.size()) {
@@ -62,37 +63,41 @@ public class CheckTableStructureService {
 
     /**
      * Table structure definition field name verification
+     *
+     * @param processNo
      */
-    public void check() {
-        checkMissTable();
-        checkTableStructureChanged();
+    public void check(String processNo) {
+        checkMissTable(processNo);
+        checkTableStructureChanged(processNo);
     }
 
-    private void checkTableStructureChanged() {
+    private void checkTableStructureChanged(String processNo) {
         final List<String> checkTableList = endpointMetaDataManager.getCheckTableList();
         taskManagerService.initTableExtractStatus(checkTableList);
         checkTableList.forEach(tableName -> {
             final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
             final TableMetadata sinkMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SINK, tableName);
-            checkTableStructureChanged(tableName, sourceMeta, sinkMeta);
+            checkTableStructureChanged(processNo, tableName, sourceMeta, sinkMeta);
         });
     }
 
-    private void checkMissTable() {
+    private void checkMissTable(String processNo) {
         final List<String> missTableList = endpointMetaDataManager.getMissTableList();
         missTableList.forEach(missTable -> {
             final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, missTable);
-            checkMissTable(missTable, sourceMeta);
+            checkMissTable(processNo, missTable, sourceMeta);
         });
     }
 
-    private void checkTableStructureChanged(String tableName, TableMetadata sourceMeta, TableMetadata sinkMeta) {
+    private void checkTableStructureChanged(String processNo, String tableName, TableMetadata sourceMeta,
+        TableMetadata sinkMeta) {
         final boolean isTableStructureEquals = isTableStructureEquals(sourceMeta, sinkMeta);
         if (!isTableStructureEquals) {
             taskManagerService.refreshTableExtractStatus(tableName, Endpoint.CHECK, -1);
             CheckDiffResult result =
-                CheckDiffResultBuilder.builder(null).table(tableName).isTableStructureEquals(false).build();
-            ExportCheckResult.export(result);
+                CheckDiffResultBuilder.builder().process(processNo).table(tableName).isTableStructureEquals(false)
+                                      .build();
+            checkResultManagerService.addNoCheckedResult(tableName, result);
             log.debug("compared  table[{}] field names not match source={},sink={}", tableName,
                 getFieldNames(sourceMeta), getFieldNames(sinkMeta));
             log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
@@ -104,11 +109,11 @@ public class CheckTableStructureService {
                          .collect(Collectors.joining());
     }
 
-    private void checkMissTable(String tableName, TableMetadata sourceMeta) {
+    private void checkMissTable(String processNo, String tableName, TableMetadata sourceMeta) {
         Endpoint onlyExistEndpoint = Objects.isNull(sourceMeta) ? Endpoint.SINK : Endpoint.SOURCE;
-        CheckDiffResult result =
-            CheckDiffResultBuilder.builder(null).table(tableName).isExistTableMiss(true, onlyExistEndpoint).build();
-        ExportCheckResult.export(result);
+        CheckDiffResult result = CheckDiffResultBuilder.builder().process(processNo).table(tableName)
+                                                       .isExistTableMiss(true, onlyExistEndpoint).build();
+        checkResultManagerService.addNoCheckedResult(tableName, result);
         log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
     }
 

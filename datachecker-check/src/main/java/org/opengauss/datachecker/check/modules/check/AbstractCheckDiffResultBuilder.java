@@ -17,15 +17,12 @@ package org.opengauss.datachecker.check.modules.check;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
-import org.opengauss.datachecker.common.entry.enums.DML;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ConditionLimit;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -41,8 +38,6 @@ import java.util.Set;
 public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, B extends AbstractCheckDiffResultBuilder<C, B>> {
     private static final int MAX_DIFF_REPAIR_SIZE = 5000;
 
-    private final FeignClientService feignClient;
-
     private String table;
     private int partitions;
     private int rowCount;
@@ -56,21 +51,16 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
     private Endpoint onlyExistEndpoint;
     private CheckMode checkMode;
     private ConditionLimit conditionLimit;
-    private LocalDateTime createTime;
-    private Set<String> keyUpdateSet;
-    private Set<String> keyInsertSet;
-    private Set<String> keyDeleteSet;
-    private List<String> repairUpdate;
-    private List<String> repairInsert;
-    private List<String> repairDelete;
+    private Set<String> keyUpdateSet = new HashSet<>();
+    private Set<String> keyInsertSet = new HashSet<>();
+    private Set<String> keyDeleteSet = new HashSet<>();
+    private LocalDateTime startTime;
+    private LocalDateTime endTime;
 
     /**
      * construct
-     *
-     * @param feignClient feignClient
      */
-    public AbstractCheckDiffResultBuilder(FeignClientService feignClient) {
-        this.feignClient = feignClient;
+    public AbstractCheckDiffResultBuilder() {
     }
 
     /**
@@ -117,6 +107,28 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public B conditionLimit(ConditionLimit conditionLimit) {
         this.conditionLimit = conditionLimit;
+        return self();
+    }
+
+    /**
+     * Set the startTime properties of the builder
+     *
+     * @param startTime startTime
+     * @return CheckDiffResultBuilder
+     */
+    public B startTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+        return self();
+    }
+
+    /**
+     * Set the endTime properties of the builder
+     *
+     * @param endTime endTime
+     * @return CheckDiffResultBuilder
+     */
+    public B endTime(LocalDateTime endTime) {
+        this.endTime = endTime;
         return self();
     }
 
@@ -204,8 +216,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      * @return CheckDiffResultBuilder
      */
     public B keyUpdateSet(Set<String> keyUpdateSet) {
-        this.keyUpdateSet = keyUpdateSet;
-        repairUpdate = checkRepairUpdateSinkDiff(schema, table, this.keyUpdateSet);
+        this.keyUpdateSet.addAll(keyUpdateSet);
         return self();
     }
 
@@ -216,8 +227,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      * @return CheckDiffResultBuilder
      */
     public B keyInsertSet(Set<String> keyInsertSet) {
-        this.keyInsertSet = keyInsertSet;
-        repairInsert = checkRepairInsertSinkDiff(schema, table, this.keyInsertSet);
+        this.keyInsertSet.addAll(keyInsertSet);
         return self();
     }
 
@@ -228,19 +238,17 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      * @return CheckDiffResultBuilder
      */
     public B keyDeleteSet(Set<String> keyDeleteSet) {
-        this.keyDeleteSet = keyDeleteSet;
-        repairDelete = checkRepairDeleteSinkDiff(schema, table, this.keyDeleteSet);
+        this.keyDeleteSet.addAll(keyDeleteSet);
         return self();
     }
 
     /**
      * build CheckDiffResultBuilder
      *
-     * @param feignClient feignClient
      * @return CheckDiffResultBuilder
      */
-    public static AbstractCheckDiffResultBuilder<?, ?> builder(FeignClientService feignClient) {
-        return new CheckDiffResultBuilder(feignClient);
+    public static AbstractCheckDiffResultBuilder<?, ?> builder() {
+        return new CheckDiffResultBuilder();
     }
 
     /**
@@ -248,8 +256,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      */
     public static final class CheckDiffResultBuilder
         extends AbstractCheckDiffResultBuilder<CheckDiffResult, CheckDiffResultBuilder> {
-        private CheckDiffResultBuilder(FeignClientService feignClient) {
-            super(feignClient);
+        private CheckDiffResultBuilder() {
         }
 
         @Override
@@ -259,7 +266,6 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
 
         @Override
         public CheckDiffResult build() {
-            super.createTime = LocalDateTime.now();
             return new CheckDiffResult(this);
         }
     }
@@ -281,51 +287,5 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
 
     protected int getKeySetSize(Set<String> keySet) {
         return keySet == null ? 0 : keySet.size();
-    }
-
-    protected List<String> checkRepairUpdateSinkDiff(String schema, String table, Set<String> keyUpdateSet) {
-        try {
-            if (getKeySetSize(keyUpdateSet) > 0 && isNotLargeDiffKeys()) {
-                info(schema, table, DML.REPLACE, keyUpdateSet.size());
-                return feignClient.buildRepairStatementUpdateDml(Endpoint.SOURCE, schema, table, keyUpdateSet);
-            }
-        } catch (Exception exception) {
-            error(schema, table, DML.REPLACE, getKeySetSize(keyUpdateSet), exception);
-        }
-        return new ArrayList<>();
-    }
-
-    protected List<String> checkRepairInsertSinkDiff(String schema, String table, Set<String> keyInsertSet) {
-        try {
-            if (getKeySetSize(keyInsertSet) > 0 && isNotLargeDiffKeys()) {
-                info(schema, table, DML.INSERT, keyInsertSet.size());
-                return feignClient.buildRepairStatementInsertDml(Endpoint.SOURCE, schema, table, keyInsertSet);
-            }
-        } catch (Exception exception) {
-            error(schema, table, DML.INSERT, getKeySetSize(keyInsertSet), exception);
-        }
-        return new ArrayList<>();
-    }
-
-    protected List<String> checkRepairDeleteSinkDiff(String schema, String table, Set<String> keyDeleteSet) {
-        try {
-            if (getKeySetSize(keyDeleteSet) > 0 && isNotLargeDiffKeys()) {
-                info(schema, table, DML.DELETE, keyDeleteSet.size());
-                return feignClient.buildRepairStatementDeleteDml(Endpoint.SOURCE, schema, table, keyDeleteSet);
-            }
-        } catch (Exception exception) {
-            error(schema, table, DML.DELETE, getKeySetSize(keyDeleteSet), exception);
-        }
-        return new ArrayList<>();
-    }
-
-    private void info(String schema, String table, DML dml, int size) {
-        log.info("check table[{}.{}] repair [{}] diff-count={} build repair dml", schema, table, dml.getDescription(),
-            size);
-    }
-
-    private void error(String schema, String table, DML dml, int size, Exception exception) {
-        log.error("check table[{}.{}] repair [{}] diff-count={} build repair dml", schema, table, dml.getDescription(),
-            size, exception);
     }
 }

@@ -17,6 +17,7 @@ package org.opengauss.datachecker.check.load;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
+import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.check.service.CheckService;
 import org.opengauss.datachecker.check.service.IncrementManagerService;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
@@ -46,7 +47,8 @@ public class CheckStartLoader extends AbstractCheckLoader {
     private IncrementManagerService incrementManagerService;
     @Resource
     private FeignClientService feignClient;
-
+    @Resource
+    private CheckResultManagerService checkResultManagerService;
     @Override
     public void load(CheckEnvironment checkEnvironment) {
         if (Objects.equals(CheckMode.INCREMENT, checkEnvironment.getCheckMode())) {
@@ -59,7 +61,7 @@ public class CheckStartLoader extends AbstractCheckLoader {
         checkService.start(CheckMode.FULL);
         final LocalDateTime endTime = LocalDateTime.now();
         log.info("check task execute success ,cost time ={}", Duration.between(startTime, endTime).toSeconds());
-
+        checkResultManagerService.summaryCheckResult();
         feignClient.shutdown(FULL_CHECK_COMPLETED);
         shutdown(FULL_CHECK_COMPLETED);
     }

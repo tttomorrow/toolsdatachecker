@@ -24,7 +24,9 @@ import org.opengauss.datachecker.check.modules.bucket.Bucket;
 import org.opengauss.datachecker.check.modules.bucket.BuilderBucketHandler;
 import org.opengauss.datachecker.check.modules.merkle.MerkleTree;
 import org.opengauss.datachecker.check.modules.merkle.MerkleTree.Node;
+import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.entry.check.CheckPartition;
 import org.opengauss.datachecker.common.entry.check.DifferencePair;
 import org.opengauss.datachecker.common.entry.check.IncrementDataCheckParam;
 import org.opengauss.datachecker.common.entry.check.Pair;
@@ -71,6 +73,7 @@ public class IncrementCheckThread extends Thread {
         difference = DifferencePair.of(new HashMap<>(), new HashMap<>(), new HashMap<>());
     private final Map<Integer, Pair<Integer, Integer>> bucketNumberDiffMap = new HashMap<>();
     private final QueryRowDataWapper queryRowDataWapper;
+    private final CheckResultManagerService checkResultManagerService;
     private final SourceDataLog dataLog;
     private final String process;
     private String sinkSchema;
@@ -95,6 +98,7 @@ public class IncrementCheckThread extends Thread {
         tableName = checkParam.getTableName();
         bucketCapacity = checkParam.getBucketCapacity();
         feignClient = support.getFeignClientService();
+        checkResultManagerService = support.getCheckResultManagerService();
         queryRowDataWapper = new QueryRowDataWapper(feignClient);
     }
 
@@ -459,14 +463,14 @@ public class IncrementCheckThread extends Thread {
     }
 
     private void checkResult() {
-        final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder(feignClient);
+        final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder();
         CheckDiffResult result =
             builder.table(tableName).process(process).beginOffset(dataLog.getBeginOffset()).schema(sinkSchema)
                    .partitions(0).rowCount(rowCount).isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
                    .checkMode(CheckMode.INCREMENT).isTableStructureEquals(isTableStructureEquals)
                    .keyUpdateSet(difference.getDiffering().keySet()).keyInsertSet(difference.getOnlyOnLeft().keySet())
                    .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
-        ExportCheckResult.export(result);
+        checkResultManagerService.addResult(new CheckPartition(tableName, 0), result);
     }
 
     private String buildThreadName() {
