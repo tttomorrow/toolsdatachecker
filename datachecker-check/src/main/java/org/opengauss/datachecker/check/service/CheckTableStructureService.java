@@ -26,6 +26,7 @@ import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -67,13 +68,22 @@ public class CheckTableStructureService {
      * @param processNo
      */
     public void check(String processNo) {
-        checkMissTable(processNo);
+        initCheckTableStatus();
         checkTableStructureChanged(processNo);
+        checkMissTable(processNo);
+    }
+
+    private void initCheckTableStatus() {
+        final List<String> checkTableList = endpointMetaDataManager.getCheckTableList();
+        final List<String> missTableList = endpointMetaDataManager.getMissTableList();
+        List<String> tableList = new LinkedList<>();
+        tableList.addAll(checkTableList);
+        tableList.addAll(missTableList);
+        taskManagerService.initTableExtractStatus(tableList);
     }
 
     private void checkTableStructureChanged(String processNo) {
         final List<String> checkTableList = endpointMetaDataManager.getCheckTableList();
-        taskManagerService.initTableExtractStatus(checkTableList);
         checkTableList.forEach(tableName -> {
             final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
             final TableMetadata sinkMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SINK, tableName);
@@ -113,6 +123,7 @@ public class CheckTableStructureService {
         Endpoint onlyExistEndpoint = Objects.isNull(sourceMeta) ? Endpoint.SINK : Endpoint.SOURCE;
         CheckDiffResult result = CheckDiffResultBuilder.builder().process(processNo).table(tableName)
                                                        .isExistTableMiss(true, onlyExistEndpoint).build();
+        taskManagerService.refreshTableExtractStatus(tableName, Endpoint.CHECK, -1);
         checkResultManagerService.addNoCheckedResult(tableName, result);
         log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);
     }

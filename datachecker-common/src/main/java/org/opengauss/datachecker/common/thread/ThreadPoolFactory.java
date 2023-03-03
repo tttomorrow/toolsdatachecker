@@ -54,6 +54,22 @@ public class ThreadPoolFactory {
         return createThreadPool(threadName, queueSize);
     }
 
+    /**
+     * Initialize the extract service thread pool
+     *
+     * @param threadName   threadName
+     * @param corePoolSize corePoolSize
+     * @param queueSize    queueSize
+     * @return ExecutorService
+     */
+    public static ExecutorService newThreadPool(String threadName, int corePoolSize, int queueSize) {
+        if (corePoolSize <= 0) {
+            return createThreadPool(threadName, queueSize);
+        }
+        int maxCorePoolSize = corePoolSize * 2;
+        return createThreadPool(threadName, corePoolSize, maxCorePoolSize, queueSize);
+    }
+
     private static ExecutorService createThreadPool(String threadName, int size) {
         int queueSize = calculateCheckQueueCapacity(size);
         int threadNum = calculateOptimalThreadCount(CPU_TIME, IO_WAIT_TIME, TARGET_UTILIZATION);
@@ -80,12 +96,15 @@ public class ThreadPoolFactory {
     }
 
     private static int calculateCorePoolSize(int threadNum) {
-        return (int) Math.ceil(threadNum / CORE_POOL_SIZE_RATIO);
+        final int core = (int) Math.ceil(threadNum / CORE_POOL_SIZE_RATIO);
+        return Math.min(core, 50);
     }
 
     private static int calculateOptimalThreadCount(double computeTime, double waitTime, double targetUtilization) {
         int numberOfCpu = getNumberOfCpu();
-        return (int) Math.ceil(numberOfCpu * targetUtilization * (Math.round(waitTime / computeTime) + 1));
+        final int threadNum =
+            (int) Math.ceil(numberOfCpu * targetUtilization * (Math.round(waitTime / computeTime) + 1));
+        return Math.min(threadNum, 100);
     }
 
     private static int getNumberOfCpu() {

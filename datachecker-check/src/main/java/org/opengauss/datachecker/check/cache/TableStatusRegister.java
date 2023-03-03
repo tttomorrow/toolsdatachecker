@@ -108,7 +108,6 @@ public class TableStatusRegister implements Cache<String, Integer> {
         scheduledExecutor.scheduleWithFixedDelay(() -> {
             Thread.currentThread().setName(SELF_CHECK_THREAD_NAME);
             doCheckingStatus();
-            cleanAndShutdown(scheduledExecutor);
         }, 5, 1, TimeUnit.SECONDS);
     }
 
@@ -121,6 +120,15 @@ public class TableStatusRegister implements Cache<String, Integer> {
     public boolean isCheckCompleted() {
         return TABLE_STATUS_CACHE.values().stream().filter(status -> status >= TASK_STATUS_DEFAULT_VALUE)
                                  .allMatch(status -> status == TASK_STATUS_CONSUMER_VALUE);
+    }
+
+    /**
+     * calc checked table
+     *
+     * @return checed table count
+     */
+    public int getCheckedCount() {
+        return errorCount() + checkCount();
     }
 
     /**
@@ -255,7 +263,6 @@ public class TableStatusRegister implements Cache<String, Integer> {
             log.error("current key={} does not exist", key);
             return 0;
         }
-
         Integer odlValue = TABLE_STATUS_CACHE.get(key);
         TABLE_STATUS_CACHE.put(key, odlValue | value);
         final Integer status = TABLE_STATUS_CACHE.get(key);
@@ -363,19 +370,6 @@ public class TableStatusRegister implements Cache<String, Integer> {
         COMPLETED_TABLE_QUEUE.clear();
         TABLE_PARTITIONS_STATUS_CACHE.clear();
         log.info("table status register cache information clearing");
-    }
-
-    /**
-     * clean check status and shutdown {@value SELF_CHECK_THREAD_NAME} thread
-     *
-     * @param scheduledExecutor scheduledExecutor
-     */
-    public void cleanAndShutdown(ScheduledExecutorService scheduledExecutor) {
-        if (doCheckingStatus() == cacheSize()) {
-            removeAll();
-            scheduledExecutor.shutdownNow();
-            log.info("clean check status and shutdown {} thread", SELF_CHECK_THREAD_NAME);
-        }
     }
 
     /**

@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.load;
 
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.util.SpringUtil;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
@@ -34,6 +35,7 @@ public class EnvironmentLoader {
     @Resource
     private ExtractEnvironment extractEnvironment;
 
+    @Async
     public void load(CheckMode checkMode) {
         extractEnvironment.setCheckMode(checkMode);
         final Map<String, ExtractLoader> beans = SpringUtil.getBeans(ExtractLoader.class);

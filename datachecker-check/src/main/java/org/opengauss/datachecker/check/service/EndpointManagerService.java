@@ -23,9 +23,11 @@ import org.opengauss.datachecker.common.service.ShutdownService;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Data Extraction Service Endpoint Management
@@ -37,6 +39,9 @@ import javax.annotation.Resource;
 @Slf4j
 @Service
 public class EndpointManagerService {
+    private static final ExecutorService executorService = ThreadUtil.newSingleThreadExecutor();
+    @Value("${data.check.retry-interval-times}")
+    protected int retryIntervalTimes;
     @Autowired
     private FeignClientService feignClientService;
     @Autowired
@@ -56,7 +61,7 @@ public class EndpointManagerService {
     }
 
     public void heartBeat() {
-        ThreadUtil.newSingleThreadExecutor().submit(this::endpointHealthCheck);
+        executorService.submit(this::endpointHealthCheck);
     }
 
     /**
@@ -66,13 +71,11 @@ public class EndpointManagerService {
         Thread.currentThread().setName("heart-beat-heath");
         shutdownService.addMonitor();
         try {
-            while (!shutdownService.isShutdown()) {
+            while (!(shutdownService.isShutdown() || executorService.isShutdown())) {
                 checkEndpoint(dataCheckProperties.getSourceUri(), Endpoint.SOURCE, "source endpoint service check");
                 checkEndpoint(dataCheckProperties.getSinkUri(), Endpoint.SINK, "sink endpoint service check");
-                ThreadUtil.sleepOneSecond();
+                ThreadUtil.sleep(retryIntervalTimes);
             }
-        } catch (Exception ignore) {
-            log.error("we will exit current process, ignore this exception!");
         } finally {
             shutdownService.releaseMonitor();
         }
@@ -89,14 +92,18 @@ public class EndpointManagerService {
             Result healthStatus = feignClientService.health(endpoint);
             if (healthStatus.isSuccess()) {
                 endpointStatusManager.resetStatus(endpoint, Boolean.TRUE);
-                log.debug("{} ：{} current state health", message, requestUri);
+                log.info("{} ：{} current state health", message, requestUri);
             } else {
                 endpointStatusManager.resetStatus(endpoint, Boolean.FALSE);
-                log.debug("{} : {} current service status is abnormal", message, requestUri);
+                log.error("{} : {} current service status is abnormal", message, requestUri);
             }
         } catch (Exception ce) {
-            log.debug("{} : {} service unreachable", message, ce.getMessage());
+            log.error("{} : {} service unreachable", message, ce.getMessage());
             endpointStatusManager.resetStatus(endpoint, Boolean.FALSE);
         }
+    }
+
+    public void stopHeartBeat() {
+        executorService.shutdown();
     }
 }

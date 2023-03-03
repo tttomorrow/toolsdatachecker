@@ -47,7 +47,7 @@ public class CheckDatabaseLoader extends AbstractCheckLoader {
         int retry = 1;
         ExtractConfig sourceConfig = feignClient.getEndpointConfig(Endpoint.SOURCE);
         ExtractConfig sinkConfig = feignClient.getEndpointConfig(Endpoint.SINK);
-        while (retry <= RETRY_TIMES && (sourceConfig == null || sinkConfig == null)) {
+        while (retry <= maxRetryTimes && (sourceConfig == null || sinkConfig == null)) {
             sourceConfig = feignClient.getEndpointConfig(Endpoint.SOURCE);
             sinkConfig = feignClient.getEndpointConfig(Endpoint.SINK);
             log.error("load database configuration ,retry={}", retry);
@@ -62,7 +62,7 @@ public class CheckDatabaseLoader extends AbstractCheckLoader {
         }
         checkEnvironment.addExtractDatabase(Endpoint.SOURCE, sourceConfig.getDatabase());
         checkEnvironment.addExtractDatabase(Endpoint.SINK, sinkConfig.getDatabase());
-        log.info("check service load database success.");
+        log.info("check service load database configuration success.");
     }
 
 }

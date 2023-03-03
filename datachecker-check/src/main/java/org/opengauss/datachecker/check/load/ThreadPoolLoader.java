@@ -18,6 +18,7 @@ package org.opengauss.datachecker.check.load;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
 import org.opengauss.datachecker.common.thread.ThreadPoolFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
@@ -37,11 +38,13 @@ import java.util.concurrent.ExecutorService;
 public class ThreadPoolLoader extends AbstractCheckLoader {
     @Resource
     private EndpointMetaDataManager endpointMetaDataManager;
+    @Value("${data.check.max-core-pool-size}")
+    protected int maxCorePoolSize;
 
     @Override
     public void load(CheckEnvironment checkEnvironment) {
         final int checkTaskCount = endpointMetaDataManager.getCheckTaskCount();
-        final ExecutorService threadPool = ThreadPoolFactory.newThreadPool("check", checkTaskCount);
+        final ExecutorService threadPool = ThreadPoolFactory.newThreadPool("check", maxCorePoolSize, checkTaskCount);
         checkEnvironment.setCheckExecutorService(threadPool);
         log.info("check service load thread pool success");
     }

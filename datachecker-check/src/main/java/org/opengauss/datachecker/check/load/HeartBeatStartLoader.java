@@ -49,11 +49,15 @@ public class HeartBeatStartLoader extends AbstractCheckLoader {
             isSinkHealth = endpointManagerService.checkEndpointHealth(Endpoint.SINK);
             log.error("endpoint source={},sink={} does not health, please wait a moment!", isSourceHealth,
                 isSinkHealth);
-            ThreadUtil.sleepOneSecond();
+            ThreadUtil.sleep(retryIntervalTimes);
             retryTimes++;
-            if (retryTimes >= HEARTH_RETRY_TIMES) {
+            if (retryTimes >= maxRetryTimes) {
                 shutdown("heart beat retry too many times");
             }
         }
+        isSourceHealth = endpointManagerService.checkEndpointHealth(Endpoint.SOURCE);
+        isSinkHealth = endpointManagerService.checkEndpointHealth(Endpoint.SINK);
+        log.info("endpoint source={},sink={} health ", isSourceHealth, isSinkHealth);
+        endpointManagerService.stopHeartBeat();
     }
 }

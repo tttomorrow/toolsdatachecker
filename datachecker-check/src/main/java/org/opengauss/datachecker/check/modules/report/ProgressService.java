@@ -67,7 +67,7 @@ public class ProgressService {
                     initProgress(endpointMetaDataManager.getCheckTaskCount());
                 }
             } else {
-                refreshProgress(tableStatusRegister.checkCompletedCount());
+                refreshProgress(tableStatusRegister.getCheckedCount());
             }
             if (progressRef.get().getStatus() == CheckProgressStatus.END) {
                 ThreadUtil.sleepHalfSecond();

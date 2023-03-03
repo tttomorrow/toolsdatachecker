@@ -3,6 +3,9 @@ debug: false
 spring:
   check:
     server-uri: http://127.0.0.1:9000
+    max-core-pool-size: 10
+    max-retry-times: 1000
+    retry-interval-times: 10000
   lifecycle:
     timeout-per-shutdown-phase: 5
   kafka:

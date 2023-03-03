@@ -22,8 +22,6 @@ import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.exception.CheckMetaDataException;
-import org.opengauss.datachecker.common.util.TaskUtil;
-import org.opengauss.datachecker.common.util.TopicUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -125,7 +123,7 @@ public class EndpointMetaDataManager {
      * @return the number of verification tasks
      */
     public int getCheckTaskCount() {
-        return SOURCE_METADATA.size();
+        return CHECK_TABLE_LIST.size() + MISS_TABLE_LIST.size();
     }
 
     public void clearCache() {
