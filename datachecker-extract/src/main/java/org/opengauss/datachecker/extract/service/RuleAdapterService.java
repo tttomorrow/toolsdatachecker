@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.RuleType;
@@ -34,6 +35,7 @@ import java.util.Map;
  * @date ：Created in 2022/12/1
  * @since ：11
  */
+@Slf4j
 @Service
 public class RuleAdapterService {
     private static final Map<RuleType, List<Rule>> RULES = new HashMap<>();
@@ -45,19 +47,35 @@ public class RuleAdapterService {
     @Resource
     private RowRuleAdapterService rowRuleAdapterService;
 
+    /**
+     * init rules
+     *
+     * @param rules rules
+     */
     public void init(Map<RuleType, List<Rule>> rules) {
         RULES.clear();
         RULES.putAll(rules);
     }
 
+    /**
+     * Execute table-level rules
+     *
+     * @param tableList tableList
+     */
     public List<String> executeTableRule(List<String> tableList) {
         final List<Rule> rules = RULES.get(RuleType.TABLE);
         if (CollectionUtils.isEmpty(rules)) {
             return tableList;
         }
+        log.info("filter table by rule {}", rules);
         return tableRuleAdapterService.executeTableRule(rules, tableList);
     }
 
+    /**
+     * Execute column-level rules
+     *
+     * @param columns columns
+     */
     public List<ColumnsMetaData> executeColumnRule(List<ColumnsMetaData> columns) {
         final List<Rule> rules = RULES.get(RuleType.COLUMN);
         if (CollectionUtils.isEmpty(rules)) {
@@ -66,11 +84,16 @@ public class RuleAdapterService {
         return columnRuleAdapterService.executeColumnRule(rules, columns);
     }
 
-    public void executeRowRule(List<TableMetadata> tableMetadataList) {
+    /**
+     * Execute row-level rules
+     *
+     * @param tableMetadataMap tableMetadataMap
+     */
+    public void executeRowRule(Map<String, TableMetadata> tableMetadataMap) {
         final List<Rule> rules = RULES.get(RuleType.ROW);
         if (CollectionUtils.isEmpty(rules)) {
             return;
         }
-        rowRuleAdapterService.executeRowRule(rules,tableMetadataList);
+        rowRuleAdapterService.executeRowRule(rules, tableMetadataMap);
     }
 }

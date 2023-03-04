@@ -20,6 +20,7 @@ import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * MetaDataDAO
@@ -44,11 +45,11 @@ public interface MetaDataDAO {
     MetadataLoadProcess getMetadataLoadProcess();
 
     /**
-     * Query table metadata
+     * query table name
      *
-     * @return table metadata information
+     * @return table name list
      */
-    List<TableMetadata> queryTableMetadata();
+    List<String> queryTableNameList();
 
     /**
      * Query the metadata information of the corresponding column of the table
@@ -56,14 +57,13 @@ public interface MetaDataDAO {
      * @param tableName tableName
      * @return Column metadata information
      */
-    List<ColumnsMetaData> queryColumnMetadata(String tableName);
+    List<ColumnsMetaData> queryTableColumnsMetaData(String tableName);
 
     /**
-     * Query the metadata information of the corresponding column of the table
+     * metadata information to match the row rules
      *
-     * @param tableNames tableNames
-     * @return Column metadata information
+     * @param tableMetadataMap tableMetadataMap
      */
-    List<ColumnsMetaData> queryColumnMetadata(List<String> tableNames);
+    void matchRowRules(Map<String, TableMetadata> tableMetadataMap);
 
 }

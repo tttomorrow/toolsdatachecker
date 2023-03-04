@@ -51,6 +51,7 @@ public class MetaDataLoader extends AbstractCheckLoader {
                 log.info("check service is loading metadata,place wait a moment.");
             }
             if (!endpointMetaDataManager.isMetaLoading()) {
+                log.info("start to load metadata from source and sink.");
                 endpointMetaDataManager.load();
             }
             checkEnvironment.setMetaLoading();

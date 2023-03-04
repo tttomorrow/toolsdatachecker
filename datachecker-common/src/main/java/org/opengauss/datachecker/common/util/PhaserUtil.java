@@ -21,8 +21,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.Phaser;
 
 /**
  * PhaserUtil
@@ -34,6 +34,13 @@ import java.util.concurrent.Phaser;
 @Slf4j
 public class PhaserUtil {
 
+    /**
+     * Use the thread pool to submit parallel tasks. When all parallel tasks are completed, execute the complete task
+     *
+     * @param executorService executorService
+     * @param tasks           tasks
+     * @param complete        complete
+     */
     public static void submit(ThreadPoolTaskExecutor executorService, List<Runnable> tasks, Runnable complete) {
         final List<Future<?>> futureList = new ArrayList<>();
         for (Runnable runnable : tasks) {
@@ -50,4 +57,22 @@ public class PhaserUtil {
         });
         complete.run();
     }
+
+    /**
+     * Check whether all thread pool tasks are completed. When all thread pool tasks are completed, close the thread pool
+     *
+     * @param executorService executorService
+     * @param futureList      futureList
+     */
+    public static void executorComplete(ExecutorService executorService, List<Future<?>> futureList) {
+        futureList.forEach(future -> {
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                log.error("future  error: {}", e.getMessage());
+            }
+        });
+        executorService.shutdown();
+    }
+
 }

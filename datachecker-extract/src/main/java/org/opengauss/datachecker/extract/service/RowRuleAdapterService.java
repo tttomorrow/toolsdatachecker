@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -42,10 +43,15 @@ public class RowRuleAdapterService {
     @Resource
     private ExtractProperties extractProperties;
 
-    public void executeRowRule(List<Rule> rules, List<TableMetadata> tableMetadataList) {
-        tableMetadataList.forEach(tableMetadata -> {
+    /**
+     * Execute row-level rules
+     * @param rules rules
+     * @param tableMetadataMap tableMetadataMap
+     */
+    public void executeRowRule(List<Rule> rules, Map<String, TableMetadata> tableMetadataMap) {
+        tableMetadataMap.forEach((tableName, tableMetadata) -> {
             for (Rule rule : rules) {
-                if (Pattern.matches(rule.getName(), tableMetadata.getTableName())) {
+                if (Pattern.matches(rule.getName(), tableName)) {
                     tableMetadata.setConditionLimit(getConditionLimit(rule.getText()));
                 }
             }

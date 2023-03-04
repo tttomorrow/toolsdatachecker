@@ -64,7 +64,7 @@ public class TaskManagerServiceImpl implements TaskManagerService {
         if (tableStatusRegister.isEmpty() || tableStatusRegister.isCheckCompleted()) {
             cleanTaskStatus();
             tableStatusRegister.init(new HashSet<>(tableNameList));
-            log.info("check server init extract tableNameList=[{}] ", JSON.toJSONString(tableNameList));
+            log.info("check server init extract tableNameList=[{}] ", tableNameList.size());
         } else {
             // The last verification process is being executed,
             // and the table verification status data cannot be reinitialized!

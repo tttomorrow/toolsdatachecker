@@ -15,8 +15,14 @@
 
 package org.opengauss.datachecker.extract.config;
 
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.lang.reflect.Method;
+import java.util.concurrent.Executor;
 
 /**
  * AsyncConfig
@@ -27,5 +33,32 @@ import org.springframework.scheduling.annotation.EnableAsync;
  **/
 @EnableAsync
 @Configuration
-public class AsyncConfig {
+public class AsyncConfig implements AsyncConfigurer {
+
+    /**
+     * Asynchronous processing scenario for data extraction non-core business
+     * @return
+     */
+    @Override
+    public Executor getAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(16);
+        executor.setQueueCapacity(1000);
+        executor.setThreadNamePrefix("MyExecutor-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Override
+    public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+        return new MyAsyncUncaughtExceptionHandler();
+    }
+
+    private class MyAsyncUncaughtExceptionHandler implements AsyncUncaughtExceptionHandler {
+        @Override
+        public void handleUncaughtException(Throwable ex, Method method, Object... params) {
+
+        }
+    }
 }
