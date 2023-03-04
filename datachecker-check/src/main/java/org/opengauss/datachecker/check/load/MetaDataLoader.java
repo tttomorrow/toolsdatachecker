@@ -37,15 +37,15 @@ import javax.annotation.Resource;
 public class MetaDataLoader extends AbstractCheckLoader {
     @Resource
     private EndpointMetaDataManager endpointMetaDataManager;
-    private static final int WAIT_TIMES = 20;
 
     @Override
     public void load(CheckEnvironment checkEnvironment) {
         try {
             int retry = 0;
+            log.info("check service is start to load metadata,place wait a moment.");
             while (endpointMetaDataManager.isMetaLoading()) {
-                ThreadUtil.sleepOneSecond();
-                if (++retry == WAIT_TIMES) {
+                ThreadUtil.sleep(retryIntervalTimes);
+                if (++retry > maxRetryTimes) {
                     break;
                 }
                 log.info("check service is loading metadata,place wait a moment.");

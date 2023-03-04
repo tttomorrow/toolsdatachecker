@@ -17,6 +17,7 @@ package org.opengauss.datachecker.check.load;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.service.ShutdownService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import javax.annotation.Resource;
@@ -30,9 +31,10 @@ import javax.annotation.Resource;
  */
 @Slf4j
 public abstract class AbstractCheckLoader implements CheckLoader {
-    protected static final int RETRY_TIMES = 10;
-    protected static final int HEARTH_RETRY_TIMES = 60;
-
+    @Value("${data.check.max-retry-times}")
+    protected int maxRetryTimes;
+    @Value("${data.check.retry-interval-times}")
+    protected int retryIntervalTimes;
     @Resource
     private CheckEnvironment checkEnvironment;
     @Resource
