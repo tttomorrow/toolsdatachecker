@@ -81,8 +81,8 @@ public class KafkaConsumerHandler {
             resetOffsetToBeginning(kafkaConsumer, topicPartition);
         }
         consumerTopicRecords(data, kafkaConsumer, endOfOffset);
-        log.debug("consumer topic=[{}] partitions=[{}] dataList=[{}] ,beginOfOffset={},endOfOffset={}",
-            topic, partitions, data.size(), beginOfOffset, endOfOffset);
+        log.debug("consumer topic=[{}] partitions=[{}] dataList=[{}] ,beginOfOffset={},endOfOffset={}", topic,
+            partitions, data.size(), beginOfOffset, endOfOffset);
         return data;
     }
 
@@ -118,7 +118,7 @@ public class KafkaConsumerHandler {
         ConsumerRecords<String, String> consumerRecords =
             kafkaConsumer.poll(Duration.ofMillis(KAFKA_CONSUMER_POLL_DURATION));
         consumerRecords.forEach(record -> {
-            dataList.add(JSON.parseObject(record.value(), RowDataHash.class));
+            dataList.add(new RowDataHash(record.value()));
         });
     }
 }

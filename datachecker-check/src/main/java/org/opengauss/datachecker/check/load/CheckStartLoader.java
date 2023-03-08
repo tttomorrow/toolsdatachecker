@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.check.service.CheckService;
-import org.opengauss.datachecker.check.service.IncrementManagerService;
+import org.opengauss.datachecker.check.event.KafkaTopicDeleteProvider;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
@@ -44,25 +44,23 @@ public class CheckStartLoader extends AbstractCheckLoader {
     @Resource
     private CheckService checkService;
     @Resource
-    private IncrementManagerService incrementManagerService;
-    @Resource
     private FeignClientService feignClient;
     @Resource
     private CheckResultManagerService checkResultManagerService;
+    @Resource
+    private KafkaTopicDeleteProvider kafkaTopicDeleteProvider;
+
     @Override
     public void load(CheckEnvironment checkEnvironment) {
-        if (Objects.equals(CheckMode.INCREMENT, checkEnvironment.getCheckMode())) {
-            log.info("start data check increment");
-            incrementManagerService.startIncrementDataLogs();
-            log.info("enabled data check increment mode ,at {}", LocalDateTime.now());
-            return;
+        if (Objects.equals(CheckMode.FULL, checkEnvironment.getCheckMode())) {
+            final LocalDateTime startTime = LocalDateTime.now();
+            checkService.start(CheckMode.FULL);
+            final LocalDateTime endTime = LocalDateTime.now();
+            log.info("check task execute success ,cost time ={}", Duration.between(startTime, endTime).toSeconds());
+            checkResultManagerService.summaryCheckResult();
+            kafkaTopicDeleteProvider.deleteTopicIfAllCheckedCompleted();
+            feignClient.shutdown(FULL_CHECK_COMPLETED);
+            shutdown(FULL_CHECK_COMPLETED);
         }
-        final LocalDateTime startTime = LocalDateTime.now();
-        checkService.start(CheckMode.FULL);
-        final LocalDateTime endTime = LocalDateTime.now();
-        log.info("check task execute success ,cost time ={}", Duration.between(startTime, endTime).toSeconds());
-        checkResultManagerService.summaryCheckResult();
-        feignClient.shutdown(FULL_CHECK_COMPLETED);
-        shutdown(FULL_CHECK_COMPLETED);
     }
 }
