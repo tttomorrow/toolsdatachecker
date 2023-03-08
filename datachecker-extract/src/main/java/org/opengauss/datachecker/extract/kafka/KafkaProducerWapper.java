@@ -66,7 +66,7 @@ public class KafkaProducerWapper {
         recordHashList.forEach(record -> {
             record.setPartition(DEFAULT_PARTITION);
             final ProducerRecord<String, String> producerRecord =
-                new ProducerRecord<>(topicName, DEFAULT_PARTITION, record.getPrimaryKey(), JSON.toJSONString(record));
+                new ProducerRecord<>(topicName, DEFAULT_PARTITION, record.getPrimaryKey(), record.toEncode());
             kafkaTemplate.send(producerRecord);
         });
         kafkaTemplate.flush();
@@ -78,7 +78,7 @@ public class KafkaProducerWapper {
             int partition = calcSimplePartition(record.getPrimaryKeyHash(), partitions);
             record.setPartition(partition);
             ProducerRecord<String, String> producerRecord =
-                new ProducerRecord<>(topicName, partition, record.getPrimaryKey(), JSON.toJSONString(record));
+                new ProducerRecord<>(topicName, partition, record.getPrimaryKey(), record.toEncode());
             kafkaTemplate.send(producerRecord);
         });
         kafkaTemplate.flush();

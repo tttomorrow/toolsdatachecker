@@ -86,5 +86,11 @@ public class DataCheckProperties {
      */
     private boolean canAutoCleanEnvironment;
 
+    /**
+     *  0 is not delete; 1 is delete when checked all completed ; 2 is deleted when checked a table
+     */
+    @Range(min = 0, max = 2, message = "config auto delete topic not valid")
+    private int autoDeleteTopic;
+
     private int errorRate;
 }

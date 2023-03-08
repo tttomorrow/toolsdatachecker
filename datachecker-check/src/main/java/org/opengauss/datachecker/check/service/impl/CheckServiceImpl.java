@@ -26,6 +26,7 @@ import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.check.service.CheckService;
 import org.opengauss.datachecker.check.service.CheckTableStructureService;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
+import org.opengauss.datachecker.check.event.KafkaTopicDeleteProvider;
 import org.opengauss.datachecker.common.entry.check.CheckProgress;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -100,8 +101,8 @@ public class CheckServiceImpl implements CheckService {
     private CheckEnvironment checkEnvironment;
     @Value("${data.check.auto-clean-environment}")
     private boolean isAutoCleanEnvironment = true;
-    @Value("${data.check.check-with-sync-extracting}")
-    private boolean isCheckWithSyncExtracting = true;
+    @Resource
+    private KafkaTopicDeleteProvider kafkaTopicDeleteProvider;
 
     /**
      * Enable verification service
@@ -151,6 +152,7 @@ public class CheckServiceImpl implements CheckService {
      */
     private void startCheckFullMode() {
         String processNo = IdGenerator.nextId36();
+        kafkaTopicDeleteProvider.init(processNo);
         // Source endpoint task construction
         final List<ExtractTask> extractTasks = feignClientService.buildExtractTaskAllTables(Endpoint.SOURCE, processNo);
         log.info("check full mode : build extract task source {}", processNo);
@@ -162,6 +164,7 @@ public class CheckServiceImpl implements CheckService {
         feignClientService.execExtractTaskAllTables(Endpoint.SOURCE, processNo);
         feignClientService.execExtractTaskAllTables(Endpoint.SINK, processNo);
         log.info("check full mode : exec extract task (source and sink ) {}", processNo);
+        kafkaTopicDeleteProvider.deleteTopicIfTableCheckedCompleted();
         PROCESS_SIGNATURE.set(processNo);
     }
 
@@ -213,6 +216,7 @@ public class CheckServiceImpl implements CheckService {
                 // Verify the data according to the table name and Kafka partition
                 dataCheckService.checkTableData(process, tableName, idxPartition, tablePartitionRowCount);
             });
+            kafkaTopicDeleteProvider.addTableToDropTopic(tableName);
         } else {
             log.error("can not find table={} meta data, checking skipped", tableName);
         }
