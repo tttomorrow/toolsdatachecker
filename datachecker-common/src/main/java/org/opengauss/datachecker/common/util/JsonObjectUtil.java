@@ -30,7 +30,9 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 public class JsonObjectUtil {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+    private static final String TIME_MILLIS_FORMATTER = "yyyy-MM-dd HH:mm:ss.SSS";
+    private static final String TIME_SEC_FORMATTER = "yyyy-MM-dd HH:mm:ss";
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(TIME_MILLIS_FORMATTER);
 
     /**
      * The object is formatted as a JSON string,
@@ -48,7 +50,32 @@ public class JsonObjectUtil {
     }
 
     /**
-     * Localdatetime time is formatted as yyyy-MM-dd HH:mm:ss.SSS
+     * The object is formatted as a JSON string,
+     * and the formatting is automatically wrapped according to the attributes
+     * {@code  SerializerFeature.PrettyFormat}<p>
+     * {@code  SerializerFeature.WriteMapNullValue} Null pointer formatting<p>
+     * {@value TIME_SEC_FORMATTER} date format<p>
+     *
+     * @param object Formatting Objects
+     * @return formatting string
+     */
+    public static String prettyFormatMillis(Object object) {
+        return JSONObject.toJSONStringWithDateFormat(object, TIME_MILLIS_FORMATTER, SerializerFeature.PrettyFormat,
+            SerializerFeature.WriteMapNullValue);
+    }
+
+    /**
+     * The object is formatted as a JSON string,and format time to {@value TIME_SEC_FORMATTER}
+     *
+     * @param object object
+     * @return formatting string
+     */
+    public static String formatSec(Object object) {
+        return JSONObject.toJSONStringWithDateFormat(object, TIME_SEC_FORMATTER, SerializerFeature.WriteMapNullValue);
+    }
+
+    /**
+     * LocalDateTime time is formatted as yyyy-MM-dd HH:mm:ss.SSS
      *
      * @param localDateTime time
      * @return time of string

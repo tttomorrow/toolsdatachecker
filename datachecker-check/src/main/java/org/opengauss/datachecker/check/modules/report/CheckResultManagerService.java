@@ -154,7 +154,7 @@ public class CheckResultManagerService {
 
     private List<CheckDiffResult> reduceFailed(String logFilePath) {
         final List<CheckDiffResult> failedDiffList = filterResultByResult(CheckResultConstants.RESULT_FAILED);
-        List<String> failedList = failedDiffList.stream().map(this::translateCheckFailed).map(JsonObjectUtil::format)
+        List<String> failedList = failedDiffList.stream().map(this::translateCheckFailed).map(JsonObjectUtil::prettyFormatMillis)
                                                 .collect(Collectors.toList());
         String failedPath = logFilePath + FAILED_LOG_NAME;
         FileUtils.writeAppendFile(failedPath, failedList);
@@ -173,7 +173,7 @@ public class CheckResultManagerService {
 
     private long calcCheckTaskCost(CheckDiffResult result) {
         if (Objects.nonNull(result.getStartTime()) && Objects.nonNull(result.getEndTime())) {
-            return Duration.between(result.getStartTime(), result.getEndTime()).toSeconds();
+            return Duration.between(result.getStartTime(), result.getEndTime()).toMillis();
         }
         return 0;
     }
@@ -189,7 +189,7 @@ public class CheckResultManagerService {
     private List<CheckDiffResult> reduceSuccess(String logFilePath) {
         final List<CheckDiffResult> successResList = filterResultByResult(CheckResultConstants.RESULT_SUCCESS);
         String successPath = logFilePath + SUCCESS_LOG_NAME;
-        List<String> successList = successResList.stream().map(this::translateCheckSuccess).map(JsonObjectUtil::format)
+        List<String> successList = successResList.stream().map(this::translateCheckSuccess).map(JsonObjectUtil::prettyFormatMillis)
                                                  .collect(Collectors.toList());
         FileUtils.writeAppendFile(successPath, successList);
         return successResList;
@@ -210,7 +210,7 @@ public class CheckResultManagerService {
         int failedTableCount = calcTableCount(failedList);
         CheckSummary checkSummary = buildCheckSummaryResult(successTableCount, failedTableCount);
         String summaryPath = logFilePath + SUMMARY_LOG_NAME;
-        FileUtils.writeFile(summaryPath, JsonObjectUtil.format(checkSummary));
+        FileUtils.writeFile(summaryPath, JsonObjectUtil.prettyFormatMillis(checkSummary));
     }
 
     private CheckSummary buildCheckSummaryResult(int successTableCount, int failedTableCount) {
@@ -226,9 +226,9 @@ public class CheckResultManagerService {
     }
 
     private List<CheckDiffResult> filterResultByResult(String resultType) {
-        List<CheckDiffResult> resultList = new LinkedList<>();
-        resultList.addAll(checkResultCache.values().stream().filter(result -> result.getResult().equals(resultType))
-                                          .collect(Collectors.toList()));
+        List<CheckDiffResult> resultList = new LinkedList<>(
+            checkResultCache.values().stream().filter(result -> result.getResult().equals(resultType))
+                            .collect(Collectors.toList()));
         if (CheckResultConstants.RESULT_FAILED.equals(resultType)) {
             resultList.addAll(noCheckedCache.values());
         }
