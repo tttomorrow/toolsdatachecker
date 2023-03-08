@@ -16,16 +16,19 @@
 package org.opengauss.datachecker.check.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.check.modules.check.AbstractCheckDiffResultBuilder.CheckDiffResultBuilder;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.check.modules.task.TaskManagerService;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.entry.extract.Database;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.time.LocalDateTime;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -41,6 +44,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class CheckTableStructureService {
+    @Resource
+    private CheckEnvironment checkEnvironment;
     @Resource
     private TaskManagerService taskManagerService;
     @Resource
@@ -104,9 +109,12 @@ public class CheckTableStructureService {
         final boolean isTableStructureEquals = isTableStructureEquals(sourceMeta, sinkMeta);
         if (!isTableStructureEquals) {
             taskManagerService.refreshTableExtractStatus(tableName, Endpoint.CHECK, -1);
+            LocalDateTime now = LocalDateTime.now();
+            final Database database = checkEnvironment.getDatabase(Endpoint.SOURCE);
+            final CheckDiffResultBuilder builder = CheckDiffResultBuilder.builder();
             CheckDiffResult result =
-                CheckDiffResultBuilder.builder().process(processNo).table(tableName).isTableStructureEquals(false)
-                                      .build();
+                builder.process(processNo).table(tableName).isTableStructureEquals(false).startTime(now).endTime(now)
+                       .schema(database.getSchema()).build();
             checkResultManagerService.addNoCheckedResult(tableName, result);
             log.debug("compared  table[{}] field names not match source={},sink={}", tableName,
                 getFieldNames(sourceMeta), getFieldNames(sinkMeta));
@@ -121,8 +129,12 @@ public class CheckTableStructureService {
 
     private void checkMissTable(String processNo, String tableName, TableMetadata sourceMeta) {
         Endpoint onlyExistEndpoint = Objects.isNull(sourceMeta) ? Endpoint.SINK : Endpoint.SOURCE;
-        CheckDiffResult result = CheckDiffResultBuilder.builder().process(processNo).table(tableName)
-                                                       .isExistTableMiss(true, onlyExistEndpoint).build();
+        LocalDateTime now = LocalDateTime.now();
+        final Database database = checkEnvironment.getDatabase(Endpoint.SOURCE);
+        final CheckDiffResultBuilder builder = CheckDiffResultBuilder.builder();
+        CheckDiffResult result =
+            builder.process(processNo).table(tableName).startTime(now).endTime(now).schema(database.getSchema())
+                   .isExistTableMiss(true, onlyExistEndpoint).build();
         taskManagerService.refreshTableExtractStatus(tableName, Endpoint.CHECK, -1);
         checkResultManagerService.addNoCheckedResult(tableName, result);
         log.error("compared the field names in table[{}](case ignored) and the result is not match", tableName);

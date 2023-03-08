@@ -25,10 +25,10 @@ import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.concurrent.ExecutorService;
 
 /**
  * DataCheckService
@@ -49,8 +49,6 @@ public class DataCheckService {
     @Resource
     private CheckEnvironment checkEnvironment;
     @Resource
-    private ThreadPoolTaskExecutor asyncCheckExecutor;
-    @Resource
     private EndpointMetaDataManager endpointMetaDataManager;
 
     /**
@@ -62,6 +60,7 @@ public class DataCheckService {
      * @param tablePartitionRowCount tablePartitionRowCount
      */
     public void checkTableData(String process, String tableName, int partitions, int tablePartitionRowCount) {
+        final ExecutorService executors = checkEnvironment.getCheckExecutorService();
         final int bucketCapacity = dataCheckConfig.getBucketCapacity();
         final int errorRate = dataCheckConfig.getDataCheckProperties().getErrorRate();
         final TableMetadata sourceMeta = endpointMetaDataManager.getTableMetadata(Endpoint.SOURCE, tableName);
@@ -69,7 +68,7 @@ public class DataCheckService {
         checkParam.setProcess(process).setTableName(tableName).setSchema(getSinkSchema()).setSourceMetadata(sourceMeta)
                   .setTablePartitionRowCount(tablePartitionRowCount).setBucketCapacity(bucketCapacity)
                   .setPartitions(partitions).setProperties(kafkaProperties).setErrorRate(errorRate);
-        asyncCheckExecutor.submit(new DataCheckRunnable(checkParam, dataCheckRunnableSupport));
+        executors.submit(new DataCheckRunnable(checkParam, dataCheckRunnableSupport));
     }
 
     private String getSinkSchema() {
