@@ -81,10 +81,8 @@ public class MetaSqlMapper {
         /**
          * Table metadata query SQL
          */
-        String TABLE_METADATA_SQL = "select info.table_name tableName , info.table_rows tableRows from "
-            + " information_schema.tables info where info.table_schema=:databaseSchema "
-            + " and info.table_name in ( "
-            + " select table_name from information_schema.columns where table_schema=:databaseSchema and  column_key='PRI' )";
+        String TABLE_METADATA_SQL = "select info.table_name tableName , info.table_rows tableRows  "
+            + "from  information_schema.tables info where info.table_schema=:databaseSchema";
 
         /**
          * column metadata query SQL
@@ -104,23 +102,29 @@ public class MetaSqlMapper {
         /**
          * Table metadata query SQL
          */
-        String TABLE_METADATA_SQL = "select distinct kcu.table_name tableName , 0 tableRows"
-            + " from information_schema.key_column_usage kcu WHERE kcu.constraint_name in ("
-            + " select constraint_name from information_schema.table_constraints tc"
-            + " where tc.constraint_schema=:databaseSchema and tc.constraint_type='PRIMARY KEY')";
+        String TABLE_METADATA_SQL = "select c.relname tableName,0 tableRows from pg_class c "
+            + "LEFT JOIN pg_namespace n on n.oid = c.relnamespace left join pg_index b on c.oid=b.indrelid "
+            + "where n.nspname=:databaseSchema and b.indisprimary='t';";
 
         /**
          * column metadata query SQL
          */
-        String TABLES_COLUMN_META_DATA_SQL = "select c.table_name tableName ,c.column_name  columnName, "
-            + " c.ordinal_position ordinalPosition, c.data_type dataType , c.data_type columnType,pkc.column_key "
-            + " from  information_schema.columns c  left join ( "
-            + " select kcu.table_name,kcu.column_name,'PRI' column_key "
-            + " from information_schema.key_column_usage kcu " + " WHERE kcu.constraint_name in ("
-            + " select constraint_name from information_schema.table_constraints tc"
-            + " where tc.constraint_schema=:databaseSchema and tc.constraint_type='PRIMARY KEY' "
-            + " ) ) pkc on c.table_name=pkc.table_name and c.column_name=pkc.column_name "
-            + " where c.table_schema =:databaseSchema and c.table_name in (:tableNames)";
+        String TABLES_COLUMN_META_DATA_SQL = "SELECT c.relname tableName ,a.attname columnName ,"
+            + " a.attnum ordinalPosition,(CASE WHEN (t.typtype = 'd'::\"char\") "
+            + " THEN CASE WHEN ((bt.typelem <> (0)::oid) AND (bt.typlen = (-1))) THEN 'ARRAY'::text "
+            + "WHEN (nbt.nspname = 'pg_catalog'::name) THEN format_type(t.typbasetype, NULL::integer) "
+            + "ELSE 'USER-DEFINED'::text END ELSE CASE WHEN ((t.typelem <> (0)::oid) AND (t.typlen = (-1))) "
+            + "THEN 'ARRAY'::text WHEN (nt.nspname = 'pg_catalog'::name) THEN format_type(a.atttypid, NULL::integer) "
+            + "ELSE 'USER-DEFINED'::text END END)::information_schema.character_data AS dataType ,"
+            + " t.typname columnType, (case when co.contype='p'::\"char\" then 'PRI' end ) columnKey"
+            + " FROM ((pg_attribute a JOIN (pg_class c JOIN pg_namespace nc ON c.relnamespace = nc.oid ) ON a.attrelid = c.oid ) "
+            + "JOIN (pg_type t JOIN pg_namespace nt ON t.typnamespace = nt.oid) ON a.atttypid = t.oid) "
+            + "LEFT JOIN (pg_type bt JOIN pg_namespace nbt ON bt.typnamespace = nbt.oid) "
+            + "ON (t.typtype = 'd'::\"char\" AND t.typbasetype = bt.oid) "
+            + "left join pg_constraint co on c.oid = co.conrelid and a.attnum = any (array[co.conkey]) "
+            + "WHERE a.attnum > 0 AND (NOT a.attisdropped)  "
+            + "AND (c.relkind = ANY (ARRAY['r'::\"char\", 'm'::\"char\", 'v'::\"char\", 'f'::\"char\"]))"
+            + " and  nc.nspname=:databaseSchema and c.relname in (:tableNames) and c.relhaspkey=true;";
     }
 
     interface DataBaseO {

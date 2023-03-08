@@ -17,38 +17,34 @@ package org.opengauss.datachecker.extract.dao;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.opengauss.datachecker.common.constant.Constants;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.enums.DataBaseMeta;
-import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.util.EnumUtil;
-import org.opengauss.datachecker.common.util.SqlUtil;
-import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
 import org.opengauss.datachecker.extract.service.RuleAdapterService;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowCountCallbackHandler;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-import static org.opengauss.datachecker.extract.constants.ExtConstants.COLUMN_INDEX_FIRST_ZERO;
+import java.util.stream.Stream;
 
 /**
  * DataBaseMetaDataDAOImpl
@@ -63,7 +59,7 @@ import static org.opengauss.datachecker.extract.constants.ExtConstants.COLUMN_IN
 public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     public static final String TABLE_NAMES = "tableNames";
     public static final String DATABASE_SCHEMA = "databaseSchema";
-    private static final String OPEN_GAUSS_PARALLEL_QUERY = "set query_dop to %s;";
+
     protected final JdbcTemplate JdbcTemplateOne;
     private final RuleAdapterService ruleAdapterService;
     private final ExtractProperties extractProperties;
@@ -73,70 +69,46 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     public boolean health() {
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.HEALTH);
         List<String> result = new ArrayList<>();
-        JdbcTemplateOne.query(sql, (PreparedStatementSetter) ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
-            @Override
-            protected void processRow(ResultSet rs, int rowNum) throws SQLException {
-                result.add(rs.getString(1));
-            }
-        });
+        JdbcTemplateOne
+            .query(sql, (PreparedStatementSetter) ps -> ps.setString(1, getSchema()), new RowCountCallbackHandler() {
+                @Override
+                protected void processRow(ResultSet rs, int rowNum) throws SQLException {
+                    result.add(rs.getString(1));
+                }
+            });
         return result.size() > 0;
     }
 
     @Override
-    public List<TableMetadata> queryTableMetadata() {
-        final List<String> tableNameList = filterByTableRules(queryAllTableNames());
-        if (CollectionUtils.isEmpty(tableNameList)) {
-            return new ArrayList<>();
-        }
-        final List<TableMetadata> tableMetadataList =
-            tableNameList.stream().map(tableName -> new TableMetadata().setTableName(tableName).setTableRows(-1))
-                         .collect(Collectors.toList());
-        matchRowRules(tableMetadataList);
-        return tableMetadataList;
+    public List<String> queryTableNameList() {
+        return filterByTableRules(queryAllTableNames());
     }
 
-    private void matchRowRules(List<TableMetadata> tableMetadataList) {
-        if (CollectionUtils.isEmpty(tableMetadataList)) {
+    @Override
+    public void matchRowRules(Map<String, TableMetadata> tableMetadataMap) {
+        if (MapUtils.isEmpty(tableMetadataMap)) {
             return;
         }
-        ruleAdapterService.executeRowRule(tableMetadataList);
+        ruleAdapterService.executeRowRule(tableMetadataMap);
     }
 
-    public List<String> queryAllTableNames() {
+    private List<String> queryAllTableNames() {
         Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.EMPTY);
-        map.put(DATABASE_SCHEMA, getSchema());
+        final String schema = getSchema();
+        map.put(DATABASE_SCHEMA, schema);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
-        return jdbc.query(sql, map, (rs, rowNum) -> rs.getString(1));
+        log.info("query schema [{}] tables", schema);
+        log.info("query schema [{}] tables sql : {}", schema, sql);
+        LocalDateTime start = LocalDateTime.now();
+        final List<String> tableList = jdbc.query(sql, map, (rs, rowNum) -> rs.getString(1));
+        log.info("query schema [{}] tables count [{}] cost={}", schema, tableList.size(),
+            Duration.between(start, LocalDateTime.now()).toSeconds());
+        return tableList;
     }
 
     private List<String> filterByTableRules(List<String> tableNameList) {
         return ruleAdapterService.executeTableRule(tableNameList);
-    }
-
-    public void getAllTableCount(Set<String> tableNameList) {
-        final AtomicInteger tableCount = new AtomicInteger(0);
-        String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
-        final String schema = getSchema();
-        metadataLoadProcess.setTotal(tableNameList.size());
-        tableNameList.parallelStream().forEach(tableName -> {
-            enableDatabaseParallelQuery();
-            final Long rowCount = JdbcTemplateOne
-                .queryForObject(String.format(sqlQueryTableRowCount, escape(schema), escape(tableName)), Long.class);
-            MetaDataCache.updateRowCount(tableName, rowCount);
-            log.debug("load table [{}]row count={}  total={} ", tableName, rowCount, tableCount.incrementAndGet());
-            metadataLoadProcess.setLoadCount(tableCount.get());
-        });
-    }
-
-    private void enableDatabaseParallelQuery() {
-        if (Objects.equals(DataBaseType.OG, extractProperties.getDatabaseType())) {
-            JdbcTemplateOne.execute(String.format(OPEN_GAUSS_PARALLEL_QUERY, extractProperties.getQueryDop()));
-        }
-    }
-
-    private String escape(String content) {
-        return SqlUtil.escape(content, extractProperties.getDatabaseType());
     }
 
     @Override
@@ -145,31 +117,28 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     }
 
     @Override
-    public List<ColumnsMetaData> queryColumnMetadata(String tableName) {
-        return queryColumnMetadata(List.of(tableName));
-    }
-
-    @Override
-    public List<ColumnsMetaData> queryColumnMetadata(List<String> tableNames) {
-        Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.EMPTY);
-        map.put(TABLE_NAMES, tableNames);
-        map.put(DATABASE_SCHEMA, getSchema());
-        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
+    public List<ColumnsMetaData> queryTableColumnsMetaData(String tableName) {
+        final String schema = getSchema();
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.COLUMN);
-        List<ColumnsMetaData> columns = jdbc.query(sql, map, new RowMapper<>() {
-            int columnIndex = COLUMN_INDEX_FIRST_ZERO;
-
-            @Override
-            public ColumnsMetaData mapRow(ResultSet rs, int rowNum) throws SQLException {
-                ColumnsMetaData columnsMetaData = new ColumnsMetaData();
-                columnsMetaData.setTableName(rs.getString(++columnIndex)).setColumnName(rs.getString(++columnIndex))
-                               .setOrdinalPosition(rs.getInt(++columnIndex)).setDataType(rs.getString(++columnIndex))
-                               .setColumnType(rs.getString(++columnIndex))
-                               .setColumnKey(EnumUtil.valueOf(ColumnKey.class, rs.getString(++columnIndex)));
-                columnIndex = COLUMN_INDEX_FIRST_ZERO;
-                return columnsMetaData;
-            }
-        });
+        LocalDateTime start = LocalDateTime.now();
+        Map<String, Object> map = new HashMap<>(Constants.InitialCapacity.EMPTY);
+        map.put(TABLE_NAMES, tableName);
+        map.put(DATABASE_SCHEMA, schema);
+        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
+        List<ColumnsMetaData> columns = new LinkedList<>();
+        try (Stream<ColumnsMetaData> resultStream = jdbc.queryForStream(sql, map, (rs, rowNum) -> {
+            ColumnsMetaData columnsMetaData = new ColumnsMetaData();
+            columnsMetaData.setTableName(rs.getString(1)).setColumnName(rs.getString(2))
+                           .setOrdinalPosition(rs.getInt(3)).setDataType(rs.getString(4)).setColumnType(rs.getString(5))
+                           .setColumnKey(EnumUtil.valueOf(ColumnKey.class, rs.getString(6)));
+            return columnsMetaData;
+        })) {
+            columns.addAll(resultStream.collect(Collectors.toList()));
+            log.debug(" query [{}] table columns metadata  column={} cost {}", tableName, columns.size(),
+                Duration.between(start, LocalDateTime.now()).toSeconds());
+        } catch (DataAccessException exception) {
+            log.error("jdbc query sub column metadata [{}] error :", sql, exception);
+        }
         return ruleAdapterService.executeColumnRule(columns);
     }
 

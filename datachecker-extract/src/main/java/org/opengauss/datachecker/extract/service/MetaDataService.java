@@ -18,21 +18,22 @@ package org.opengauss.datachecker.extract.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.common.entry.enums.ColumnKey;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
 import org.opengauss.datachecker.common.entry.extract.MetadataLoadProcess;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
-import org.opengauss.datachecker.common.util.ThreadUtil;
+import org.opengauss.datachecker.common.thread.ThreadPoolFactory;
+import org.opengauss.datachecker.common.util.PhaserUtil;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.dao.DataBaseMetaDataDAOImpl;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 /**
@@ -58,7 +59,7 @@ public class MetaDataService {
     }
 
     public List<String> queryAllTableNames() {
-        return dataBaseMetadataDAOImpl.queryAllTableNames();
+        return dataBaseMetadataDAOImpl.queryTableNameList();
     }
 
     /**
@@ -68,13 +69,7 @@ public class MetaDataService {
         if (MetaDataCache.isEmpty()) {
             Map<String, TableMetadata> metaDataMap = queryMetaDataOfSchema();
             MetaDataCache.putMap(metaDataMap);
-            final Set<String> allTables = MetaDataCache.getAllKeys();
-            if (CollectionUtils.isNotEmpty(allTables)) {
-                ThreadUtil.newSingleThreadExecutor().submit(() -> {
-                    dataBaseMetadataDAOImpl.getAllTableCount(allTables);
-                });
-            }
-            log.debug("load meta data cache");
+            log.info("put table metadata in cache [{}]", metaDataMap.size());
         }
     }
 
@@ -87,52 +82,41 @@ public class MetaDataService {
         return dataBaseMetadataDAOImpl.getMetadataLoadProcess();
     }
 
-    /**
-     * query Metadata info
-     *
-     * @return Metadata info
-     */
     public Map<String, TableMetadata> queryMetaDataOfSchema() {
-        List<TableMetadata> tableMetadata = queryTableMetadata();
-        List<String> tableNames = tableMetadata.stream().map(TableMetadata::getTableName).collect(Collectors.toList());
-        if (!CollectionUtils.isEmpty(tableNames)) {
-            List<ColumnsMetaData> columnsMetadata = dataBaseMetadataDAOImpl.queryColumnMetadata(tableNames);
-            Map<String, List<ColumnsMetaData>> tableColumnMap =
-                columnsMetadata.stream().collect(Collectors.groupingBy(ColumnsMetaData::getTableName));
-            tableMetadata.forEach(tableMeta -> {
-                tableMeta.setColumnsMetas(tableColumnMap.get(tableMeta.getTableName()))
-                         .setPrimaryMetas(getTablePrimaryColumn(tableColumnMap.get(tableMeta.getTableName())));
-            });
+        log.info("query table metadata");
+        Map<String, TableMetadata> tableMetadataMap = new ConcurrentHashMap<>();
+        final List<String> tableList = queryAllTableNames();
+        if (CollectionUtils.isEmpty(tableList)) {
+            return tableMetadataMap;
         }
-        return tableMetadata.stream().collect(Collectors.toMap(TableMetadata::getTableName, Function.identity()));
+        ExecutorService threadPool =
+            ThreadPoolFactory.newThreadPool("batch-query-table-metadata", 20, Integer.MAX_VALUE);
+        List<Future<?>> futureList = new LinkedList<>();
+        tableList.forEach(tableName -> {
+            futureList.add(threadPool.submit(() -> {
+                final TableMetadata tableMetadata = getTableMetadataByTableName(tableName);
+                tableMetadataMap.put(tableName, tableMetadata);
+            }));
+        });
+        PhaserUtil.executorComplete(threadPool, futureList);
+        dataBaseMetadataDAOImpl.matchRowRules(tableMetadataMap);
+        log.info("build table metadata [{}]", tableMetadataMap.size());
+        return tableMetadataMap;
     }
 
-    /**
-     * query table Metadata info
-     *
-     * @param tableName tableName
-     * @return table Metadata info
-     */
-    public TableMetadata queryMetaDataOfSchema(String tableName) {
-        TableMetadata tableMetadata = queryTableMetadataByTableName(tableName);
-        if (Objects.isNull(tableMetadata)) {
-            return tableMetadata;
-        }
-        List<ColumnsMetaData> columnsMetadata = dataBaseMetadataDAOImpl.queryColumnMetadata(List.of(tableName));
-        tableMetadata.setColumnsMetas(columnsMetadata).setPrimaryMetas(getTablePrimaryColumn(columnsMetadata));
-        log.debug("Query database metadata information completed total={}", columnsMetadata);
+    private TableMetadata getTableMetadataByTableName(String tableName) {
+        final TableMetadata tableMetadata = new TableMetadata().setTableName(tableName).setTableRows(-1);
+        List<ColumnsMetaData> columnsMetadatas = dataBaseMetadataDAOImpl.queryTableColumnsMetaData(tableName);
+        tableMetadata.setColumnsMetas(columnsMetadatas);
+        tableMetadata.setPrimaryMetas(getTablePrimaryColumn(columnsMetadatas));
         return tableMetadata;
     }
 
     public TableMetadata getMetaDataOfSchemaByCache(String tableName) {
         if (!MetaDataCache.containsKey(tableName)) {
-            MetaDataCache.put(tableName, queryMetaDataOfSchema(tableName));
+            MetaDataCache.put(tableName, getTableMetadataByTableName(tableName));
         }
         return MetaDataCache.get(tableName);
-    }
-
-    public void updateMetaDataOfSchemaByCache(String tableName) {
-        MetaDataCache.put(tableName, queryMetaDataOfSchema(tableName));
     }
 
     /**
@@ -142,17 +126,7 @@ public class MetaDataService {
      * @return column Metadata info
      */
     public List<ColumnsMetaData> queryTableColumnMetaDataOfSchema(String tableName) {
-        return dataBaseMetadataDAOImpl.queryColumnMetadata(List.of(tableName));
-    }
-
-    private TableMetadata queryTableMetadataByTableName(String tableName) {
-        final List<TableMetadata> tableMetadatas = queryTableMetadata();
-        return tableMetadatas.stream().filter(meta -> StringUtils.equals(meta.getTableName(), tableName)).findFirst()
-                             .orElse(null);
-    }
-
-    private List<TableMetadata> queryTableMetadata() {
-        return dataBaseMetadataDAOImpl.queryTableMetadata();
+        return dataBaseMetadataDAOImpl.queryTableColumnsMetaData(tableName);
     }
 
     private List<ColumnsMetaData> getTablePrimaryColumn(List<ColumnsMetaData> columnsMetaData) {

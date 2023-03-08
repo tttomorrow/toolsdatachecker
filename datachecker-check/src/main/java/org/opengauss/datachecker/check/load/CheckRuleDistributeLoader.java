@@ -23,6 +23,7 @@ import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
 import org.opengauss.datachecker.common.entry.enums.RuleType;
+import org.opengauss.datachecker.common.exception.CheckingException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
@@ -52,16 +53,22 @@ public class CheckRuleDistributeLoader extends AbstractCheckLoader {
      */
     @Override
     public void load(CheckEnvironment checkEnvironment) {
-        RuleParser ruleParser = new RuleParser();
-        CheckMode checkMode = checkEnvironment.getCheckMode();
-        if (Objects.equals(CheckMode.INCREMENT, checkMode)) {
-            config.getTable().clear();
-            config.getRow().clear();
+        try {
+            log.info("check service distribute rules.");
+            RuleParser ruleParser = new RuleParser();
+            CheckMode checkMode = checkEnvironment.getCheckMode();
+            if (Objects.equals(CheckMode.INCREMENT, checkMode)) {
+                config.getTable().clear();
+                config.getRow().clear();
+            }
+            final Map<RuleType, List<Rule>> rules = ruleParser.parser(config);
+            feignClient.distributeRules(Endpoint.SOURCE, checkMode, rules);
+            feignClient.distributeRules(Endpoint.SINK, checkMode, rules);
+            checkEnvironment.addRules(rules);
+            log.info("check service distribute rules success.");
+        } catch (Exception ignore) {
+            log.error("distribute rules error: ", ignore);
+            throw new CheckingException("distribute rules error");
         }
-        final Map<RuleType, List<Rule>> rules = ruleParser.parser(config);
-        feignClient.distributeRules(Endpoint.SOURCE, checkMode, rules);
-        feignClient.distributeRules(Endpoint.SINK, checkMode, rules);
-        checkEnvironment.addRules(rules);
-        log.info("check service distribute rules success.");
     }
 }
