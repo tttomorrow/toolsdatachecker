@@ -15,8 +15,10 @@
 
 package org.opengauss.datachecker.extract.load;
 
+import lombok.Data;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
+
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -26,28 +28,12 @@ import java.util.concurrent.ExecutorService;
  * @date ：Created in 2022/10/31
  * @since ：11
  */
-@Service
+@Data
+@Component
 public class ExtractEnvironment {
+    private int maxCorePoolSize = 0;
+    private int queueSize = 0;
     private boolean loadSuccess = false;
-    private ExecutorService threadPoolExecutor = null;
-    private CheckMode checkMode;
-    public void setLoadSuccess(boolean loadSuccess) {
-        this.loadSuccess = loadSuccess;
-    }
-
-    public void setExtractThreadPool(ExecutorService threadPoolExecutor) {
-        this.threadPoolExecutor = threadPoolExecutor;
-    }
-
-    public ExecutorService getExtractThreadPool() {
-        return threadPoolExecutor;
-    }
-
-    public void setCheckMode(CheckMode checkMode) {
-        this.checkMode = checkMode;
-    }
-
-    public CheckMode getCheckMode() {
-        return checkMode;
-    }
+    private volatile ExecutorService threadPoolExecutor = null;
+    private volatile CheckMode checkMode;
 }

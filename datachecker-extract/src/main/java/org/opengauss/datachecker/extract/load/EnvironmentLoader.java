@@ -33,7 +33,7 @@ import java.util.Map;
 @Service
 public class EnvironmentLoader {
     @Resource
-    private ExtractEnvironment extractEnvironment;
+    private volatile ExtractEnvironment extractEnvironment;
 
     @Async
     public void load(CheckMode checkMode) {

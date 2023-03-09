@@ -39,11 +39,12 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         TypeHandler varbinaryToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
         TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
         TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
+        TypeHandler bitBooleanToString = (resultSet, columnLabel) -> booleanToString(resultSet.getBoolean(columnLabel));
 
         typeHandlers.put(MysqlType.FLOAT, numericToString);
         typeHandlers.put(MysqlType.DOUBLE, numericToString);
         typeHandlers.put(MysqlType.DECIMAL, numericToString);
-        typeHandlers.put(MysqlType.BIT, this::bitToString);
+        typeHandlers.put(MysqlType.BIT, bitBooleanToString);
         // byte binary blob
         typeHandlers.put(MysqlType.BINARY, binaryToString);
         typeHandlers.put(MysqlType.VARBINARY, varbinaryToString);
@@ -59,11 +60,6 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         typeHandlers.put(MysqlType.TIME, this::getTimeFormat);
         typeHandlers.put(MysqlType.TIMESTAMP, this::getTimestampFormat);
         typeHandlers.put(MysqlType.YEAR, this::getYearFormat);
-    }
-
-    private String bitToString(ResultSet resultSet, String columnLabel) throws SQLException {
-        return Objects.isNull(resultSet.getObject(columnLabel)) ? NULL :
-            String.valueOf(resultSet.getString(columnLabel));
     }
 
     private String byteToStringTrim(byte[] bytes) {
@@ -90,7 +86,12 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         }
         return builder.toString();
     }
-
+    protected String booleanToString(Boolean bool){
+        if (Objects.isNull(bool)) {
+            return NULL;
+        }
+        return String.valueOf(bool);
+    }
     @Override
     public String convert(ResultSet resultSet, String columnTypeName, String columnLabel) throws SQLException {
         final MysqlType mysqlType = MysqlType.getByName(columnTypeName);

@@ -33,6 +33,7 @@ import org.opengauss.datachecker.common.exception.BuildRepairStatementException;
 import org.opengauss.datachecker.common.exception.ProcessMultipleException;
 import org.opengauss.datachecker.common.exception.TableNotExistException;
 import org.opengauss.datachecker.common.exception.TaskNotFoundException;
+import org.opengauss.datachecker.common.thread.ThreadPoolFactory;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.cache.TableExtractStatusCache;
@@ -281,8 +282,7 @@ public class DataExtractServiceImpl implements DataExtractService {
             if (CollectionUtils.isEmpty(taskList)) {
                 return;
             }
-            final ExecutorService executorService = extractEnvironment.getExtractThreadPool();
-
+            final ExecutorService executorService = getExecutorService(extractEnvironment);
             Map<String, Integer> tableCheckStatus = checkingFeignClient.queryTableCheckStatus();
             taskList.forEach(task -> {
                 log.info("Perform data extraction tasks {}", task.getTaskName());
@@ -296,6 +296,10 @@ public class DataExtractServiceImpl implements DataExtractService {
                 executorService.submit(new ExtractTaskRunnable(task, topic, extractThreadSupport));
             });
         }
+    }
+
+    private ExecutorService getExecutorService(ExtractEnvironment environment) {
+        return ThreadPoolFactory.newThreadPool("extract", environment.getMaxCorePoolSize(), environment.getQueueSize());
     }
 
     @Override

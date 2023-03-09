@@ -17,7 +17,6 @@ package org.opengauss.datachecker.extract.load;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
-import org.opengauss.datachecker.common.thread.ThreadPoolFactory;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.opengauss.datachecker.extract.service.MetaDataService;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +25,6 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 
 /**
  * ThreadPoolLoader
@@ -61,8 +59,7 @@ public class ThreadPoolLoader extends AbstractExtractLoader {
         }
         final Map<String, TableMetadata> metadataMap = metaDataService.queryMetaDataOfSchemaCache();
         final int queueSize = metadataMap.size();
-        final ExecutorService threadPool = ThreadPoolFactory.newThreadPool("extract", maxCorePoolSize, queueSize);
-        extractEnvironment.setExtractThreadPool(threadPool);
-        log.info("extract service load thread pool success");
+        extractEnvironment.setMaxCorePoolSize(maxCorePoolSize);
+        extractEnvironment.setQueueSize(queueSize);
     }
 }

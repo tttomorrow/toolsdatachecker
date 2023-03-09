@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
@@ -31,12 +32,14 @@ import java.util.concurrent.Executor;
  * @date 2022/5/8 19:17
  * @since 11
  **/
+@Slf4j
 @EnableAsync
 @Configuration
 public class AsyncConfig implements AsyncConfigurer {
 
     /**
      * Asynchronous processing scenario for data extraction non-core business
+     *
      * @return
      */
     @Override
@@ -58,7 +61,7 @@ public class AsyncConfig implements AsyncConfigurer {
     private class MyAsyncUncaughtExceptionHandler implements AsyncUncaughtExceptionHandler {
         @Override
         public void handleUncaughtException(Throwable ex, Method method, Object... params) {
-
+            log.error("ansync exception {}::{}", method, params, ex);
         }
     }
 }
