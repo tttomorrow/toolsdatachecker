@@ -247,7 +247,7 @@ public abstract class AbstractCheckDiffResultBuilder<C extends CheckDiffResult, 
      *
      * @return CheckDiffResultBuilder
      */
-    public static AbstractCheckDiffResultBuilder<?, ?> builder() {
+    public static CheckDiffResultBuilder builder() {
         return new CheckDiffResultBuilder();
     }
 

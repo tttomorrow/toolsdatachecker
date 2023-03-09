@@ -23,8 +23,11 @@ import org.opengauss.datachecker.common.entry.extract.ExtractTask;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.TableMetadata;
 import org.opengauss.datachecker.common.entry.extract.Topic;
+import org.opengauss.datachecker.common.util.SqlUtil;
 import org.opengauss.datachecker.common.util.TaskUtil;
+import org.opengauss.datachecker.extract.cache.MetaDataCache;
 import org.opengauss.datachecker.extract.client.CheckingFeignClient;
+import org.opengauss.datachecker.extract.dao.MetaSqlMapper;
 import org.opengauss.datachecker.extract.kafka.KafkaProducerWapper;
 import org.opengauss.datachecker.extract.task.sql.SelectSqlBuilder;
 import org.opengauss.datachecker.extract.util.MetaDataUtil;
@@ -91,6 +94,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
 
     private List<String> buildQuerySqlList(TableMetadata tableMetadata) {
         List<String> queryList = new ArrayList<>();
+        tableMetadata.setTableRows(queryTableRowCount(tableMetadata.getTableName()));
         final int[][] taskOffset = TaskUtil.calcAutoTaskOffset(tableMetadata.getTableRows());
         final int taskCount = taskOffset.length;
         final SelectSqlBuilder sqlBuilder = new SelectSqlBuilder(tableMetadata, schema);
@@ -101,6 +105,18 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
             queryList.add(querySql);
         });
         return queryList;
+    }
+
+    private long queryTableRowCount(String tableName) {
+        String sqlQueryTableRowCount = MetaSqlMapper.getTableCount();
+        Long rowCount = jdbcTemplate
+            .queryForObject(String.format(sqlQueryTableRowCount, escape(schema), escape(tableName)), Long.class);
+        MetaDataCache.updateRowCount(tableName, rowCount);
+        return rowCount;
+    }
+
+    private String escape(String content) {
+        return SqlUtil.escape(content, databaseType);
     }
 
     private void executeTask(List<String> querySqlList, TableMetadata tableMetadata) throws InterruptedException {

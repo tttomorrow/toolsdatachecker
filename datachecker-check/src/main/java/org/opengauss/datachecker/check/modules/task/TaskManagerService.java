@@ -55,4 +55,12 @@ public interface TaskManagerService {
      * @return status
      */
     Map<String, Integer> queryTableCheckStatus();
+
+    /**
+     * check a table that is checked completed
+     *
+     * @param tableName tableName
+     * @return true|false
+     */
+    boolean isChecked(String tableName);
 }

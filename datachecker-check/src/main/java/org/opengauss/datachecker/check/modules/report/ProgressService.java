@@ -15,13 +15,13 @@
 
 package org.opengauss.datachecker.check.modules.report;
 
-import com.alibaba.fastjson.JSONObject;
 import lombok.SneakyThrows;
 import org.opengauss.datachecker.check.cache.TableStatusRegister;
 import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
 import org.opengauss.datachecker.common.entry.report.CheckProgress;
 import org.opengauss.datachecker.common.util.FileUtils;
+import org.opengauss.datachecker.common.util.JsonObjectUtil;
 import org.opengauss.datachecker.common.util.ThreadUtil;
 import org.springframework.stereotype.Service;
 
@@ -135,13 +135,15 @@ public class ProgressService {
     }
 
     private void appendProgressLog() {
-        FileUtils.writeAppendFile(logFileFullPath, JSONObject.toJSONString(progressRef.get()) + System.lineSeparator());
+        String content = JsonObjectUtil.formatSec(progressRef.get()) + System.lineSeparator();
+        FileUtils.writeAppendFile(logFileFullPath, content);
     }
 
     private void createProgressLog() {
         final String exportCheckPath = checkEnvironment.getExportCheckPath();
         logFileFullPath = exportCheckPath + File.separatorChar + "result" + File.separatorChar + PROCESS_LOG_NAME;
-        FileUtils.writeFile(logFileFullPath, JSONObject.toJSONString(progressRef.get()) + System.lineSeparator());
+        String content = JsonObjectUtil.formatSec(progressRef.get()) + System.lineSeparator();
+        FileUtils.writeFile(logFileFullPath, content);
     }
 
     private long calcCost(LocalDateTime now) {

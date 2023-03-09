@@ -43,7 +43,10 @@ data:
     error-rate: 30
     max-core-pool-size: 10
     max-retry-times: 1000
-    retry-interval-times: 10000
+    retry-interval-times: 1000
+    # auto-delete-topic :  Configure whether to automatically delete topic.
+    # 0 is not delete; 1 is delete when checked all completed ; 2 is deleted when checked a table
+    auto-delete-topic: 2
 rules:
   # There are three types of filtering rules: table-level rules, row-level rules, and column-level rules.
   # Rules are configured in the form of List collection.

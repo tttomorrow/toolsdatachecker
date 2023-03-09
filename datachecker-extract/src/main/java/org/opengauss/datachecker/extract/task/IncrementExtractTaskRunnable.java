@@ -196,7 +196,7 @@ public class IncrementExtractTaskRunnable extends KafkaProducerWapper implements
     }
 
     private TableMetadata getTableMetadata() {
-        final TableMetadata metadata = metaDataService.queryMetaDataOfSchema(tableName);
+        final TableMetadata metadata = metaDataService.getMetaDataOfSchemaByCache(tableName);
         if (Objects.isNull(metadata) || CollectionUtils.isEmpty(metadata.getPrimaryMetas())) {
             throw new ExtractException(tableName + " metadata not found！");
         }

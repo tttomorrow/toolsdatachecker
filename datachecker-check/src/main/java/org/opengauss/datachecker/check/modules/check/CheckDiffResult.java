@@ -98,6 +98,7 @@ public class CheckDiffResult {
             keyUpdateSet = builder.getKeyUpdateSet();
             keyInsertSet = builder.getKeyInsertSet();
             keyDeleteSet = builder.getKeyDeleteSet();
+            totalRepair = keyUpdateSet.size() + keyInsertSet.size() + keyDeleteSet.size();
             resultAnalysis(builder.isNotLargeDiffKeys());
         } else {
             initEmptyCollections();

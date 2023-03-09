@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import static org.opengauss.datachecker.check.cache.TableStatusRegister.TASK_STATUS_CONSUMER_VALUE;
+
 /**
  * TaskManagerServiceImpl
  *
@@ -64,7 +66,7 @@ public class TaskManagerServiceImpl implements TaskManagerService {
         if (tableStatusRegister.isEmpty() || tableStatusRegister.isCheckCompleted()) {
             cleanTaskStatus();
             tableStatusRegister.init(new HashSet<>(tableNameList));
-            log.info("check server init extract tableNameList=[{}] ", JSON.toJSONString(tableNameList));
+            log.info("check server init extract tableNameList=[{}] ", tableNameList.size());
         } else {
             // The last verification process is being executed,
             // and the table verification status data cannot be reinitialized!
@@ -89,5 +91,10 @@ public class TaskManagerServiceImpl implements TaskManagerService {
     @Override
     public Map<String, Integer> queryTableCheckStatus() {
         return tableStatusRegister.get();
+    }
+
+    @Override
+    public boolean isChecked(String tableName) {
+        return tableStatusRegister.get(tableName) == TASK_STATUS_CONSUMER_VALUE;
     }
 }
