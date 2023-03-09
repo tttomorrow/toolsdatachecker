@@ -17,28 +17,30 @@ package org.opengauss.datachecker.check.modules.report;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.check.client.FeignClientService;
+import org.opengauss.datachecker.check.event.CheckFailedReportEvent;
+import org.opengauss.datachecker.check.event.CheckSuccessReportEvent;
 import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.check.CheckResultConstants;
 import org.opengauss.datachecker.common.entry.check.CheckPartition;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
-import org.opengauss.datachecker.common.entry.report.CheckFailed;
 import org.opengauss.datachecker.common.entry.report.CheckProgress;
-import org.opengauss.datachecker.common.entry.report.CheckSuccess;
 import org.opengauss.datachecker.common.entry.report.CheckSummary;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.JsonObjectUtil;
 import org.opengauss.datachecker.common.util.TopicUtil;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.File;
-import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -50,11 +52,10 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class CheckResultManagerService {
+public class CheckResultManagerService implements ApplicationContextAware {
     private static final String SUMMARY_LOG_NAME = "summary.log";
-    private static final String SUCCESS_LOG_NAME = "success.log";
-    private static final String FAILED_LOG_NAME = "failed.log";
     private static final String REPAIR_LOG_TEMPLATE = "repair_%s_%s_%s.txt";
+    private ApplicationContext context;
     @Resource
     private ProgressService progressService;
     @Resource
@@ -73,6 +74,11 @@ public class CheckResultManagerService {
      */
     public void addResult(CheckPartition checkPartition, CheckDiffResult checkDiffResult) {
         checkResultCache.put(checkPartition, checkDiffResult);
+        if (StringUtils.equals(CheckResultConstants.RESULT_SUCCESS, checkDiffResult.getResult())) {
+            context.publishEvent(new CheckSuccessReportEvent(checkDiffResult));
+        } else {
+            context.publishEvent(new CheckFailedReportEvent(checkDiffResult));
+        }
     }
 
     /**
@@ -83,6 +89,7 @@ public class CheckResultManagerService {
      */
     public void addNoCheckedResult(String tableName, CheckDiffResult checkDiffResult) {
         noCheckedCache.put(tableName, checkDiffResult);
+        context.publishEvent(new CheckFailedReportEvent(checkDiffResult));
     }
 
     /**
@@ -91,8 +98,8 @@ public class CheckResultManagerService {
     public void summaryCheckResult() {
         try {
             String logFilePath = getLogRootPath();
-            final List<CheckDiffResult> successList = reduceSuccess(logFilePath);
-            final List<CheckDiffResult> failedList = reduceFailed(logFilePath);
+            final List<CheckDiffResult> successList = filterResultByResult(CheckResultConstants.RESULT_SUCCESS);
+            final List<CheckDiffResult> failedList = filterResultByResult(CheckResultConstants.RESULT_FAILED);
             reduceFailedRepair(logFilePath, failedList);
             reduceSummary(successList, failedList);
         } catch (Exception exception) {
@@ -152,49 +159,6 @@ public class CheckResultManagerService {
         return String.format(REPAIR_LOG_TEMPLATE, schema, table, partition);
     }
 
-    private List<CheckDiffResult> reduceFailed(String logFilePath) {
-        final List<CheckDiffResult> failedDiffList = filterResultByResult(CheckResultConstants.RESULT_FAILED);
-        List<String> failedList = failedDiffList.stream().map(this::translateCheckFailed).map(JsonObjectUtil::prettyFormatMillis)
-                                                .collect(Collectors.toList());
-        String failedPath = logFilePath + FAILED_LOG_NAME;
-        FileUtils.writeAppendFile(failedPath, failedList);
-        return failedDiffList;
-    }
-
-    private CheckFailed translateCheckFailed(CheckDiffResult result) {
-        long cost = calcCheckTaskCost(result);
-        return new CheckFailed().setProcess(result.getProcess()).setSchema(result.getSchema())
-                                .setTopic(new String[] {result.getTopic()}).setPartition(result.getPartitions())
-                                .setTableName(result.getTable()).setCost(cost).setDiffCount(result.getTotalRepair())
-                                .setEndTime(result.getEndTime()).setStartTime(result.getStartTime())
-                                .setKeyInsertSet(result.getKeyInsertSet()).setKeyDeleteSet(result.getKeyDeleteSet())
-                                .setKeyUpdateSet(result.getKeyUpdateSet()).setMessage(result.getMessage());
-    }
-
-    private long calcCheckTaskCost(CheckDiffResult result) {
-        if (Objects.nonNull(result.getStartTime()) && Objects.nonNull(result.getEndTime())) {
-            return Duration.between(result.getStartTime(), result.getEndTime()).toMillis();
-        }
-        return 0;
-    }
-
-    private CheckSuccess translateCheckSuccess(CheckDiffResult result) {
-        long cost = calcCheckTaskCost(result);
-        return new CheckSuccess().setProcess(result.getProcess()).setSchema(result.getSchema())
-                                 .setTopic(new String[] {result.getTopic()}).setPartition(result.getPartitions())
-                                 .setTableName(result.getTable()).setCost(cost).setEndTime(result.getEndTime())
-                                 .setStartTime(result.getStartTime()).setMessage(result.getMessage());
-    }
-
-    private List<CheckDiffResult> reduceSuccess(String logFilePath) {
-        final List<CheckDiffResult> successResList = filterResultByResult(CheckResultConstants.RESULT_SUCCESS);
-        String successPath = logFilePath + SUCCESS_LOG_NAME;
-        List<String> successList = successResList.stream().map(this::translateCheckSuccess).map(JsonObjectUtil::prettyFormatMillis)
-                                                 .collect(Collectors.toList());
-        FileUtils.writeAppendFile(successPath, successList);
-        return successResList;
-    }
-
     private void appendLogFile(String logPath, List<String> resultList) {
         FileUtils.writeAppendFile(logPath, resultList);
     }
@@ -237,5 +201,10 @@ public class CheckResultManagerService {
 
     private int calcTableCount(List<CheckDiffResult> resultList) {
         return (int) resultList.stream().map(CheckDiffResult::getTable).distinct().count();
+    }
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.context = applicationContext;
     }
 }
