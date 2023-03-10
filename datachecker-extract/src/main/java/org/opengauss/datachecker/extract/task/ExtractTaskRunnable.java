@@ -98,6 +98,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         final int[][] taskOffset = TaskUtil.calcAutoTaskOffset(tableMetadata.getTableRows());
         final int taskCount = taskOffset.length;
         final SelectSqlBuilder sqlBuilder = new SelectSqlBuilder(tableMetadata, schema);
+        task.setDivisionsTotalNumber(taskCount);
         IntStream.range(0, taskCount).forEach(idx -> {
             final String querySql = sqlBuilder.dataBaseType(databaseType).isDivisions(task.isDivisions())
                                               .offset(taskOffset[idx][0], taskOffset[idx][1]).builder();
