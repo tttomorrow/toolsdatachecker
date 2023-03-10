@@ -16,12 +16,12 @@
 package org.opengauss.datachecker.extract.task;
 
 import com.mysql.cj.MysqlType;
+import org.opengauss.datachecker.common.util.HexUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -63,28 +63,7 @@ public class MysqlResultSetHandler extends ResultSetHandler {
     }
 
     private String byteToStringTrim(byte[] bytes) {
-        if (bytes == null) {
-            return NULL;
-        }
-        int iMax = bytes.length - 1;
-        if (iMax == -1) {
-            return "";
-        }
-        Stack<Byte> stack = new Stack<>();
-        boolean isSkip = bytes[iMax] == 0;
-        for (int i = iMax; i >= 0; i--) {
-            if (bytes[i] != 0 || !isSkip) {
-                isSkip = false;
-                stack.push(bytes[i]);
-            }
-        }
-        StringBuilder builder = new StringBuilder();
-        builder.append(stack.pop());
-        while (!stack.empty()) {
-            builder.append(",");
-            builder.append(stack.pop());
-        }
-        return builder.toString();
+        return HexUtil.byteToHexTrim(bytes);
     }
     protected String booleanToString(Boolean bool){
         if (Objects.isNull(bool)) {
