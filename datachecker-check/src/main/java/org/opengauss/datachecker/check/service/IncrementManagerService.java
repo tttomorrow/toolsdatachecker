@@ -21,11 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.check.client.FeignClientService;
-import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
+import org.opengauss.datachecker.common.entry.report.CheckFailed;
 import org.opengauss.datachecker.common.exception.CheckingException;
 import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.service.ShutdownService;
@@ -50,7 +50,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.RESULT_FAILED;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.COMMA;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.FAILED_LOG_NAME;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.LEFT_SQUARE_BRACKET;
+import static org.opengauss.datachecker.check.modules.check.CheckResultConstants.RIGHT_SQUARE_BRACKET;
 
 /**
  * IncrementManagerService
@@ -125,6 +128,7 @@ public class IncrementManagerService {
                 // Collect the last verification results and build an incremental verification log
                 mergeDataLogList(dataLogList, collectLastResults());
                 ExportCheckResult.backCheckResultDirectory();
+                checkResultManagerService.progressing(dataLogList.size());
                 incrementDataLogsChecking(dataLogList);
             }
         } catch (Exception ex) {
@@ -180,48 +184,61 @@ public class IncrementManagerService {
      */
     private Map<String, SourceDataLog> collectLastResults() {
         final List<Path> checkResultFileList = FileUtils.loadDirectory(ExportCheckResult.getResultPath());
+        log.info("collect last results {}", checkResultFileList);
         if (CollectionUtils.isEmpty(checkResultFileList)) {
             return new HashMap<>();
         }
-        List<CheckDiffResult> historyResultList = new ArrayList<>();
-        checkResultFileList.forEach(checkResultFile -> {
-            try {
-                String content = FileUtils.readFileContents(checkResultFile);
-                historyResultList.add(JSONObject.parseObject(content, CheckDiffResult.class));
-            } catch (CheckingException | JSONException ex) {
-                log.error("load check result {} has error", checkResultFile.getFileName());
-            }
-        });
-
-        return parseCheckResult(historyResultList);
+        List<CheckFailed> historyFailedList = new ArrayList<>();
+        checkResultFileList.stream().filter(path -> FAILED_LOG_NAME.equals(path.getFileName().toString()))
+                           .forEach(path -> {
+                               try {
+                                   String content = wrapperFailedResultArray(path);
+                                   historyFailedList.addAll(JSONObject.parseArray(content, CheckFailed.class));
+                               } catch (CheckingException | JSONException ex) {
+                                   log.error("load check result {} has error", path.getFileName());
+                               }
+                           });
+        return parseCheckResult(historyFailedList);
     }
 
-    private Map<String, SourceDataLog> parseCheckResult(List<CheckDiffResult> historyDataList) {
+    private String wrapperFailedResultArray(Path path) {
+        final String contents = FileUtils.readFileContents(path);
+        if (StringUtils.isEmpty(contents)) {
+            return contents;
+        }
+        StringBuilder sb = new StringBuilder(LEFT_SQUARE_BRACKET);
+        sb.append(contents);
+        if (contents.endsWith(COMMA)) {
+            sb.deleteCharAt(sb.length() - 1);
+        }
+        sb.append(RIGHT_SQUARE_BRACKET);
+        return sb.toString();
+    }
+
+    private Map<String, SourceDataLog> parseCheckResult(List<CheckFailed> historyDataList) {
         Map<String, SourceDataLog> dataLogMap = new HashMap<>();
         historyDataList.forEach(dataLog -> {
-            if (StringUtils.equals(dataLog.getResult(), RESULT_FAILED)) {
-                final Set<String> diffKeyValues = getDiffKeyValues(dataLog);
-                final String tableName = dataLog.getTable();
-                if (dataLogMap.containsKey(tableName)) {
-                    final SourceDataLog dataLogMarge = dataLogMap.get(tableName);
-                    final long beginOffset = Math.min(dataLogMarge.getBeginOffset(), dataLog.getBeginOffset());
-                    final List<String> values = dataLogMarge.getCompositePrimaryValues();
-                    diffKeyValues.addAll(values);
-                    dataLogMarge.getCompositePrimaryValues().clear();
-                    dataLogMarge.getCompositePrimaryValues().addAll(diffKeyValues);
-                    dataLogMarge.setBeginOffset(beginOffset);
-                } else {
-                    SourceDataLog sourceDataLog = new SourceDataLog();
-                    sourceDataLog.setTableName(tableName).setBeginOffset(dataLog.getBeginOffset())
-                                 .setCompositePrimaryValues(new ArrayList<>(diffKeyValues));
-                    dataLogMap.put(tableName, sourceDataLog);
-                }
+            final Set<String> diffKeyValues = getDiffKeyValues(dataLog);
+            final String tableName = dataLog.getTableName();
+            if (dataLogMap.containsKey(tableName)) {
+                final SourceDataLog dataLogMarge = dataLogMap.get(tableName);
+                final long beginOffset = Math.min(dataLogMarge.getBeginOffset(), dataLog.getBeginOffset());
+                final List<String> values = dataLogMarge.getCompositePrimaryValues();
+                diffKeyValues.addAll(values);
+                dataLogMarge.getCompositePrimaryValues().clear();
+                dataLogMarge.getCompositePrimaryValues().addAll(diffKeyValues);
+                dataLogMarge.setBeginOffset(beginOffset);
+            } else {
+                SourceDataLog sourceDataLog = new SourceDataLog();
+                sourceDataLog.setTableName(tableName).setBeginOffset(dataLog.getBeginOffset())
+                             .setCompositePrimaryValues(new ArrayList<>(diffKeyValues));
+                dataLogMap.put(tableName, sourceDataLog);
             }
         });
         return dataLogMap;
     }
 
-    private Set<String> getDiffKeyValues(CheckDiffResult dataLog) {
+    private Set<String> getDiffKeyValues(CheckFailed dataLog) {
         Set<String> keyValues = new HashSet<>();
         keyValues.addAll(dataLog.getKeyInsertSet());
         keyValues.addAll(dataLog.getKeyUpdateSet());

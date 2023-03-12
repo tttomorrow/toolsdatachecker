@@ -98,11 +98,10 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         map.put(DATABASE_SCHEMA, schema);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
-        log.info("query schema [{}] tables", schema);
-        log.info("query schema [{}] tables sql : {}", schema, sql);
+        log.debug("query schema [{}] tables sql : {}", schema, sql);
         LocalDateTime start = LocalDateTime.now();
         final List<String> tableList = jdbc.query(sql, map, (rs, rowNum) -> rs.getString(1));
-        log.info("query schema [{}] tables count [{}] cost={}", schema, tableList.size(),
+        log.debug("query schema [{}] tables count [{}] cost={}", schema, tableList.size(),
             Duration.between(start, LocalDateTime.now()).toSeconds());
         return tableList;
     }

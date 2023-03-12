@@ -179,8 +179,10 @@ public class CheckResultManagerService implements ApplicationContextAware {
 
     private CheckSummary buildCheckSummaryResult(int successTableCount, int failedTableCount) {
         CheckSummary checkSummary = new CheckSummary();
-        final CheckProgress checkProgress = progressService.getCheckProgress();
-        checkSummary.setTableCount(successTableCount + failedTableCount);
+        int completeCount = successTableCount + failedTableCount;
+        final CheckProgress checkProgress = progressService.getCheckProgress(completeCount);
+        checkSummary.setMode(checkEnvironment.getCheckMode());
+        checkSummary.setTableCount(completeCount);
         checkSummary.setStartTime(checkProgress.getStartTime());
         checkSummary.setEndTime(checkProgress.getEndTime());
         checkSummary.setCost(checkProgress.getCost());
@@ -206,5 +208,9 @@ public class CheckResultManagerService implements ApplicationContextAware {
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.context = applicationContext;
+    }
+
+    public void progressing(int tableCount) {
+        progressService.resetProgress(tableCount);
     }
 }

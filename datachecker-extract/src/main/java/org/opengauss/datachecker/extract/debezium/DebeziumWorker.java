@@ -48,14 +48,17 @@ public class DebeziumWorker implements Runnable {
         final KafkaConsumer<String, Object> consumer = kafkaConsumerConfig.getDebeziumConsumer();
         while (true) {
             ConsumerRecords<String, Object> records = consumer.poll(Duration.ofMillis(50));
+            if (records.count() > 0) {
+                log.info("consumer record count={}", records.count());
+            }
             for (ConsumerRecord<String, Object> record : records) {
                 try {
                     debeziumConsumerListener.listen(record);
                 } catch (Exception ex) {
-                    log.error("DebeziumWorker Abnormal message, ignoring the current message,{},{}", record.toString(),
-                        ex);
+                    log.error("DebeziumWorker unknown error, message,{},{}", record.toString(), ex);
                 }
             }
+
         }
     }
 }

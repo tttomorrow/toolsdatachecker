@@ -17,6 +17,7 @@ package org.opengauss.datachecker.check.event;
 
 import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.check.modules.check.CheckDiffResult;
+import org.opengauss.datachecker.check.modules.check.CheckResultConstants;
 import org.opengauss.datachecker.common.entry.report.CheckFailed;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.JsonObjectUtil;
@@ -34,14 +35,14 @@ import javax.annotation.Resource;
 public class CheckFailedReportEventListener extends CheckReportEventAdapter
     implements ApplicationListener<CheckFailedReportEvent> {
 
-    private static final String FAILED_LOG_NAME = "failed.log";
+    private static final String FAILED_LOG_NAME = CheckResultConstants.FAILED_LOG_NAME;
     @Resource
     private CheckEnvironment checkEnvironment;
 
     @Override
     public void onApplicationEvent(CheckFailedReportEvent event) {
         final CheckDiffResult source = (CheckDiffResult) event.getSource();
-        FileUtils.writeAppendFile(getFailedPath(), JsonObjectUtil.prettyFormatMillis(translateCheckFailed(source)));
+        FileUtils.writeAppendFile(getFailedPath(), JsonObjectUtil.prettyFormatMillis(translateCheckFailed(source))+",");
     }
 
     private String getFailedPath() {
@@ -52,9 +53,10 @@ public class CheckFailedReportEventListener extends CheckReportEventAdapter
         long cost = calcCheckTaskCost(result.getStartTime(), result.getEndTime());
         return new CheckFailed().setProcess(result.getProcess()).setSchema(result.getSchema())
                                 .setTopic(new String[] {result.getTopic()}).setPartition(result.getPartitions())
-                                .setTableName(result.getTable()).setCost(cost).setDiffCount(result.getTotalRepair())
-                                .setEndTime(result.getEndTime()).setStartTime(result.getStartTime())
-                                .setKeyInsertSet(result.getKeyInsertSet()).setKeyDeleteSet(result.getKeyDeleteSet())
-                                .setKeyUpdateSet(result.getKeyUpdateSet()).setMessage(result.getMessage());
+                                .setBeginOffset(result.getBeginOffset()).setTableName(result.getTable()).setCost(cost)
+                                .setDiffCount(result.getTotalRepair()).setEndTime(result.getEndTime())
+                                .setStartTime(result.getStartTime()).setKeyInsertSet(result.getKeyInsertSet())
+                                .setKeyDeleteSet(result.getKeyDeleteSet()).setKeyUpdateSet(result.getKeyUpdateSet())
+                                .setMessage(result.getMessage());
     }
 }

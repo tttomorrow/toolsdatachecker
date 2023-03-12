@@ -30,13 +30,14 @@ import java.util.Set;
 @Data
 @Accessors(chain = true)
 @JSONType(
-    orders = {"process", "schema", "tableName", "topic", "partition", "rowCount", "diffCount", "cost", "startTime",
+    orders = {"process", "schema", "tableName", "topic", "partition", "beginOffset","rowCount", "diffCount", "cost", "startTime",
         "endTime", "message", "keyInsertSet", "keyUpdateSet", "keyDeleteSet"})
 public class CheckFailed {
     private String process;
     private String schema;
     private String tableName;
     private String[] topic;
+    private long beginOffset;
     private int partition;
     private long rowCount;
     private long diffCount;

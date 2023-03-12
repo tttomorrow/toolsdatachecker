@@ -55,4 +55,9 @@ public class DebeziumStringHandler implements DebeziumDataHandler<String> {
             log.error("put message at the tail of this queue, waiting if necessary for space to become available.");
         }
     }
+
+    @Override
+    public void setSchema(String schema) {
+
+    }
 }
