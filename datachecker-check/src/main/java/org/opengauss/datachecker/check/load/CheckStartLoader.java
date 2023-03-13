@@ -18,6 +18,7 @@ package org.opengauss.datachecker.check.load;
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.check.client.FeignClientService;
 import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
+import org.opengauss.datachecker.check.modules.report.ProgressService;
 import org.opengauss.datachecker.check.service.CheckService;
 import org.opengauss.datachecker.check.event.KafkaTopicDeleteProvider;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
@@ -49,10 +50,12 @@ public class CheckStartLoader extends AbstractCheckLoader {
     private CheckResultManagerService checkResultManagerService;
     @Resource
     private KafkaTopicDeleteProvider kafkaTopicDeleteProvider;
-
+    @Resource
+    private ProgressService progressService;
     @Override
     public void load(CheckEnvironment checkEnvironment) {
         if (Objects.equals(CheckMode.FULL, checkEnvironment.getCheckMode())) {
+            progressService.progressing();
             final LocalDateTime startTime = LocalDateTime.now();
             checkService.start(CheckMode.FULL);
             final LocalDateTime endTime = LocalDateTime.now();

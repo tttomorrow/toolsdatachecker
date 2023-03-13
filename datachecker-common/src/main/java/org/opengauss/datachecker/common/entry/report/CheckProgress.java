@@ -16,9 +16,9 @@
 package org.opengauss.datachecker.common.entry.report;
 
 import com.alibaba.fastjson.annotation.JSONType;
-import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 
 import java.time.LocalDateTime;
 
@@ -29,12 +29,13 @@ import java.time.LocalDateTime;
  */
 @Data
 @Accessors(chain = true)
-@JSONType(orders = {"tableCount", "status", "completeCount", "cost", "startTime", "currentTime", "endTime"})
+@JSONType(orders = {"mode", "tableCount", "status", "completeCount", "cost", "startTime", "currentTime", "endTime"})
 public class CheckProgress {
     private short status;
     private int tableCount;
     private int completeCount;
     private long cost;
+    private CheckMode mode;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private LocalDateTime currentTime;

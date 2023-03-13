@@ -40,6 +40,7 @@ import org.opengauss.datachecker.common.exception.MerkleTreeDepthException;
 import org.opengauss.datachecker.common.web.Result;
 import org.springframework.lang.NonNull;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -77,6 +78,7 @@ public class IncrementCheckThread extends Thread {
     private final SourceDataLog dataLog;
     private final String process;
     private String sinkSchema;
+    private LocalDateTime startTime;
     private boolean isTableStructureEquals;
     private boolean isExistTableMiss;
     private Endpoint onlyExistEndpoint;
@@ -91,6 +93,7 @@ public class IncrementCheckThread extends Thread {
      */
     public IncrementCheckThread(@NonNull IncrementDataCheckParam checkParam,
         @NonNull DataCheckRunnableSupport support) {
+        startTime = LocalDateTime.now();
         dataLog = checkParam.getDataLog();
         process = checkParam.getProcess();
         sinkSchema = checkParam.getSchema();
@@ -466,10 +469,11 @@ public class IncrementCheckThread extends Thread {
         final AbstractCheckDiffResultBuilder<?, ?> builder = AbstractCheckDiffResultBuilder.builder();
         CheckDiffResult result =
             builder.table(tableName).process(process).beginOffset(dataLog.getBeginOffset()).schema(sinkSchema)
-                   .partitions(0).rowCount(rowCount).isExistTableMiss(isExistTableMiss, onlyExistEndpoint)
-                   .checkMode(CheckMode.INCREMENT).isTableStructureEquals(isTableStructureEquals)
-                   .keyUpdateSet(difference.getDiffering().keySet()).keyInsertSet(difference.getOnlyOnLeft().keySet())
-                   .keyDeleteSet(difference.getOnlyOnRight().keySet()).build();
+                   .partitions(0).rowCount(rowCount).startTime(startTime).endTime(LocalDateTime.now())
+                   .isExistTableMiss(isExistTableMiss, onlyExistEndpoint).checkMode(CheckMode.INCREMENT)
+                   .isTableStructureEquals(isTableStructureEquals).keyUpdateSet(difference.getDiffering().keySet())
+                   .keyInsertSet(difference.getOnlyOnLeft().keySet()).keyDeleteSet(difference.getOnlyOnRight().keySet())
+                   .build();
         checkResultManagerService.addResult(new CheckPartition(tableName, 0), result);
     }
 

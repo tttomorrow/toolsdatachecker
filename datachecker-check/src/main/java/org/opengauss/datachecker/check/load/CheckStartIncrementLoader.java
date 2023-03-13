@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.check.load;
 
 import lombok.extern.slf4j.Slf4j;
+import org.opengauss.datachecker.check.modules.report.ProgressService;
 import org.opengauss.datachecker.check.service.IncrementManagerService;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.springframework.core.annotation.Order;
@@ -38,11 +39,14 @@ import java.util.Objects;
 public class CheckStartIncrementLoader extends AbstractCheckLoader {
     @Resource
     private IncrementManagerService incrementManagerService;
-
+    @Resource
+    private ProgressService progressService;
+    
     @Override
     public void load(CheckEnvironment checkEnvironment) {
         if (Objects.equals(CheckMode.INCREMENT, checkEnvironment.getCheckMode())) {
             log.info("start data check increment");
+            progressService.progressing();
             incrementManagerService.startIncrementDataLogs();
             log.info("enabled data check increment mode ,at {}", LocalDateTime.now());
         }
