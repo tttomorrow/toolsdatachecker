@@ -87,8 +87,7 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
         Thread.currentThread().setName(task.getTaskName() + "_" + Thread.currentThread().getId());
         TableMetadata tableMetadata = task.getTableMetadata();
         // Construct query SQL according to the metadata information of the table in the current task
-        List<String> querySqlList = buildQuerySqlList(tableMetadata);
-        executeTask(querySqlList, tableMetadata);
+        executeTask(buildQuerySqlList(tableMetadata), tableMetadata);
         checkingFeignClient.refreshTableExtractStatus(task.getTableName(), endpoint, endpoint.getCode());
     }
 
@@ -123,7 +122,6 @@ public class ExtractTaskRunnable extends KafkaProducerWapper implements Runnable
     private void executeTask(List<String> querySqlList, TableMetadata tableMetadata) throws InterruptedException {
         final String tableName = tableMetadata.getTableName();
         final LocalDateTime start = LocalDateTime.now();
-
         ResultSetHashHandler resultSetHashHandler = new ResultSetHashHandler();
         ResultSetHandler resultSetHandler = resultSetFactory.createHandler(databaseType);
         List<String> columns = MetaDataUtil.getTableColumns(tableMetadata);

@@ -72,13 +72,11 @@ public class TaskUtil {
             return new int[][] {{0, MAX_LIMIT[0]}};
         }
         int maxLimitRowCount = calcMaxLimitRowCount(tableRows);
-        final int taskCount = (int) Math.round(tableRows * 1.0 / maxLimitRowCount);
-        final int lastTaskRowCount = maxLimitRowCount + (int) (tableRows % maxLimitRowCount);
+        final int taskCount = (int) Math.ceil(tableRows * 1.0 / maxLimitRowCount) + 1;
         int[][] taskOffset = new int[taskCount][2];
         IntStream.range(0, taskCount).forEach(taskCountIdx -> {
             int start = taskCountIdx * maxLimitRowCount;
-            int size = taskCount == taskCountIdx + 1 ? lastTaskRowCount : maxLimitRowCount;
-            taskOffset[taskCountIdx] = new int[] {start, size};
+            taskOffset[taskCountIdx] = new int[] {start, maxLimitRowCount};
         });
         return taskOffset;
     }

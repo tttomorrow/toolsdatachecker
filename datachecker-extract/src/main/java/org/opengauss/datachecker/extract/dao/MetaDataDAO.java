@@ -52,6 +52,12 @@ public interface MetaDataDAO {
     List<String> queryTableNameList();
 
     /**
+     * query TableMetadata
+     * @return
+     */
+    List<TableMetadata> queryTableMetadataList();
+    TableMetadata queryTableMetadata(String tableName);
+    /**
      * Query the metadata information of the corresponding column of the table
      *
      * @param tableName tableName
