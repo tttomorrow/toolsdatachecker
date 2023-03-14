@@ -299,7 +299,10 @@ public class DataExtractServiceImpl implements DataExtractService {
     }
 
     private ExecutorService getExecutorService(ExtractEnvironment environment) {
-        return ThreadPoolFactory.newThreadPool("extract", environment.getMaxCorePoolSize(), environment.getQueueSize());
+        final int core = Runtime.getRuntime().availableProcessors();
+        final int maxCorePoolSize = environment.getMaxCorePoolSize();
+        int corePoolSize = Math.min(core, maxCorePoolSize);
+        return ThreadPoolFactory.newThreadPool("extract", corePoolSize, environment.getQueueSize());
     }
 
     @Override

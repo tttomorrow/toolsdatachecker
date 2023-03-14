@@ -18,6 +18,7 @@ package org.opengauss.datachecker.extract.task;
 import lombok.Getter;
 import org.opengauss.datachecker.extract.client.CheckingFeignClient;
 import org.opengauss.datachecker.extract.config.ExtractProperties;
+import org.opengauss.datachecker.extract.load.ExtractEnvironment;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
@@ -42,4 +43,6 @@ public class ExtractThreadSupport {
     private CheckingFeignClient checkingFeignClient;
     @Resource
     private ExtractProperties extractProperties;
+    @Resource
+    private ExtractEnvironment extractEnvironment;
 }

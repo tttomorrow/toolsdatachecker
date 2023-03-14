@@ -424,7 +424,8 @@ public class TableStatusRegister implements Cache<String, Integer> {
         final int lastCheckCount = CHECK_COUNT.getAndSet(extractErrorList.size() + checkCompleteList.size());
         if (CHECK_COUNT.get() > lastCheckCount) {
             log.debug("progress info: {} is being extracted, {} is being verified, {} is completed,and {} is error",
-                notExtractCompleteList, notCheckCompleteList, checkCompleteList, extractErrorList);
+                notExtractCompleteList.size(), notCheckCompleteList.size(), checkCompleteList.size(),
+                extractErrorList.size());
         }
         return CHECK_COUNT.get();
     }

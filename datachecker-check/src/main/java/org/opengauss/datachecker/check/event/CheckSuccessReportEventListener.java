@@ -40,7 +40,7 @@ public class CheckSuccessReportEventListener extends CheckReportEventAdapter
     @Override
     public void onApplicationEvent(CheckSuccessReportEvent event) {
         final CheckDiffResult source = (CheckDiffResult) event.getSource();
-        FileUtils.writeAppendFile(getSuccessPath(), JsonObjectUtil.prettyFormatMillis(translateCheckSuccess(source)));
+        FileUtils.writeAppendFile(getSuccessPath(), JsonObjectUtil.prettyFormatMillis(translateCheckSuccess(source))+",");
     }
 
     private String getSuccessPath() {
