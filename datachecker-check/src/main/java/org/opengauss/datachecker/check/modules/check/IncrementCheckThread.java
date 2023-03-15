@@ -135,7 +135,7 @@ public class IncrementCheckThread extends Thread {
             }
             // Verification result verification repair report
             checkResult();
-            log.info("increment process {} check table {} end", process, tableName);
+            log.info(" {} check table {} end", process, tableName);
         } catch (Exception ex) {
             log.error("check error", ex);
         }

@@ -21,13 +21,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.opengauss.datachecker.check.client.FeignClientService;
+import org.opengauss.datachecker.check.config.IncrementCheckProperties;
 import org.opengauss.datachecker.check.modules.check.DataCheckService;
 import org.opengauss.datachecker.check.modules.check.ExportCheckResult;
 import org.opengauss.datachecker.check.modules.report.CheckResultManagerService;
 import org.opengauss.datachecker.common.entry.extract.SourceDataLog;
 import org.opengauss.datachecker.common.entry.report.CheckFailed;
 import org.opengauss.datachecker.common.exception.CheckingException;
-import org.opengauss.datachecker.common.exception.LargeDataDiffException;
 import org.opengauss.datachecker.common.service.ShutdownService;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.IdGenerator;
@@ -41,11 +41,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -65,7 +67,6 @@ import static org.opengauss.datachecker.check.modules.check.CheckResultConstants
 @Slf4j
 @Service
 public class IncrementManagerService {
-    private static final int MAX_CHECK_DIFF_SIZE = 5000;
     private static final AtomicReference<String> PROCESS_SIGNATURE = new AtomicReference<>();
     private static final BlockingQueue<List<SourceDataLog>> INC_LOG_QUEUE = new LinkedBlockingQueue<>();
     @Resource
@@ -75,9 +76,15 @@ public class IncrementManagerService {
     @Resource
     private FeignClientService feignClientService;
     @Resource
+    private IncrementCheckProperties properties;
+    @Resource
     private ShutdownService shutdownService;
     @Resource
     private CheckResultManagerService checkResultManagerService;
+
+    private final AtomicInteger retryTimes = new AtomicInteger(0);
+    private static final int RETRY_SLEEP_TIMES = 1000;
+    private static final int MAX_RETRY_SLEEP_TIMES = 1000;
 
     /**
      * Incremental verification log notification
@@ -90,7 +97,7 @@ public class IncrementManagerService {
         }
         try {
             INC_LOG_QUEUE.put(dataLogList);
-            log.info("add {} data_log to the inc_log_queue,tables they contain : {}", dataLogList.size(),
+            log.info("add {} data_log to the inc_log_queue,this tables contain : {}", dataLogList.size(),
                 getDataLogTables(dataLogList));
         } catch (InterruptedException ex) {
             log.error("notify inc data logs interrupted  ");
@@ -122,13 +129,25 @@ public class IncrementManagerService {
 
     private void consumerIncLogQueue() {
         try {
-            final List<SourceDataLog> dataLogList = INC_LOG_QUEUE.take();
+            final List<SourceDataLog> dataLogList = new LinkedList<>();
+            final Map<String, SourceDataLog> lastResults = collectLastResults();
+            int diffCount = calculationLastResultDiffCount(lastResults);
+            if (diffCount >= properties.getIncrementMaxDiffCount()) {
+                feignClientService.pauseIncrementMonitor();
+                log.info("pause increment monitor, because the diff-count is too large [{}] ,"
+                    + " please to repair this large diff manual !", diffCount);
+                ThreadUtil.sleep(getRetryTime());
+            } else {
+                feignClientService.resumeIncrementMonitor();
+                log.info("resume increment monitor!");
+                dataLogList.addAll(INC_LOG_QUEUE.take());
+            }
+            // Collect the last verification results and build an incremental verification log
+            mergeDataLogList(dataLogList, lastResults);
             if (CollectionUtils.isNotEmpty(dataLogList)) {
                 PROCESS_SIGNATURE.set(IdGenerator.nextId36());
-                // Collect the last verification results and build an incremental verification log
-                mergeDataLogList(dataLogList, collectLastResults());
-                ExportCheckResult.backCheckResultDirectory();
                 checkResultManagerService.progressing(dataLogList.size());
+                ExportCheckResult.backCheckResultDirectory();
                 incrementDataLogsChecking(dataLogList);
             }
         } catch (Exception ex) {
@@ -136,17 +155,26 @@ public class IncrementManagerService {
         }
     }
 
+    private int getRetryTime() {
+        if (retryTimes.get() > MAX_RETRY_SLEEP_TIMES) {
+            retryTimes.set(1);
+        }
+        return retryTimes.incrementAndGet() * RETRY_SLEEP_TIMES;
+    }
+
+    private int calculationLastResultDiffCount(Map<String, SourceDataLog> lastResults) {
+        AtomicInteger diffCount = new AtomicInteger();
+        lastResults.forEach((tableName, lastLog) -> {
+            diffCount.addAndGet(lastLog.getCompositePrimaryValues().size());
+        });
+        return diffCount.get();
+    }
+
     private void mergeDataLogList(List<SourceDataLog> dataLogList, Map<String, SourceDataLog> collectLastResults) {
         final Map<String, SourceDataLog> dataLogMap =
             dataLogList.stream().collect(Collectors.toMap(SourceDataLog::getTableName, Function.identity()));
         collectLastResults.forEach((tableName, lastLog) -> {
-            final int cnt = lastLog.getCompositePrimaryValues().size();
-            if (cnt > MAX_CHECK_DIFF_SIZE) {
-                dataLogList.remove(dataLogMap.get(tableName));
-                log.error("table={} begin offset ={} data has large different rows,please synchronized repeat! ",
-                    tableName, lastLog.getBeginOffset());
-                throw new LargeDataDiffException("table=" + tableName + " data has large different (" + cnt + ") rows");
-            } else if (dataLogMap.containsKey(tableName)) {
+            if (dataLogMap.containsKey(tableName)) {
                 final List<String> values = dataLogMap.get(tableName).getCompositePrimaryValues();
                 final long beginOffset = Math.min(dataLogMap.get(tableName).getBeginOffset(), lastLog.getBeginOffset());
                 final Set<String> margeValueSet = new HashSet<>();
@@ -159,11 +187,13 @@ public class IncrementManagerService {
                 dataLogList.add(lastLog);
             }
         });
+        log.info("merge last failed results {}", collectLastResults.keySet());
     }
 
     private void incrementDataLogsChecking(List<SourceDataLog> dataLogList) {
         String processNo = PROCESS_SIGNATURE.get();
         List<Runnable> taskList = new ArrayList<>();
+        log.info("check increment {} data log", processNo);
         dataLogList.forEach(dataLog -> {
             log.debug("increment process=[{}] , tableName=[{}], begin offset =[{}], diffSize=[{}]", processNo,
                 dataLog.getTableName(), dataLog.getBeginOffset(), dataLog.getCompositePrimaryValues().size());
@@ -172,9 +202,10 @@ public class IncrementManagerService {
         });
         // Block the current thread until all thread pool tasks are executed.
         PhaserUtil.submit(asyncCheckExecutor, taskList, () -> {
-            log.info("increment datalog {} is completed.", processNo);
+            log.debug("multiple check subtasks have been completed.");
         });
         checkResultManagerService.summaryCheckResult();
+        log.info("check increment {} data log end", processNo);
     }
 
     /**
@@ -184,7 +215,7 @@ public class IncrementManagerService {
      */
     private Map<String, SourceDataLog> collectLastResults() {
         final List<Path> checkResultFileList = FileUtils.loadDirectory(ExportCheckResult.getResultPath());
-        log.info("collect last results {}", checkResultFileList);
+        log.debug("collect last results {}", checkResultFileList);
         if (CollectionUtils.isEmpty(checkResultFileList)) {
             return new HashMap<>();
         }
@@ -198,6 +229,8 @@ public class IncrementManagerService {
                                    log.error("load check result {} has error", path.getFileName());
                                }
                            });
+
+        log.info("collect last failed results {}", historyFailedList.size());
         return parseCheckResult(historyFailedList);
     }
 
@@ -235,6 +268,7 @@ public class IncrementManagerService {
                 dataLogMap.put(tableName, sourceDataLog);
             }
         });
+        log.info("parse last failed results {}", dataLogMap.keySet());
         return dataLogMap;
     }
 

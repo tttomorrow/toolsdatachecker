@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.check.client;
 
+import org.opengauss.datachecker.common.constant.WorkerSwitch;
 import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -152,6 +153,21 @@ public class FeignClientService {
         }
     }
 
+    public void pauseIncrementMonitor() {
+        Result<Void> result = getClient(Endpoint.SOURCE).pauseOrResumeIncrementMonitor(WorkerSwitch.PAUSE);
+        if (!result.isSuccess()) {
+            // Scheduling extraction service execution task failed
+            throw new DispatchClientException(Endpoint.SOURCE, "pause increment monitor failed," + result.getMessage());
+        }
+    }
+
+    public void resumeIncrementMonitor() {
+        Result<Void> result = getClient(Endpoint.SOURCE).pauseOrResumeIncrementMonitor(WorkerSwitch.RESUME);
+        if (!result.isSuccess()) {
+            // Scheduling extraction service execution task failed
+            throw new DispatchClientException(Endpoint.SOURCE, "resume increment monitor failed," + result.getMessage());
+        }
+    }
     /**
      * Clean up the opposite environment
      *
@@ -265,4 +281,6 @@ public class FeignClientService {
 
         }
     }
+
+
 }
