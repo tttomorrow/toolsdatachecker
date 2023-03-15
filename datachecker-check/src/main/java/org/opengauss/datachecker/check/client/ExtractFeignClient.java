@@ -193,6 +193,15 @@ public interface ExtractFeignClient {
     Result<Void> startIncrementMonitor();
 
     /**
+     * pause or resume increment monitor
+     *
+     * @param parseOrResume
+     * @return void
+     */
+    @PostMapping("/pause/resume/increment/monitor")
+    Result<Void> pauseOrResumeIncrementMonitor(@RequestParam("parseOrResume") boolean parseOrResume);
+
+    /**
      * Distribution Data Extraction Filter Rules
      *
      * @param checkMode checkMode

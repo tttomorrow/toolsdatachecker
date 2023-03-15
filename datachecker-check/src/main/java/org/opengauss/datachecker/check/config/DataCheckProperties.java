@@ -36,7 +36,8 @@ import java.util.Objects;
 @Validated
 @Component
 @ConfigurationProperties(prefix = "data.check")
-@JSONType(orders = {"sourceUri", "sinkUri", "bucketExpectCapacity", "healthCheckApi", "dataPath", "blackWhiteMode"})
+@JSONType(orders = {"sourceUri", "sinkUri", "bucketExpectCapacity", "healthCheckApi", "dataPath", "blackWhiteMode",
+    "incrementMaxDiffCount"})
 public class DataCheckProperties {
 
     @PostConstruct
@@ -47,6 +48,9 @@ public class DataCheckProperties {
                 "The access addresses of the source end and the destination end conflict, please reconfigure.");
         }
     }
+
+    @Range(min = 10, max = 5000, message = "The max diff count scop is [10,5000]")
+    private int incrementMaxDiffCount = 10;
 
     /**
      * Data verification service address: the source address cannot be empty
@@ -87,7 +91,7 @@ public class DataCheckProperties {
     private boolean canAutoCleanEnvironment;
 
     /**
-     *  0 is not delete; 1 is delete when checked all completed ; 2 is deleted when checked a table
+     * 0 is not delete; 1 is delete when checked all completed ; 2 is deleted when checked a table
      */
     @Range(min = 0, max = 2, message = "config auto delete topic not valid")
     private int autoDeleteTopic;
