@@ -32,6 +32,7 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -101,6 +102,11 @@ public class MetaDataService {
             }));
         });
         PhaserUtil.executorComplete(threadPool, futureList);
+        Map<String, TableMetadata> filterNoPrimary = tableMetadataMap.entrySet().stream().filter(
+            entry -> CollectionUtils.isNotEmpty(entry.getValue().getPrimaryMetas())).collect(
+            Collectors.toMap(Entry::getKey, Entry::getValue));
+        tableMetadataMap.clear();
+        tableMetadataMap.putAll(filterNoPrimary);
         dataBaseMetadataDAOImpl.matchRowRules(tableMetadataMap);
         log.info("build table metadata [{}]", tableMetadataMap.size());
         return tableMetadataMap;

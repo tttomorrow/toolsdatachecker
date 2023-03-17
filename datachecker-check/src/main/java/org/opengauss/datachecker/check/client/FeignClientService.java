@@ -16,6 +16,7 @@
 package org.opengauss.datachecker.check.client;
 
 import org.opengauss.datachecker.common.constant.WorkerSwitch;
+import org.opengauss.datachecker.common.entry.common.DistributeRuleEntry;
 import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.Endpoint;
@@ -165,9 +166,11 @@ public class FeignClientService {
         Result<Void> result = getClient(Endpoint.SOURCE).pauseOrResumeIncrementMonitor(WorkerSwitch.RESUME);
         if (!result.isSuccess()) {
             // Scheduling extraction service execution task failed
-            throw new DispatchClientException(Endpoint.SOURCE, "resume increment monitor failed," + result.getMessage());
+            throw new DispatchClientException(Endpoint.SOURCE,
+                "resume increment monitor failed," + result.getMessage());
         }
     }
+
     /**
      * Clean up the opposite environment
      *
@@ -265,7 +268,10 @@ public class FeignClientService {
     }
 
     public void distributeRules(Endpoint endpoint, CheckMode checkMode, Map<RuleType, List<Rule>> rules) {
-        getClient(endpoint).distributeRules(checkMode, rules);
+        DistributeRuleEntry distributeRuleEntry = new DistributeRuleEntry();
+        distributeRuleEntry.setRules(rules);
+        distributeRuleEntry.setCheckMode(checkMode);
+        getClient(endpoint).distributeRules(distributeRuleEntry);
     }
 
     public void shutdown(String message) {
@@ -278,9 +284,6 @@ public class FeignClientService {
         try {
             getClient(endpoint).shutdown(message);
         } catch (Exception ignored) {
-
         }
     }
-
-
 }
