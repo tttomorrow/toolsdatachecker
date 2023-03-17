@@ -102,7 +102,7 @@ public class UpdateDmlBuilder extends DmlBuilder {
             } else if (BLOB_LIST.contains(primaryMeta.getDataType())) {
                 builder.append(convertValue(HexUtil.toHex(columnsValues.get(primaryMeta.getColumnName()))));
             } else if (BINARY.contains(primaryMeta.getDataType())) {
-                builder.append(convertValue(columnsValues.get(primaryMeta.getColumnName())));
+                builder.append(convertValue(HexUtil.HEX_PREFIX + columnsValues.get(primaryMeta.getColumnName())));
             } else {
                 builder.append(convertValue(columnsValues.get(primaryMeta.getColumnName())));
             }
@@ -136,7 +136,7 @@ public class UpdateDmlBuilder extends DmlBuilder {
             } else if (BLOB_LIST.contains(columnMeta.getDataType())) {
                 builder.append(convertValue(HexUtil.toHex(columnValue)));
             } else if (BINARY.contains(columnMeta.getDataType())) {
-                builder.append(convertValue(columnValue));
+                builder.append(convertValue(HexUtil.HEX_PREFIX + columnValue));
             } else {
                 builder.append(convertValue(columnValue));
             }

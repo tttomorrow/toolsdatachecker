@@ -74,7 +74,7 @@ public class DmlBuilder {
         List.of("int", "integer", "tinyint", "smallint", "mediumint", "bit", "bigint", "double", "float", "decimal",
             "year");
     protected static final List<String> BLOB_LIST = List.of("blob", "tinyblob", "mediumblob", "longblob");
-    protected static final List<String> BINARY = List.of("binary","varbinary");
+    protected static final List<String> BINARY = List.of("binary", "varbinary");
     /**
      * columns
      */
@@ -174,9 +174,9 @@ public class DmlBuilder {
             if (DIGITAL.contains(columnMeta.getDataType())) {
                 valueList.add(columnsValue.get(columnName));
             } else if (BLOB_LIST.contains(columnMeta.getDataType())) {
-                valueList.add(SINGLE_QUOTES.concat(HexUtil.toHex(columnsValue.get(columnName))).concat(SINGLE_QUOTES));
+                valueList.add(SINGLE_QUOTES + columnsValue.get(columnName) + SINGLE_QUOTES);
             } else if (BINARY.contains(columnMeta.getDataType())) {
-                valueList.add(SINGLE_QUOTES.concat(HexUtil.toHex(columnsValue.get(columnName))).concat(SINGLE_QUOTES));
+                valueList.add(SINGLE_QUOTES + HexUtil.HEX_PREFIX + columnsValue.get(columnName) + SINGLE_QUOTES);
             } else {
                 String value = columnsValue.get(columnName);
                 if (Objects.isNull(value)) {
