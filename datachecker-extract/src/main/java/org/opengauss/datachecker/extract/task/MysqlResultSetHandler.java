@@ -37,7 +37,7 @@ public class MysqlResultSetHandler extends ResultSetHandler {
     {
         TypeHandler binaryToString = (resultSet, columnLabel) -> byteToStringTrim(resultSet.getBytes(columnLabel));
         TypeHandler varbinaryToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
-        TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
+        TypeHandler blobToString = (resultSet, columnLabel) -> HexUtil.byteToHexTrim(resultSet.getBytes(columnLabel));
         TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
         TypeHandler bitBooleanToString = (resultSet, columnLabel) -> booleanToString(resultSet.getBoolean(columnLabel));
 
@@ -65,12 +65,14 @@ public class MysqlResultSetHandler extends ResultSetHandler {
     private String byteToStringTrim(byte[] bytes) {
         return HexUtil.byteToHexTrim(bytes);
     }
-    protected String booleanToString(Boolean bool){
+
+    protected String booleanToString(Boolean bool) {
         if (Objects.isNull(bool)) {
             return NULL;
         }
         return String.valueOf(bool);
     }
+
     @Override
     public String convert(ResultSet resultSet, String columnTypeName, String columnLabel) throws SQLException {
         final MysqlType mysqlType = MysqlType.getByName(columnTypeName);

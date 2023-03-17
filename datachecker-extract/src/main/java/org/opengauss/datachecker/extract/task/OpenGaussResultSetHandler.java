@@ -33,7 +33,7 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
 
     {
         TypeHandler byteaToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
-        TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
+        TypeHandler blobToString = (resultSet, columnLabel) -> resultSet.getString(columnLabel);
         TypeHandler booleanToString = (resultSet, columnLabel) -> booleanToString(resultSet, columnLabel);
         TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
 

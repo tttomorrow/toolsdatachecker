@@ -7,6 +7,9 @@ package org.opengauss.datachecker.common.util;
  */
 public class HexUtil {
     private static final char[] CHARS = "0123456789ABCDEF".toCharArray();
+    public static final String HEX_ZERO_PREFIX = "0x";
+    public static final String HEX_PREFIX = "\\x";
+    private static final String HEX_NO_PREFIX = "";
 
     /**
      * Convert text string to hexadecimal string
@@ -34,7 +37,7 @@ public class HexUtil {
      * @return
      */
     public static String byteToHex(byte[] data) {
-        StringBuilder result = new StringBuilder("\\x");
+        StringBuilder result = new StringBuilder();
         for (byte datum : data) {
             result.append(Integer.toHexString((datum & 0xFF) | 0x100).toUpperCase().substring(1, 3));
         }
@@ -43,12 +46,39 @@ public class HexUtil {
 
     /**
      * Clear the 0 at the end of the byte array and convert valid values to hexadecimal strings
+     * 02AA -> 0x02AA
+     *
+     * @param data data
+     * @return
+     */
+    public static String byteToHexTrimBackslash(byte[] data) {
+        return byteToHexTrim(data, HEX_PREFIX);
+    }
+
+    /**
+     * Clear the 0 at the end of the byte array and convert valid values to hexadecimal strings
+     * 02AA -> 02AA
      *
      * @param data data
      * @return
      */
     public static String byteToHexTrim(byte[] data) {
-        StringBuilder result = new StringBuilder("\\x");
+        return byteToHexTrim(data, HEX_NO_PREFIX);
+    }
+
+    /**
+     * Clear the 0 at the end of the byte array and convert valid values to hexadecimal strings
+     * 02AA -> 0x02AA
+     *
+     * @param data data
+     * @return
+     */
+    public static String byteToHexTrimZero(byte[] data) {
+        return byteToHexTrim(data, HEX_ZERO_PREFIX);
+    }
+
+    private static String byteToHexTrim(byte[] data, String prefix) {
+        StringBuilder result = new StringBuilder(prefix);
         int fast = 0;
         int slow = 0;
         final int end = data.length;
@@ -61,9 +91,7 @@ public class HexUtil {
             }
             fast++;
         }
-
         result.append(Integer.toHexString((data[slow] & 0xFF) | 0x100).toUpperCase().substring(1, 3));
         return result.toString();
     }
-
 }
