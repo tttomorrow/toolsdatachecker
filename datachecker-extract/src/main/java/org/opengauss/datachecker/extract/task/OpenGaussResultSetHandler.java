@@ -33,7 +33,8 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
 
     {
         TypeHandler byteaToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
-        TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
+        TypeHandler blobToString = (resultSet, columnLabel) -> resultSet.getString(columnLabel);
+        TypeHandler booleanToString = (resultSet, columnLabel) -> booleanToString(resultSet, columnLabel);
         TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
 
         typeHandlers.put(OpenGaussType.NUMERIC, numericToString);
@@ -41,6 +42,7 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
         // byte binary blob
         typeHandlers.put(OpenGaussType.BYTEA, byteaToString);
         typeHandlers.put(OpenGaussType.BLOB, blobToString);
+        typeHandlers.put(OpenGaussType.BOOLEAN, booleanToString);
 
         // The openGauss jdbc driver obtains the character,character varying  type as varchar
         typeHandlers.put(OpenGaussType.BPCHAR, this::trim);
@@ -61,9 +63,15 @@ public class OpenGaussResultSetHandler extends ResultSetHandler {
         }
     }
 
+    protected String booleanToString(ResultSet rs, String columnLabel) throws SQLException {
+        final int booleanVal = rs.getInt(columnLabel);
+        return booleanVal == 1 ? "true" : "false";
+    }
+
     @SuppressWarnings("all")
     interface OpenGaussType {
         String BYTEA = "bytea";
+        String BOOLEAN = "bool";
         String BLOB = "blob";
         String NUMERIC = "numeric";
         String VARCHAR = "varchar";

@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.check.client;
 
+import org.opengauss.datachecker.common.entry.common.DistributeRuleEntry;
 import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.RuleType;
@@ -160,9 +161,13 @@ public class ExtractFallbackFactory implements FallbackFactory<ExtractFeignClien
             return Result.error("Remote call,  start increment monitor failed ");
         }
 
+        @Override
+        public Result<Void> pauseOrResumeIncrementMonitor(boolean parseOrResume) {
+            return null;
+        }
 
         @Override
-        public Result<Void> distributeRules(CheckMode checkMode,Map<RuleType, List<Rule>> rules) {
+        public Result<Void> distributeRules(DistributeRuleEntry rules) {
             return Result.error("Remote call,  Distribution Filter Rules exception");
         }
 

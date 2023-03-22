@@ -69,6 +69,7 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     private ExtractProperties extractProperties;
     @Autowired
     private MetaDataService metaDataService;
+    private DebeziumWorker worker = null;
 
     /**
      * initIncrementConfig
@@ -76,7 +77,15 @@ public class DataConsolidationServiceImpl implements DataConsolidationService {
     @Override
     public void initIncrementConfig() {
         if (extractProperties.isDebeziumEnable()) {
-            ThreadUtil.newSingleThreadExecutor().submit(new DebeziumWorker(debeziumListener, kafkaConfig));
+            worker = new DebeziumWorker(debeziumListener, kafkaConfig);
+            ThreadUtil.newSingleThreadExecutor().submit(worker);
+        }
+    }
+
+    @Override
+    public void pauseOrResumeIncrementMonitor(Boolean pauseOrResume) {
+        if (Objects.nonNull(worker)) {
+            worker.switchPauseOrResume(pauseOrResume);
         }
     }
 

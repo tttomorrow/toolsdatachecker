@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.check.client;
 
+import org.opengauss.datachecker.common.entry.common.DistributeRuleEntry;
 import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.RuleType;
@@ -193,15 +194,22 @@ public interface ExtractFeignClient {
     Result<Void> startIncrementMonitor();
 
     /**
+     * pause or resume increment monitor
+     *
+     * @param parseOrResume
+     * @return void
+     */
+    @PostMapping("/pause/resume/increment/monitor")
+    Result<Void> pauseOrResumeIncrementMonitor(@RequestParam("parseOrResume") boolean parseOrResume);
+
+    /**
      * Distribution Data Extraction Filter Rules
      *
-     * @param checkMode checkMode
      * @param rules     rules
      * @return void
      */
     @PostMapping("/extract/rules/distribute")
-    Result<Void> distributeRules(@RequestParam(name = "checkMode") CheckMode checkMode,
-        @RequestBody Map<RuleType, List<Rule>> rules);
+    Result<Void> distributeRules(@RequestBody DistributeRuleEntry rules);
 
     @PostMapping("/extract/shutdown")
     Result<Void> shutdown(@RequestBody String message);

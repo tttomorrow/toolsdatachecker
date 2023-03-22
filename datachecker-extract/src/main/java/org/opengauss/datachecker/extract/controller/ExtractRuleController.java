@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.extract.controller;
 
+import org.opengauss.datachecker.common.entry.common.DistributeRuleEntry;
 import org.opengauss.datachecker.common.entry.common.Rule;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.enums.RuleType;
@@ -46,13 +47,11 @@ public class ExtractRuleController {
     /**
      * Distribution Data Extraction Filter Rules
      *
-     * @param checkMode checkMode
-     * @param rules     rules
+     * @param rules rules
      */
     @PostMapping("/extract/rules/distribute")
-    public void distributeRules(@RequestParam(name = "checkMode") CheckMode checkMode,
-        @RequestBody Map<RuleType, List<Rule>> rules) {
-        ruleAdapterService.init(rules);
-        environmentLoader.load(checkMode);
+    public void distributeRules(@RequestBody DistributeRuleEntry rules) {
+        ruleAdapterService.init(rules.getRules());
+        environmentLoader.load(rules.getCheckMode());
     }
 }

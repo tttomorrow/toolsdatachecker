@@ -86,7 +86,7 @@ public class ThreadPoolFactory {
             new ThreadPoolExecutor(corePoolSize, threadNum, 60L, TimeUnit.SECONDS, blockingQueue,
                 new CheckThreadFactory("check", threadName, false), new DiscardOldestPolicy(log, threadName));
         threadPoolExecutor.allowCoreThreadTimeOut(true);
-        log.info("Thread name is {},cpu={} corePoolSize is : {}, size is {}, queueSize is {}", threadName,
+        log.debug("Thread name is {},cpu={} corePoolSize is : {}, size is {}, queueSize is {}", threadName,
             getNumberOfCpu(), corePoolSize, threadNum, queueSize);
         return threadPoolExecutor;
     }

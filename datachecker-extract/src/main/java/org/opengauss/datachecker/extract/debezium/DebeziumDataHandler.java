@@ -30,9 +30,16 @@ public interface DebeziumDataHandler<E> {
     /**
      * Debezium message parsing and adding the parsing result to the {@code DebeziumDataLogs.class} result set
      *
-     * @param offset offset
+     * @param offset  offset
      * @param message message
      * @param queue   debeziumDataLogs
      */
     void handler(long offset, @NotEmpty E message, @NotNull LinkedBlockingQueue<DebeziumDataBean> queue);
+
+    /**
+     * set schema to debezium data handler
+     *
+     * @param schema schema
+     */
+    void setSchema(String schema);
 }

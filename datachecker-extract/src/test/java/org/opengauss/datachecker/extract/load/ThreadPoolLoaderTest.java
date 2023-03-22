@@ -34,7 +34,7 @@ class ThreadPoolLoaderTest {
         // Run the test
         threadPoolLoaderUnderTest.load(extractEnvironment);
         // Verify the results
-        assertThat(extractEnvironment.getExtractThreadPool()).isNotNull();
-        extractEnvironment.getExtractThreadPool().shutdown();
+        assertThat(extractEnvironment.getThreadPoolExecutor()).isNotNull();
+        extractEnvironment.getThreadPoolExecutor().shutdown();
     }
 }

@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.dml;
 
 import org.opengauss.datachecker.common.entry.enums.DataBaseType;
 import org.opengauss.datachecker.common.entry.extract.ColumnsMetaData;
+import org.opengauss.datachecker.common.util.HexUtil;
 import org.opengauss.datachecker.common.util.SqlUtil;
 
 import javax.validation.constraints.NotNull;
@@ -72,7 +73,8 @@ public class DmlBuilder {
     protected static final List<String> DIGITAL =
         List.of("int", "integer", "tinyint", "smallint", "mediumint", "bit", "bigint", "double", "float", "decimal",
             "year");
-
+    protected static final List<String> BLOB_LIST = List.of("blob", "tinyblob", "mediumblob", "longblob");
+    protected static final List<String> BINARY = List.of("binary", "varbinary");
     /**
      * columns
      */
@@ -168,10 +170,15 @@ public class DmlBuilder {
         @NotNull List<ColumnsMetaData> columnsMetaList) {
         List<String> valueList = new ArrayList<>();
         columnsMetaList.forEach(columnMeta -> {
+            final String columnName = columnMeta.getColumnName();
             if (DIGITAL.contains(columnMeta.getDataType())) {
-                valueList.add(columnsValue.get(columnMeta.getColumnName()));
+                valueList.add(columnsValue.get(columnName));
+            } else if (BLOB_LIST.contains(columnMeta.getDataType())) {
+                valueList.add(SINGLE_QUOTES + columnsValue.get(columnName) + SINGLE_QUOTES);
+            } else if (BINARY.contains(columnMeta.getDataType())) {
+                valueList.add(SINGLE_QUOTES + HexUtil.HEX_PREFIX + columnsValue.get(columnName) + SINGLE_QUOTES);
             } else {
-                String value = columnsValue.get(columnMeta.getColumnName());
+                String value = columnsValue.get(columnName);
                 if (Objects.isNull(value)) {
                     valueList.add("null");
                 } else {

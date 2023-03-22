@@ -39,10 +39,12 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,6 +60,7 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     public static final String TABLE_NAMES = "tableNames";
+    public static final String TABLE_NAME = "tableName";
     public static final String DATABASE_SCHEMA = "databaseSchema";
 
     protected final JdbcTemplate JdbcTemplateOne;
@@ -85,6 +88,64 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
     }
 
     @Override
+    public List<TableMetadata> queryTableMetadataList() {
+        Map<String, Object> tableCondition = new HashMap<>(Constants.InitialCapacity.EMPTY);
+        final String schema = getSchema();
+        tableCondition.put(DATABASE_SCHEMA, schema);
+        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
+        String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
+        LocalDateTime start = LocalDateTime.now();
+        List<TableMetadata> tableList = new LinkedList<>();
+        try (Stream<TableMetadata> resultStream = jdbc.queryForStream(sql, tableCondition, (rs, rowNum) -> {
+            TableMetadata tableMetaData = new TableMetadata();
+            tableMetaData.setTableName(rs.getString(1)).setTableRows(rs.getLong(2));
+            return tableMetaData;
+        })) {
+            tableList.addAll(resultStream.collect(Collectors.toList()));
+            log.debug(" query database [{}]  table ={} cost {}", schema, tableList.size(),
+                Duration.between(start, LocalDateTime.now()).toSeconds());
+        } catch (DataAccessException exception) {
+            log.error("jdbc query sub column metadata [{}] error :", sql, exception);
+        }
+        final List<String> tableNameList = queryTableNameList();
+        return tableList.stream().filter(meta -> tableNameList.contains(meta.getTableName()))
+                        .collect(Collectors.toList());
+    }
+
+    @Override
+    public TableMetadata queryTableMetadata(String tableName) {
+        Map<String, Object> tableCondition = new HashMap<>(Constants.InitialCapacity.EMPTY);
+        final String schema = getSchema();
+        tableCondition.put(DATABASE_SCHEMA, schema);
+        tableCondition.put(TABLE_NAME, tableName);
+        NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
+        String sql = MetaSqlMapper.getOneTableMetaSql(extractProperties.getDatabaseType());
+        TableMetadata tableMetadata = null;
+        try {
+            tableMetadata = jdbc.queryForObject(sql, tableCondition, (rs, rowNum) -> {
+                TableMetadata tableMetaData = new TableMetadata();
+                tableMetaData.setTableName(rs.getString(1)).setTableRows(rs.getLong(2));
+                return tableMetaData;
+
+            });
+            if (Objects.nonNull(tableMetadata)) {
+                final List<ColumnsMetaData> columnsMetaData = queryTableColumnsMetaData(tableName);
+                tableMetadata.setColumnsMetas(columnsMetaData);
+                tableMetadata.setPrimaryMetas(getTablePrimaryColumn(columnsMetaData));
+            }
+        } catch (DataAccessException exception) {
+            log.error("jdbc query sub column metadata [{}] error :", sql, exception);
+        }
+        return tableMetadata;
+    }
+
+    private List<ColumnsMetaData> getTablePrimaryColumn(List<ColumnsMetaData> columnsMetaData) {
+        return columnsMetaData.stream().filter(meta -> ColumnKey.PRI.equals(meta.getColumnKey()))
+                              .sorted(Comparator.comparing(ColumnsMetaData::getOrdinalPosition))
+                              .collect(Collectors.toList());
+    }
+
+    @Override
     public void matchRowRules(Map<String, TableMetadata> tableMetadataMap) {
         if (MapUtils.isEmpty(tableMetadataMap)) {
             return;
@@ -98,11 +159,10 @@ public class DataBaseMetaDataDAOImpl implements MetaDataDAO {
         map.put(DATABASE_SCHEMA, schema);
         NamedParameterJdbcTemplate jdbc = new NamedParameterJdbcTemplate(JdbcTemplateOne);
         String sql = MetaSqlMapper.getMetaSql(extractProperties.getDatabaseType(), DataBaseMeta.TABLE);
-        log.info("query schema [{}] tables", schema);
-        log.info("query schema [{}] tables sql : {}", schema, sql);
+        log.debug("query schema [{}] tables sql : {}", schema, sql);
         LocalDateTime start = LocalDateTime.now();
         final List<String> tableList = jdbc.query(sql, map, (rs, rowNum) -> rs.getString(1));
-        log.info("query schema [{}] tables count [{}] cost={}", schema, tableList.size(),
+        log.debug("query schema [{}] tables count [{}] cost={}", schema, tableList.size(),
             Duration.between(start, LocalDateTime.now()).toSeconds());
         return tableList;
     }

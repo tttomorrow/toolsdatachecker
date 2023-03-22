@@ -13,30 +13,22 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.common.entry.report;
+package org.opengauss.datachecker.common.entry.common;
 
-import com.alibaba.fastjson.annotation.JSONType;
 import lombok.Data;
-import lombok.experimental.Accessors;
 import org.opengauss.datachecker.common.entry.enums.CheckMode;
+import org.opengauss.datachecker.common.entry.enums.RuleType;
 
-import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author ：wangchao
- * @date ：Created in 2023/2/24
+ * @date ：Created in 2023/3/16
  * @since ：11
  */
 @Data
-@Accessors(chain = true)
-@JSONType(orders = {"mode", "tableCount", "status", "completeCount", "cost", "startTime", "currentTime", "endTime"})
-public class CheckProgress {
-    private short status;
-    private int tableCount;
-    private int completeCount;
-    private long cost;
-    private CheckMode mode;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-    private LocalDateTime currentTime;
+public class DistributeRuleEntry {
+    private CheckMode checkMode;
+    private Map<RuleType, List<Rule>> rules;
 }

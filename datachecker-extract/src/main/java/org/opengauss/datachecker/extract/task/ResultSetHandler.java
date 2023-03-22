@@ -17,6 +17,7 @@ package org.opengauss.datachecker.extract.task;
 
 import lombok.extern.slf4j.Slf4j;
 import org.opengauss.datachecker.common.constant.Constants.InitialCapacity;
+import org.opengauss.datachecker.common.util.HexUtil;
 import org.springframework.lang.NonNull;
 
 import java.math.BigDecimal;
@@ -120,24 +121,7 @@ public abstract class ResultSetHandler {
     }
 
     protected String bytesToString(byte[] bytes) {
-        if (bytes == null) {
-            return NULL;
-        }
-        int iMax = bytes.length;
-        if (iMax == 0) {
-            return EMPTY;
-        }
-        StringBuilder builder = new StringBuilder();
-        builder.append(bytes[0]);
-        for (int i = 1; i < iMax; i++) {
-            if (bytes[i] == 0) {
-                break;
-            } else {
-                builder.append(",");
-                builder.append(bytes[i]);
-            }
-        }
-        return builder.toString();
+        return HexUtil.byteToHex(bytes);
     }
     protected String trim(@NonNull ResultSet resultSet, String columnLabel) throws SQLException {
         final String string = resultSet.getString(columnLabel);

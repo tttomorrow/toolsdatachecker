@@ -46,16 +46,16 @@ public class DebeziumConsumerListener {
     @PostConstruct
     public void initDebeziumDataHandler() {
         debeziumDataHandler = adapter.getHandler(extractProperties.getDebeziumSerializer());
+        debeziumDataHandler.setSchema(extractProperties.getSchema());
     }
 
     public void listen(ConsumerRecord<String, Object> record) {
         try {
-
             final long offset = record.offset();
             debeziumDataHandler.handler(offset, record.value(), DATA_LOG_QUEUE);
         } catch (DebeziumConfigException | JSONException ex) {
             // Abnormal message structure, ignoring the current message
-            log.error("DebeziumConsumerListener Abnormal message : [{}] {} ignoring this message : {}", ex.getMessage(),
+            log.error("parse message abnormal: [{}] {} ignoring this message : {}", ex.getMessage(),
                 System.getProperty("line.separator"), record);
         }
     }

@@ -31,6 +31,7 @@ import java.util.Map;
  */
 public class MetaSqlMapper {
     private static final Map<DataBaseType, Map<DataBaseMeta, String>> DATABASE_META_MAPPER = new HashMap<>();
+    private static final Map<DataBaseType, String> DATABASE_TABLE_META_MAPPER = new HashMap<>();
 
     static {
         Map<DataBaseMeta, String> dataBaseMySql = new HashMap<>();
@@ -38,15 +39,19 @@ public class MetaSqlMapper {
         dataBaseMySql.put(DataBaseMeta.COLUMN, DataBaseMySql.TABLES_COLUMN_META_DATA_SQL);
         dataBaseMySql.put(DataBaseMeta.HEALTH, DataBaseMySql.HEALTH_SQL);
         DATABASE_META_MAPPER.put(DataBaseType.MS, dataBaseMySql);
+        DATABASE_TABLE_META_MAPPER.put(DataBaseType.MS, DataBaseMySql.ONE_TABLE_METADATA_SQL);
+
         Map<DataBaseMeta, String> dataBaseOpenGauss = new HashMap<>();
         dataBaseOpenGauss.put(DataBaseMeta.TABLE, DataBaseOpenGauss.TABLE_METADATA_SQL);
         dataBaseOpenGauss.put(DataBaseMeta.COLUMN, DataBaseOpenGauss.TABLES_COLUMN_META_DATA_SQL);
-        dataBaseOpenGauss.put(DataBaseMeta.HEALTH, DataBaseMySql.HEALTH_SQL);
+        dataBaseOpenGauss.put(DataBaseMeta.HEALTH, DataBaseOpenGauss.HEALTH_SQL);
         DATABASE_META_MAPPER.put(DataBaseType.OG, dataBaseOpenGauss);
+        DATABASE_TABLE_META_MAPPER.put(DataBaseType.MS, DataBaseOpenGauss.ONE_TABLE_METADATA_SQL);
+
         Map<DataBaseMeta, String> databaseO = new HashMap<>();
         databaseO.put(DataBaseMeta.TABLE, DataBaseO.TABLE_METADATA_SQL);
         databaseO.put(DataBaseMeta.COLUMN, DataBaseO.TABLES_COLUMN_META_DATA_SQL);
-        databaseO.put(DataBaseMeta.HEALTH, DataBaseMySql.HEALTH_SQL);
+        databaseO.put(DataBaseMeta.HEALTH, DataBaseO.HEALTH_SQL);
         DATABASE_META_MAPPER.put(DataBaseType.O, databaseO);
     }
 
@@ -72,6 +77,11 @@ public class MetaSqlMapper {
         return DATABASE_META_MAPPER.get(databaseType).get(databaseMeta);
     }
 
+    public static String getOneTableMetaSql(DataBaseType databaseType) {
+        Assert.isTrue(DATABASE_TABLE_META_MAPPER.containsKey(databaseType), "Database type mismatch");
+        return DATABASE_TABLE_META_MAPPER.get(databaseType);
+    }
+
     interface DataBaseMySql {
         /**
          * Health check SQL
@@ -84,6 +94,8 @@ public class MetaSqlMapper {
         String TABLE_METADATA_SQL = "select info.table_name tableName , info.table_rows tableRows  "
             + "from  information_schema.tables info where info.table_schema=:databaseSchema";
 
+        String ONE_TABLE_METADATA_SQL = "select info.table_name tableName, info.table_rows tableRows"
+            + "from information_schema.tables info where info.table_schema=:databaseSchema and info.table_name=:tableName";
         /**
          * column metadata query SQL
          */
@@ -102,10 +114,13 @@ public class MetaSqlMapper {
         /**
          * Table metadata query SQL
          */
-        String TABLE_METADATA_SQL = "select c.relname tableName,0 tableRows from pg_class c "
+        String TABLE_METADATA_SQL = "select c.relname tableName,c.reltuples tableRows from pg_class c "
             + "LEFT JOIN pg_namespace n on n.oid = c.relnamespace left join pg_index b on c.oid=b.indrelid "
             + "where n.nspname=:databaseSchema and b.indisprimary='t';";
 
+        String ONE_TABLE_METADATA_SQL = "select c.relname tableName,c.reltuples tableRows from pg_class c "
+            + "LEFT JOIN pg_namespace n on n.oid = c.relnamespace left join pg_index b on c.oid=b.indrelid "
+            + "where n.nspname=:databaseSchema and b.indisprimary='t' and c.relname=:tableName; ";
         /**
          * column metadata query SQL
          */

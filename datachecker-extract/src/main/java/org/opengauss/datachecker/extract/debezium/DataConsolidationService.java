@@ -61,4 +61,6 @@ public interface DataConsolidationService {
      * @param config Incremental verification (debezium configuration)
      */
     void configIncrementCheckEnvironment(IncrementCheckConfig config);
+
+    void pauseOrResumeIncrementMonitor(Boolean pauseOrResume);
 }

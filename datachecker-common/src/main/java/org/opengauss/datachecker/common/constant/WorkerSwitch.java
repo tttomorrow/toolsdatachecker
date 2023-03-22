@@ -13,27 +13,17 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.load;
-
-import lombok.Data;
-import org.opengauss.datachecker.common.entry.enums.CheckMode;
-import org.springframework.stereotype.Component;
-
-import java.util.concurrent.ExecutorService;
+package org.opengauss.datachecker.common.constant;
 
 /**
- * ExtractEnvironment
+ * WorkerSwitch
  *
  * @author ：wangchao
- * @date ：Created in 2022/10/31
+ * @date ：Created in 2023/3/15
  * @since ：11
  */
-@Data
-@Component
-public class ExtractEnvironment {
-    private int maxCorePoolSize = 0;
-    private int queueSize = 0;
-    private boolean loadSuccess = false;
-    private volatile ExecutorService threadPoolExecutor = null;
-    private volatile CheckMode checkMode;
+public interface WorkerSwitch {
+    Boolean RESUME = false;
+    Boolean PAUSE = true;
+    int SLEEP_TIME = 200;
 }

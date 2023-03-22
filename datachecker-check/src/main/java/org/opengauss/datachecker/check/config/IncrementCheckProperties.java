@@ -13,27 +13,24 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.load;
+package org.opengauss.datachecker.check.config;
 
-import lombok.Data;
-import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ExecutorService;
+import javax.annotation.Resource;
 
 /**
- * ExtractEnvironment
- *
  * @author ：wangchao
- * @date ：Created in 2022/10/31
+ * @date ：Created in 2022/5/23
  * @since ：11
  */
-@Data
 @Component
-public class ExtractEnvironment {
-    private int maxCorePoolSize = 0;
-    private int queueSize = 0;
-    private boolean loadSuccess = false;
-    private volatile ExecutorService threadPoolExecutor = null;
-    private volatile CheckMode checkMode;
+public class IncrementCheckProperties {
+
+    @Resource
+    private DataCheckProperties properties;
+
+    public int getIncrementMaxDiffCount() {
+        return properties.getIncrementMaxDiffCount();
+    }
 }

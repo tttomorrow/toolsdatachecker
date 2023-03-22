@@ -13,27 +13,22 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.load;
-
-import lombok.Data;
-import org.opengauss.datachecker.common.entry.enums.CheckMode;
-import org.springframework.stereotype.Component;
-
-import java.util.concurrent.ExecutorService;
+package org.opengauss.datachecker.common.exception;
 
 /**
- * ExtractEnvironment
+ * NotSourceEndpointException
  *
  * @author ：wangchao
- * @date ：Created in 2022/10/31
+ * @date ：Created in 2022/5/23
  * @since ：11
  */
-@Data
-@Component
-public class ExtractEnvironment {
-    private int maxCorePoolSize = 0;
-    private int queueSize = 0;
-    private boolean loadSuccess = false;
-    private volatile ExecutorService threadPoolExecutor = null;
-    private volatile CheckMode checkMode;
+public class NotSourceEndpointException extends ExtractException {
+    private static final long serialVersionUID = 414115892399622074L;
+
+    public NotSourceEndpointException(String message) {
+        super(message);
+    }
+
+    public NotSourceEndpointException() {
+    }
 }

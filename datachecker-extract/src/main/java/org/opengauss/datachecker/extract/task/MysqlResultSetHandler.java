@@ -16,12 +16,12 @@
 package org.opengauss.datachecker.extract.task;
 
 import com.mysql.cj.MysqlType;
+import org.opengauss.datachecker.common.util.HexUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -37,13 +37,14 @@ public class MysqlResultSetHandler extends ResultSetHandler {
     {
         TypeHandler binaryToString = (resultSet, columnLabel) -> byteToStringTrim(resultSet.getBytes(columnLabel));
         TypeHandler varbinaryToString = (resultSet, columnLabel) -> bytesToString(resultSet.getBytes(columnLabel));
-        TypeHandler blobToString = (resultSet, columnLabel) -> blobToString(resultSet.getBlob(columnLabel));
+        TypeHandler blobToString = (resultSet, columnLabel) -> HexUtil.byteToHexTrim(resultSet.getBytes(columnLabel));
         TypeHandler numericToString = (resultSet, columnLabel) -> numericToString(resultSet.getBigDecimal(columnLabel));
+        TypeHandler bitBooleanToString = (resultSet, columnLabel) -> booleanToString(resultSet.getBoolean(columnLabel));
 
         typeHandlers.put(MysqlType.FLOAT, numericToString);
         typeHandlers.put(MysqlType.DOUBLE, numericToString);
         typeHandlers.put(MysqlType.DECIMAL, numericToString);
-        typeHandlers.put(MysqlType.BIT, this::bitToString);
+        typeHandlers.put(MysqlType.BIT, bitBooleanToString);
         // byte binary blob
         typeHandlers.put(MysqlType.BINARY, binaryToString);
         typeHandlers.put(MysqlType.VARBINARY, varbinaryToString);
@@ -61,34 +62,15 @@ public class MysqlResultSetHandler extends ResultSetHandler {
         typeHandlers.put(MysqlType.YEAR, this::getYearFormat);
     }
 
-    private String bitToString(ResultSet resultSet, String columnLabel) throws SQLException {
-        return Objects.isNull(resultSet.getObject(columnLabel)) ? NULL :
-            String.valueOf(resultSet.getString(columnLabel));
+    private String byteToStringTrim(byte[] bytes) {
+        return HexUtil.byteToHexTrim(bytes);
     }
 
-    private String byteToStringTrim(byte[] bytes) {
-        if (bytes == null) {
+    protected String booleanToString(Boolean bool) {
+        if (Objects.isNull(bool)) {
             return NULL;
         }
-        int iMax = bytes.length - 1;
-        if (iMax == -1) {
-            return "";
-        }
-        Stack<Byte> stack = new Stack<>();
-        boolean isSkip = bytes[iMax] == 0;
-        for (int i = iMax; i >= 0; i--) {
-            if (bytes[i] != 0 || !isSkip) {
-                isSkip = false;
-                stack.push(bytes[i]);
-            }
-        }
-        StringBuilder builder = new StringBuilder();
-        builder.append(stack.pop());
-        while (!stack.empty()) {
-            builder.append(",");
-            builder.append(stack.pop());
-        }
-        return builder.toString();
+        return String.valueOf(bool);
     }
 
     @Override

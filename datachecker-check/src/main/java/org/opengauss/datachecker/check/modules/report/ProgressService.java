@@ -19,17 +19,19 @@ import lombok.SneakyThrows;
 import org.opengauss.datachecker.check.cache.TableStatusRegister;
 import org.opengauss.datachecker.check.load.CheckEnvironment;
 import org.opengauss.datachecker.check.service.EndpointMetaDataManager;
+import org.opengauss.datachecker.common.entry.enums.CheckMode;
 import org.opengauss.datachecker.common.entry.report.CheckProgress;
 import org.opengauss.datachecker.common.util.FileUtils;
 import org.opengauss.datachecker.common.util.JsonObjectUtil;
 import org.opengauss.datachecker.common.util.ThreadUtil;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.File;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -41,6 +43,7 @@ import java.util.function.UnaryOperator;
  * @since ：11
  */
 @Service
+@ConditionalOnBean({CheckEnvironment.class, EndpointMetaDataManager.class, TableStatusRegister.class})
 public class ProgressService {
     private static final String PROCESS_LOG_NAME = "progress.log";
     private static final String PROGRESS = "progress";
@@ -57,36 +60,46 @@ public class ProgressService {
     /**
      * Schedule loading scheduled tasks
      */
-    @PostConstruct
     public void progressing() {
         progressRef.set(new CheckProgress());
-        executorService.scheduleWithFixedDelay(() -> {
-            Thread.currentThread().setName(PROGRESS);
-            if (progressRef.get().getTableCount() == 0) {
-                if (endpointMetaDataManager.getCheckTaskCount() > 0) {
-                    initProgress(endpointMetaDataManager.getCheckTaskCount());
+        if (isFullMode()) {
+            executorService.scheduleWithFixedDelay(() -> {
+                Thread.currentThread().setName(PROGRESS);
+                if (progressRef.get().getTableCount() == 0) {
+                    if (endpointMetaDataManager.getCheckTaskCount() > 0) {
+                        initProgress(endpointMetaDataManager.getCheckTaskCount());
+                    }
+                } else {
+                    refreshCompleteProgress(tableStatusRegister.getCheckedCount());
                 }
-            } else {
-                refreshProgress(tableStatusRegister.getCheckedCount());
-            }
-            if (progressRef.get().getStatus() == CheckProgressStatus.END) {
-                ThreadUtil.sleepHalfSecond();
-                executorService.shutdownNow();
-            }
-        }, 1, 1, TimeUnit.SECONDS);
+                if (progressRef.get().getStatus() == CheckProgressStatus.END) {
+                    ThreadUtil.sleepHalfSecond();
+                    executorService.shutdownNow();
+                }
+            }, 1, 1, TimeUnit.SECONDS);
+        }
     }
 
     /**
      * Get the progress and return the latest progress information when the scheduled task is closed
      *
      * @return progress
+     * @param completeCount completeCount
      */
     @SneakyThrows
-    public CheckProgress getCheckProgress() {
-        while (!isComplete()) {
-            ThreadUtil.sleepHalfSecond();
+    public CheckProgress getCheckProgress(int completeCount) {
+        if (isFullMode()) {
+            while (!isComplete()) {
+                ThreadUtil.sleepHalfSecond();
+            }
+        }else {
+            refreshCompleteProgress(completeCount);
         }
         return progressRef.get();
+    }
+
+    private boolean isFullMode() {
+        return Objects.equals(checkEnvironment.getCheckMode(), CheckMode.FULL);
     }
 
     private boolean isComplete() {
@@ -106,8 +119,8 @@ public class ProgressService {
     private UnaryOperator<CheckProgress> initProgressUnaryOperator(int tableCount) {
         return (v) -> {
             final LocalDateTime now = LocalDateTime.now();
-            return v.setTableCount(tableCount).setStartTime(now).setCurrentTime(now)
-                    .setStatus(CheckProgressStatus.START);
+            return v.setTableCount(tableCount).setMode(checkEnvironment.getCheckMode()).setStartTime(now)
+                    .setCurrentTime(now).setStatus(CheckProgressStatus.START);
         };
     }
 
@@ -129,7 +142,7 @@ public class ProgressService {
         };
     }
 
-    private synchronized void refreshProgress(int completeCount) {
+    public synchronized void refreshCompleteProgress(int completeCount) {
         progressRef.updateAndGet(refreshProgressUnaryOperator(completeCount));
         appendProgressLog();
     }
@@ -148,6 +161,10 @@ public class ProgressService {
 
     private long calcCost(LocalDateTime now) {
         return Duration.between(progressRef.get().getStartTime(), now).toSeconds();
+    }
+
+    public void resetProgress(int tableCount) {
+        initProgress(tableCount);
     }
 
     /**
