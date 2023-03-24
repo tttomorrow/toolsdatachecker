@@ -1,7 +1,7 @@
-# openGauss-tools-datachecker-performance
+# gs_datachecker
 
 #### Description
-Opengauss data migration verification tool, including full data verification and incremental data verification.
+Opengauss data verification tool, including full data verification and incremental data verification.
 
 #### Software Architecture
 Full data verification: JDBC is used to extract the source and target data, and the extraction results are temporarily stored in Kafka. The verification service obtains the extraction results of the specified table from Kafka through the extraction service for verification. Finally, output the verification results to the file in the specified path.
