@@ -16,18 +16,23 @@
 package org.opengauss.datachecker.check.event;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
+import org.apache.kafka.clients.admin.TopicListing;
 import org.apache.kafka.common.KafkaFuture;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * @author ：wangchao
@@ -40,22 +45,33 @@ public class DeleteTopicsEventListener implements ApplicationListener<DeleteTopi
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
     private AdminClient adminClient = null;
+    private AtomicInteger retryTimes = new AtomicInteger(0);
 
     @Override
     public void onApplicationEvent(DeleteTopicsEvent event) {
         log.debug("delete topic event listener : {}", event.getMessage());
         final Object source = event.getSource();
         initAdminClient();
-        deleteTopic((DeleteTopics) source);
+        final DeleteTopics deleteOption = (DeleteTopics) source;
+        deleteTopic(deleteOption.getTopicList());
     }
 
-    private void deleteTopic(DeleteTopics deleteOption) {
-        DeleteTopicsResult deleteTopicsResult = adminClient.deleteTopics(deleteOption.getTopicList());
+    private void deleteTopic(List<String> deleteTopicList) {
+        DeleteTopicsResult deleteTopicsResult = adminClient.deleteTopics(deleteTopicList);
         final KafkaFuture<Void> kafkaFuture = deleteTopicsResult.all();
+        retryTimes.incrementAndGet();
         try {
             kafkaFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
-            log.error("delete topic event error : ", e);
+            List<String> checkedList = adminClient.listTopics().listings().get().stream().map(TopicListing::name)
+                                                  .filter(deleteTopicList::contains).collect(Collectors.toList());
+            if (CollectionUtils.isNotEmpty(checkedList)) {
+                if (retryTimes.get() <= 3) {
+                    deleteTopic(checkedList);
+                } else {
+                    log.error("retry to delete {} topic error : delete too many times(3) ", checkedList);
+                }
+            }
+        } catch (InterruptedException | ExecutionException ignore) {
         }
     }
 
