@@ -38,6 +38,8 @@ public class ExtractThreadSupport {
     @Resource
     private DataSource dataSourceOne;
     @Resource
+    private ConnectionManager connectionManager;
+    @Resource
     private KafkaTemplate<String, String> kafkaTemplate;
     @Resource
     private CheckingFeignClient checkingFeignClient;

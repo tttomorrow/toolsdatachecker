@@ -8,7 +8,7 @@ spring:
   extract:
     schema: jack
     databaseType: OG
-    query-dop: 8 # openGauss database Parallel Query session config
+    query-dop: 8 # jdbc Parallel Query  config
     debezium-enable: false # no need config,but not delete
     debezium-topic:  # no need config,but not delete
     debezium-groupId: # no need config,but not delete
