@@ -16,6 +16,7 @@ spring:
     schema: jack
     databaseType: OG  #OG opengauss
     endpoint: SINK
+    query-dop: 8 # jdbc Parallel Query  config
     debezium-enable: false
     debezium-topic:
     debezium-groupId:

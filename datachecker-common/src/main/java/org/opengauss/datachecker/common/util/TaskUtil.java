@@ -26,9 +26,9 @@ import java.util.stream.IntStream;
  */
 public class TaskUtil {
     public static final int EXTRACT_MAX_ROW_COUNT = 50000;
-    private static final int[] MAX_LIMIT =
-        {50000, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000};
+    private static final int[] MAX_LIMIT = {200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000};
     private static final float CPU_UTILIZATION = 2.0f;
+    private static final float TABLE_ROWS_DEVIATION_RATE = 1.0f;
 
     private static int calcMaxLimitRowCount(long tableRows) {
         if (tableRows < MAX_LIMIT[0]) {
@@ -72,7 +72,7 @@ public class TaskUtil {
             return new int[][] {{0, MAX_LIMIT[0]}};
         }
         int maxLimitRowCount = calcMaxLimitRowCount(tableRows);
-        final int taskCount = (int) Math.ceil(tableRows * 1.0 / maxLimitRowCount) + 1;
+        final int taskCount = (int) Math.ceil(tableRows * TABLE_ROWS_DEVIATION_RATE / maxLimitRowCount) + 1;
         int[][] taskOffset = new int[taskCount][2];
         IntStream.range(0, taskCount).forEach(taskCountIdx -> {
             int start = taskCountIdx * maxLimitRowCount;

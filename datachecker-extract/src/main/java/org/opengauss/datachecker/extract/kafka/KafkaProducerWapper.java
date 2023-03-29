@@ -15,8 +15,8 @@
 
 package org.opengauss.datachecker.extract.kafka;
 
-import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.opengauss.datachecker.common.entry.extract.RowDataHash;
 import org.opengauss.datachecker.common.entry.extract.Topic;
@@ -34,6 +34,7 @@ import java.util.List;
 @Slf4j
 public class KafkaProducerWapper {
     private static final int DEFAULT_PARTITION = 0;
+    private static final int EMPTY = 0;
     private static final int MIN_PARTITION_NUM = 1;
 
     private KafkaTemplate<String, String> kafkaTemplate;
@@ -53,13 +54,17 @@ public class KafkaProducerWapper {
      * @param topic          topic
      * @param recordHashList data
      */
-    public void syncSend(Topic topic, List<RowDataHash> recordHashList) {
+    public int syncSend(Topic topic, List<RowDataHash> recordHashList) {
+        if (CollectionUtils.isEmpty(recordHashList)) {
+            return EMPTY;
+        }
         final int partitions = topic.getPartitions();
         if (partitions <= MIN_PARTITION_NUM) {
             sendRecordToSinglePartitionTopic(recordHashList, topic.getTopicName());
         } else {
             sendMultiPartitionTopic(recordHashList, topic.getTopicName(), partitions);
         }
+        return recordHashList.size();
     }
 
     private void sendRecordToSinglePartitionTopic(List<RowDataHash> recordHashList, String topicName) {
