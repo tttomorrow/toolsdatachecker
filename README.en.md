@@ -132,11 +132,11 @@ The extraction service must be started first, and then the verification service.
  **Background start command** 
 
 ```
-nohup java -Dspring.config.additional-location=config/application-source.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=source  >/dev/null 2>&1 &
+nohup java  -jar datachecker-extract-0.0.1.jar --source  >/dev/null 2>&1 &
 
-nohup java -Dspring.config.additional-location=config/application-sink.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=sink >/dev/null 2>&1 &
+nohup java  -jar datachecker-extract-0.0.1.jar --sink >/dev/null 2>&1 &
 
-nohup java -Dspring.config.additional-location=config/application.yml -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
+nohup java  -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
 ```
 
 

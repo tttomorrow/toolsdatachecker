@@ -11,7 +11,7 @@ exit 1
 
 #检查程序是否在运行
 is_exist(){
-pid=`ps -ef|grep $APP_NAME | grep $CONFIG_PATH |grep -v grep|awk '{print $2}' `
+pid=`ps -ef|grep $APP_NAME | grep $CONFIG_PATH |grep -v grep|awk '{print $2}'`
 #如果不存在返回1，存在返回0
 if [ -z "${pid}" ]; then
 return 1
@@ -26,10 +26,10 @@ is_exist
 if [ $? -eq "0" ]; then
 echo "${APP_NAME} is already running. pid=${pid} ."
 else
-nohup java -Xmx5G -Xms5G -XX:MaxMetaspaceSize=1G -XX:MetaspaceSize=1G  -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled -Dspring.config.additional-location=$CONFIG_PATH/application-source.yml -jar $APP_NAME --spring.profiles.active=source >/dev/null 2>&1 &
+nohup java -Xmx6G -Xms6G -XX:MaxMetaspaceSize=1G -XX:MetaspaceSize=1G  -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled -jar $APP_NAME --source >/dev/null 2>&1 &
 
-nohup java -Xmx5G -Xms5G -XX:MaxMetaspaceSize=1G -XX:MetaspaceSize=1G  -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled -Dspring.config.additional-location=$CONFIG_PATH/application-sink.yml -jar $APP_NAME --spring.profiles.active=sink >/dev/null 2>&1 &
-sleep 4s
+nohup java -Xmx6G -Xms6G -XX:MaxMetaspaceSize=1G -XX:MetaspaceSize=1G  -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:+ParallelRefProcEnabled -jar $APP_NAME --sink >/dev/null 2>&1 &
+sleep 1s
 echo "${APP_NAME} source and sink start success"
 fi
 }
@@ -39,7 +39,7 @@ stop(){
 is_exist
 if [ $? -eq "0" ]; then
 kill -15 $pid
-sleep 3s
+sleep 1s
 else
 echo "${APP_NAME} is not running"
 fi

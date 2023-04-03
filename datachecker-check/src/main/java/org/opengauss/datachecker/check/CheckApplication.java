@@ -15,6 +15,7 @@
 
 package org.opengauss.datachecker.check;
 
+import org.opengauss.datachecker.check.cmd.CheckCommandLine;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
@@ -32,6 +33,13 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(value = {"org.opengauss.datachecker.check", "org.opengauss.datachecker.common"})
 public class CheckApplication {
     public static void main(String[] args) {
-       SpringApplication.run(CheckApplication.class, args);
+        CheckCommandLine commandLine = new CheckCommandLine();
+        commandLine.parseArgs(args);
+        SpringApplication application = new SpringApplication(CheckApplication.class);
+        if (commandLine.hasHelp()) {
+            commandLine.help();
+        } else {
+            application.run(args);
+        }
     }
 }

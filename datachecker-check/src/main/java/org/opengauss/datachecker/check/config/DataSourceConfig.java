@@ -13,33 +13,19 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.constants;
+package org.opengauss.datachecker.check.config;
 
-import org.opengauss.datachecker.common.constant.Constants;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.Configuration;
 
 /**
- * ExtConstants
+ * DataSourceConfig check service closed DataSourceAutoConfiguration
  *
  * @author ：wangchao
- * @date ：Created in 2022/7/25
+ * @date ：Created in 2023/3/28
  * @since ：11
  */
-public interface ExtConstants {
-    /**
-     * Combined primary key splice connector
-     */
-    String PRIMARY_DELIMITER = Constants.PRIMARY_DELIMITER;
-
-    /**
-     * DELIMITER ,
-     */
-    String DELIMITER = Constants.DELIMITER;
-
-    /**
-     * query result parsing ResultSet data result set,default start index position
-     */
-    int COLUMN_INDEX_FIRST_ZERO = 0;
-
-    String PROFILE_SINK = "sink";
-    String PROFILE_SOURCE = "source";
-}
+@Configuration
+@EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class})
+public class DataSourceConfig {}
