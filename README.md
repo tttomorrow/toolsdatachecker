@@ -123,11 +123,11 @@ sh check-endpoint.sh start|restart|stop
 **后台启动命令**
 
 ```shell
-nohup java -Dspring.config.additional-location=config/application-source.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=source  >/dev/null 2>&1 &
+nohup java -jar datachecker-extract-0.0.1.jar --source  >/dev/null 2>&1 &
 
-nohup java -Dspring.config.additional-location=config/application-sink.yml -jar datachecker-extract-0.0.1.jar --spring.profiles.active=sink >/dev/null 2>&1 &
+nohup java -jar datachecker-extract-0.0.1.jar --sink >/dev/null 2>&1 &
 
-nohup java -Dspring.config.additional-location=config/application.yml -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
+nohup java -jar datachecker-check-0.0.1.jar >/dev/null 2>&1 &
 ```
 
 **校验服务完全启动成功后，会自动发起校验请求。**

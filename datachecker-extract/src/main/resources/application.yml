@@ -1,6 +1,7 @@
 debug: false
 
 spring:
+  memory-monitor-enable: false
   check:
     server-uri: http://127.0.0.1:9000
     max-core-pool-size: 10

@@ -91,8 +91,12 @@ public class MetaSqlMapper {
         /**
          * Table metadata query SQL
          */
-        String TABLE_METADATA_SQL = "select info.table_name tableName , info.table_rows tableRows  "
-            + "from  information_schema.tables info where info.table_schema=:databaseSchema";
+        String TABLE_METADATA_SQL = "SELECT info.table_name tableName,info.table_rows tableRows ,info.avg_row_length avgRowLength,pk.id rowId FROM "
+            + " (SELECT distinct SHA2(TABLE_NAME,224) id, TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE  WHERE "
+            + " TABLE_SCHEMA=:databaseSchema AND CONSTRAINT_NAME='PRIMARY' "
+            + " ) pk LEFT JOIN ( select SHA2(TABLE_NAME,224) id, TABLE_NAME,TABLE_ROWS,avg_row_length from  information_schema.tables  "
+            + " WHERE  table_schema=:databaseSchema ) info ON pk.id=info.id AND pk.TABLE_NAME=info.TABLE_NAME "
+            + " ORDER BY info.table_rows ASC ";
 
         String ONE_TABLE_METADATA_SQL = "select info.table_name tableName, info.table_rows tableRows"
             + "from information_schema.tables info where info.table_schema=:databaseSchema and info.table_name=:tableName";
@@ -114,9 +118,11 @@ public class MetaSqlMapper {
         /**
          * Table metadata query SQL
          */
-        String TABLE_METADATA_SQL = "select c.relname tableName,c.reltuples tableRows from pg_class c "
+        String TABLE_METADATA_SQL = "select c.relname tableName,c.reltuples tableRows, "
+            + " case when c.reltuples>0 then pg_table_size(c.oid)/c.reltuples else 0 end as avgRowLength"
+            + " from pg_class c "
             + "LEFT JOIN pg_namespace n on n.oid = c.relnamespace left join pg_index b on c.oid=b.indrelid "
-            + "where n.nspname=:databaseSchema and b.indisprimary='t';";
+            + "where n.nspname=:databaseSchema and b.indisprimary='t' order by c.reltuples asc;";
 
         String ONE_TABLE_METADATA_SQL = "select c.relname tableName,c.reltuples tableRows from pg_class c "
             + "LEFT JOIN pg_namespace n on n.oid = c.relnamespace left join pg_index b on c.oid=b.indrelid "

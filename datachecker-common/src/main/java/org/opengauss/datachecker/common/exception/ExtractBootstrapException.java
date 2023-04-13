@@ -13,33 +13,22 @@
  * See the Mulan PSL v2 for more details.
  */
 
-package org.opengauss.datachecker.extract.constants;
-
-import org.opengauss.datachecker.common.constant.Constants;
+package org.opengauss.datachecker.common.exception;
 
 /**
- * ExtConstants
+ * ExtractBootstrapException
  *
  * @author ：wangchao
- * @date ：Created in 2022/7/25
+ * @date ：Created in 2022/5/23
  * @since ：11
  */
-public interface ExtConstants {
-    /**
-     * Combined primary key splice connector
-     */
-    String PRIMARY_DELIMITER = Constants.PRIMARY_DELIMITER;
+public class ExtractBootstrapException extends ExtractException {
+    private static final long serialVersionUID = 414115892399622074L;
 
-    /**
-     * DELIMITER ,
-     */
-    String DELIMITER = Constants.DELIMITER;
+    public ExtractBootstrapException(String message) {
+        super(message);
+    }
 
-    /**
-     * query result parsing ResultSet data result set,default start index position
-     */
-    int COLUMN_INDEX_FIRST_ZERO = 0;
-
-    String PROFILE_SINK = "sink";
-    String PROFILE_SOURCE = "source";
+    public ExtractBootstrapException() {
+    }
 }
